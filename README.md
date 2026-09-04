@@ -331,6 +331,46 @@ Ab Welle 8 entspricht die Stärkekurve wieder dem ursprünglichen Verlauf. Boden
 seitlich aus, solange eine Lücke existiert — steht keine offen, schlagen sie sie ein.
 Wellen sind endlos, Budget und HP skalieren quadratisch mit der Wellennummer.
 
+## Balance messen
+
+Im Ordner `tools/` liegt ein Prüfstand, der das ganze Spiel ohne Browser in node lädt,
+und ein simulierter Spieler, der damit Partien spielt. Beides braucht nichts außer node.
+
+```bash
+node tools/bot.js 100 40                 # 100 Partien bis Welle 40
+node tools/bot.js 60 40 noflow,nomod     # dieselbe Messung ohne Leitungslast und Sturmwellen
+node tools/bot.js 1 40 log               # eine Partie, Verlauf Welle für Welle
+```
+
+Ausgegeben werden die Verteilung der erreichten Wellen, Median, Schnitt und wie oft das
+Wellenlimit erreicht wurde. **Kennzahl ist der Median**, nicht der Schnitt: Die Verteilung
+hat zwei Häufungen, ein einzelner Lauf bis zum Limit verschiebt den Schnitt stark.
+
+Drei Dinge sind beim Auswerten wichtig, sonst führt die Zahl in die Irre:
+
+- **Die Streuung ist groß.** Unter 60 Läufen wandert der Median um mehrere Wellen. Für
+  eine belastbare Aussage sind 100 Läufe je Konfiguration nötig.
+- **Absolutwerte sagen wenig.** Aussagekräftig ist nur der Vergleich zweier
+  Konfigurationen *mit derselben Bot-Version*, gemessen in einem Durchgang. Eine einzige
+  Bot-Regel kann alles kippen: Türme erst ab Welle 4 zu mischen statt ab Welle 2 senkte
+  den Median von 18 auf 6, weil der Bot den gepanzerten Brutes ohne Kanonen begegnete.
+  Das war ein Fehler des Bots, nicht des Spiels.
+- **Der Bot ist ein schwacher Stellvertreter.** Er nutzt weder Lastpriorität noch
+  Überladung und stellt Reaktoren nicht planvoll an überlastete Äste. Gerade bei der
+  Leitungslast — einer Planungsaufgabe — unterschätzt er einen Menschen deutlich.
+
+Die Schalter `noflow`, `nomod` und `nopower` schalten Leitungslast, Sturmwellen und
+Kernbefehle ab. So lässt sich messen, was ein einzelnes System zur Schwierigkeit
+beiträgt. Der Prüfstand selbst (`tools/harness.js`) ist auch für schnelle Einzelfragen
+brauchbar:
+
+```js
+const h = require('./tools/harness.js');
+h.game.build('pylon', 25, 12);
+h.game.recomputeSupply();
+console.log(h.game.sources[1].ratio);      // Auslastung dieser Leitung
+```
+
 ## Dateien
 
 - `index.html` — Landingpage samt eingebettetem Spiel-Markup und HUD
@@ -341,6 +381,8 @@ Wellen sind endlos, Budget und HP skalieren quadratisch mit der Wellennummer.
 - `js/game.js` — Spielzustand, Energienetz, Wellen, Rendering, Eingabe
 - `js/audio.js` — Klangerzeugung
 - `js/landing.js` — Einblendungen, Vollbild, Skalierung des Spielblocks
+- `tools/harness.js` — lädt das Spiel ohne Browser in node
+- `tools/bot.js` — simulierter Spieler für Balance-Messungen
 
 Balance-Änderungen brauchen fast immer nur `js/config.js`.
 

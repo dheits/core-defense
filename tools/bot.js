@@ -1,0 +1,176 @@
+'use strict';
+/* ---------------------------------------------------------------
+   Simulierter Spieler für Balance-Messungen.
+
+     node tools/bot.js [Läufe] [Wellenlimit] [Schalter,...]
+     node tools/bot.js 100 40                  100 Partien bis Welle 40
+     node tools/bot.js 60 40 noflow,nomod      ohne Leitungslast und Sturmwellen
+     node tools/bot.js 1 40 log                eine Partie mit Verlaufsprotokoll
+
+   Schalter: noflow (Leitungen ohne Grenze), nomod (keine Sturmwellen),
+             nopower (keine Kernbefehle), log (Verlauf ausgeben).
+
+   Der Bot spielt bewusst schlicht: Er hält jede Himmelsrichtung mit
+   Türmen besetzt, baut Reaktoren, bevor der Verbrauch die Erzeugung zu
+   weit übersteigt, entlastet überlastete Äste, baut aus, wenn sonst
+   nichts ansteht, und nimmt eine zufällige Karte.
+
+   WICHTIG für die Auswertung: Er nutzt weder Lastprioritäten noch
+   Überladung und stellt Reaktoren nicht planvoll an die richtige
+   Stelle. Bei der Leitungslast unterschätzt er einen menschlichen
+   Spieler deshalb deutlich. Absolute Zahlen sagen wenig — aussagekräftig
+   ist nur der Vergleich zweier Konfigurationen MIT DERSELBEN Bot-Version.
+   Und die Streuung ist groß: Unter 60 Läufen wandert der Median um
+   mehrere Wellen. Kennzahl ist der Median, nicht der Schnitt, weil die
+   Verteilung zwei Häufungen hat.
+---------------------------------------------------------------- */
+const path = require('path');
+const PRUEFSTAND = path.resolve(__dirname, 'harness.js');
+
+// Reaktor bauen, sobald der Dauerverbrauch das Doppelte der Erzeugung übersteigt
+const NACHSCHUB_VERHAELTNIS = 2.0;
+
+function frischeRunde() {
+  delete require.cache[PRUEFSTAND];
+  return require(PRUEFSTAND);
+}
+
+function lauf(maxWelle, opt = {}) {
+  const h = frischeRunde(), g = h.game, C = h.CORE, GRID = h.GRID;
+  if (opt.ohneLast) {                       // Leitungen praktisch grenzenlos
+    h.FLOW.core = 1e6; h.FLOW.pylon = 1e6; h.FLOW.perLevel = 0;
+    g.recomputeSupply();
+  }
+  if (opt.ohneMods) h.setModChance(0);
+
+  const zelle = GRID.cell;
+  const kosten = t => g.costOf(t);
+  const turmTypen = ['blaster', 'cannon', 'frost'];
+
+  // Alle Bauplätze im Ring um den Kern, von innen nach außen sortiert
+  const plaetze = [];
+  for (let x = 0; x < GRID.cols; x++)
+    for (let y = 0; y < GRID.rows; y++) {
+      const d = Math.hypot(x - C.cx, y - C.cy);
+      if (d > 2 && d < 13) plaetze.push({ x, y, d, a: Math.atan2(y - C.cy, x - C.cx) });
+    }
+  plaetze.sort((p, q) => p.d - q.d);
+
+  const frei = (x, y) => g.free(x, y);
+  const versorgt = (x, y) => g.sources.some(s => Math.hypot(x - s.x, y - s.y) <= s.r);
+  const sektor = p => Math.round(((p.a + Math.PI * 2) % (Math.PI * 2)) / (Math.PI / 4)) % 8;
+  const bedarf = () => [...g.buildings.values()].reduce((n, b) => n + g.drawOf(b), 0);
+
+  function bauen() {
+    let sicherung = 300;                    // gegen Endlosschleifen bei vollem Feld
+    while (sicherung-- > 0) {
+      // 1. Nachschub zuerst — ohne Energie nützt der schönste Turm nichts
+      if (bedarf() > g.regen * NACHSCHUB_VERHAELTNIS && g.matter >= kosten('reactor')) {
+        const p = plaetze.find(q => frei(q.x, q.y) && versorgt(q.x, q.y));
+        if (p) { g.build('reactor', p.x, p.y); continue; }
+      }
+      // 2. Überlastete Äste mit einem Reaktor direkt am Knoten entlasten
+      const voll = g.sources.filter(s => s.ratio > 1 && s.node);
+      if (voll.length && g.matter >= kosten('reactor')) {
+        const s = voll[0];
+        const p = plaetze.find(q => frei(q.x, q.y) &&
+                                    Math.hypot(q.x - s.x, q.y - s.y) <= s.r - 0.5);
+        if (p) { g.build('reactor', p.x, p.y); continue; }
+      }
+      // 3. Die schwächste Himmelsrichtung bekommt den nächsten Turm.
+      //    Ab Welle 2 gemischte Typen — wer den gepanzerten Brutes ab
+      //    Welle 4 nur mit Blastern begegnet, verliert dort zuverlässig.
+      const proSektor = [0, 0, 0, 0, 0, 0, 0, 0];
+      for (const b of g.buildings.values())
+        if (b.def.turret) proSektor[sektor({ a: Math.atan2(b.y - C.cy, b.x - C.cx) })]++;
+      const duenn = proSektor.indexOf(Math.min(...proSektor));
+      const typ = turmTypen[g.wave < 2 ? 0 : (g.wave + duenn) % 3];
+      if (g.matter >= kosten(typ)) {
+        const p = plaetze.find(q => frei(q.x, q.y) && versorgt(q.x, q.y) && sektor(q) === duenn);
+        if (p) { g.build(typ, p.x, p.y); continue; }
+        // Kein versorgter Platz dort: das Netz in die Richtung verlängern
+        if (g.matter >= kosten('pylon') + kosten(typ)) {
+          const aussen = plaetze
+            .filter(q => frei(q.x, q.y) && versorgt(q.x, q.y) && sektor(q) === duenn)
+            .sort((a, b) => b.d - a.d)[0]
+            || plaetze.filter(q => frei(q.x, q.y) && versorgt(q.x, q.y))
+                      .sort((a, b) => b.d - a.d)[0];
+          if (aussen) { g.build('pylon', aussen.x, aussen.y); continue; }
+        }
+      }
+      // 4. Sonst die billigste Ausbaustufe mitnehmen
+      const aus = [...g.buildings.values()]
+        .filter(b => b.level < h.UPGRADE.maxLevel && (b.def.turret || b.type === 'pylon'))
+        .sort((a, b) => g.upgradeCost(a) - g.upgradeCost(b))[0];
+      if (aus && g.matter >= g.upgradeCost(aus)) { g.upgrade(aus); continue; }
+      break;
+    }
+    g.repairAll();
+  }
+
+  function befehle() {
+    if (opt.ohnePowers) return;
+    const nah = g.enemies.filter(e =>
+      Math.hypot(e.x - (C.cx + .5) * zelle, e.y - (C.cy + .5) * zelle) < 5 * zelle).length;
+    if (nah >= 4 && g.energy > g.powerCost(h.POWERS.discharge)) g.usePower('discharge');
+    if ((g.boss || g.enemies.length > 14) && g.energy > g.energyMax * 0.75) g.usePower('surge');
+    if (g.energy > g.energyMax * 0.8 &&
+        [...g.buildings.values()].some(b => b.hp < b.maxHp * 0.6)) g.usePower('pulse');
+  }
+
+  function protokoll(t) {
+    const tuerme = [...g.buildings.values()].filter(b => b.def.turret);
+    const drossel = Math.min(...tuerme.map(b => b.flow).concat([1]));
+    console.log('  Welle ' + String(g.wave).padStart(2) +
+      ' | Kern ' + String(Math.round(g.coreHp)).padStart(4) +
+      ' | Materie ' + String(Math.round(g.matter)).padStart(4) +
+      ' | Türme ' + String(tuerme.length).padStart(2) +
+      ' | Regen ' + String(g.regen).padStart(5) +
+      ' | Drossel ' + Math.round(drossel * 100) + '%' +
+      ' | Sturm ' + (g.mod ? g.mod.name : '—'));
+  }
+
+  // Karte zufällig nehmen — eine feste Wahl würde die Messung verzerren
+  const karteNehmen = () => { if (g.draft) g.takeCard((Math.random() * g.draft.length) | 0); };
+
+  let t = 0, letzteWelle = 0;
+  const SCHRITT = 1 / 30;                   // grober als das Spiel, aber viermal schneller
+  while (!g.over && g.wave < maxWelle && t < 30 * 60 * 60) {
+    g.update(SCHRITT); t++;
+    if (opt.log && g.wave !== letzteWelle) { letzteWelle = g.wave; protokoll(t); }
+    if (g.draft) { karteNehmen(); continue; }
+    if (g.phase === 'build') {
+      if (t % 15 === 0) bauen();
+      if (g.buildTimer < 1) { bauen(); g.startWave(); }
+    } else if (t % 10 === 0) befehle();
+  }
+  return { wave: g.wave, verloren: g.over };
+}
+
+/* ------------------------- Aufruf ------------------------- */
+if (require.main === module) {
+  const N = +(process.argv[2] || 20);
+  const MAX = +(process.argv[3] || 40);
+  const schalter = (process.argv[4] || '').split(',');
+  const opt = {
+    ohnePowers: schalter.includes('nopower'),
+    ohneLast: schalter.includes('noflow'),
+    ohneMods: schalter.includes('nomod'),
+    log: schalter.includes('log')
+  };
+
+  const wellen = [];
+  for (let i = 0; i < N; i++) wellen.push(lauf(MAX, opt).wave);
+  wellen.sort((a, b) => a - b);
+
+  const haeufig = {};
+  for (const w of wellen) haeufig[w] = (haeufig[w] || 0) + 1;
+  const schnitt = wellen.reduce((a, b) => a + b, 0) / wellen.length;
+  console.log('Verteilung:', Object.entries(haeufig).map(([k, v]) => k + ':' + v).join(' '));
+  console.log('Median ' + wellen[(wellen.length / 2) | 0] +
+    ' | Schnitt ' + Math.round(schnitt * 10) / 10 +
+    ' | min ' + wellen[0] + ' | max ' + wellen[wellen.length - 1] +
+    ' | am Limit ' + wellen.filter(w => w >= MAX).length + '/' + N);
+}
+
+module.exports = { lauf };

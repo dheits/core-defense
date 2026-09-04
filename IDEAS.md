@@ -176,6 +176,9 @@ bleibende Brandspuren, Schadensbild mit Rauch und glühenden Sprüngen, Riss-Ani
 Erscheinen und eine Vignette, die mit der Wellennummer wächst — beim Sound das dreischichtige
 Klangbett, die Puffer-Drone, Entfernungsdämpfung, Ducking und größenabhängige Abschüsse.
 
+Zum Messen liegt seither ein Prüfstand samt simuliertem Spieler in `tools/` — siehe
+Abschnitt „Balance messen" in der README, besonders die drei Fallstricke beim Auswerten.
+
 Bleibt aus der Liste: Kernmodi, getrennte Akkus, Bestenliste, Tagesseed, Bilanz nach der
 Welle, Speicherstand, das erzeugte Gelände, das Druckgedächtnis der Gegner und die
 Bedienkomfort-Punkte.
