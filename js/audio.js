@@ -181,6 +181,13 @@ const SFX = (() => {
       tone({ type: 'sine', freq: 880, dur: 0.05, gain: 0.045 });
     },
 
+    alarm() {
+      if (!gate('alarm', 2.6)) return;          // langsam wiederholend, nicht hämmernd
+      tone({ type:'square', freq: 466, dur: 0.17, gain: 0.075, filter:'lowpass', filterFreq: 1900 });
+      tone({ type:'square', freq: 349, dur: 0.22, gain: 0.075, delay: 0.21, filter:'lowpass', filterFreq: 1900 });
+      tone({ type:'sine',   freq: 92, to: 68, dur: 0.55, gain: 0.11 });
+    },
+
     /* --- Phasen --- */
     waveStart() {
       [0, 0.16, 0.32].forEach((d, i) =>

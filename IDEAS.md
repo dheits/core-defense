@@ -119,7 +119,7 @@ Endlosspiel im Browser fast Pflicht. *Klein: Zustand ist bereits reine Daten.*
 
 ---
 
-## Gefunden, noch offen: der Kern kann sich nicht wehren
+## Gefunden und behandelt: der Kern kann sich nicht wehren
 
 Beim Balance-Testen aufgetaucht und wert, entschieden zu werden: Erreicht ein Gegner
 eine Ecke des Kerns, die kein Turm abdeckt, hämmert er dort ungestört weiter — in einem
@@ -136,7 +136,11 @@ Drei Wege, je nach gewünschter Härte:
 3. So lassen: Rundumdeckung ist die Aufgabe des Spiels, und *Kernstoß* ist die Antwort
    für alle, die sie ziehen.
 
-Empfehlung: 2, notfalls 1 in schwacher Dosierung.
+Umgesetzt wurde **2**: Nach drei Sekunden ununterbrochenem Kernschaden erscheinen
+Warnzeile, Fadenkreuze auf den Angreifern, ein Ring um den Kern und — der eigentliche
+Punkt — alle Turmreichweiten, sodass die Deckungslücke sichtbar wird. Die Lücke selbst
+bleibt: Rundumdeckung ist die Aufgabe des Spiels. Bleibt offen, falls es doch zu hart
+wirkt: Variante 1, eine schwache Nahverteidigung des Kerns ab Werk.
 
 ## Erledigt
 

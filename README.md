@@ -59,6 +59,22 @@ erscheinen entsprechend ihrem Gewicht seltener. Beides hält Partien auseinander
 | `1`–`3` bei der Kartenwahl | Karte nehmen |
 | `Esc` | alles abwählen |
 
+## Wenn der Kern ungedeckt ist
+
+Erreicht ein Gegner eine Stelle am Kern, die kein Turm abdeckt, hämmert er dort
+ungestört weiter — ein einzelner Crawler kann so eine ganze Partie beenden. Nach drei
+Sekunden ununterbrochenem Schaden am Kern schlägt das Spiel deshalb Alarm:
+
+- eine Warnzeile im HUD, die sagt, wie viele Gegner gerade ungedeckt am Kern stehen
+- ein Fadenkreuz auf jedem dieser Gegner und ein pulsierender Ring um den Kern
+- **alle Turmreichweiten werden schwach eingeblendet** — damit sieht man auf einen
+  Blick, wo die Lücke im Deckungsring klafft
+- ein wiederkehrender Alarmton alle 2,6 Sekunden
+
+Zwei Sekunden ohne Treffer beenden die Serie; kurze Durchbrüche lösen also nichts aus.
+Die Lücke selbst bleibt bestehen — Rundumdeckung ist die Aufgabe des Spiels, das Spiel
+sagt nur, dass etwas fehlt.
+
 ## Energie im Gefecht
 
 **Überladung** (`O`): doppelter Schaden für den dreifachen Energiehunger. Gedacht für

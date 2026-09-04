@@ -20,6 +20,8 @@ const game = {
   tool: null, selected: null, inView: true,
   buffs: freshBuffs(), takenCards: new Map(),
   draft: null, plannedWave: null, turretsDirty: true,
+  // Wird der Kern länger ungestört bearbeitet, ist irgendwo die Deckung offen
+  alarm: { since: 0, last: -99, on: false, seen: false },
   hover: { x: -1, y: -1, inside: false },
   shake: 0,
 
@@ -295,6 +297,8 @@ const game = {
   damageCore(dmg, enemy) {
     this.coreHp -= dmg;
     SFX.coreHit();
+    if (this.time - this.alarm.last > 2) this.alarm.since = this.time;   // neue Serie
+    this.alarm.last = this.time;
     if (enemy && this.buffs.coreShock) {          // Kernstoß: zurück und weh
       const a = Math.atan2(enemy.y - CORE_PX.y, enemy.x - CORE_PX.x);
       enemy.x += Math.cos(a) * 26;
@@ -446,6 +450,17 @@ const game = {
     for (const e of this.enemies) e.update(dt, this);
     this.enemies = this.enemies.filter(e => !e.dead);
 
+    // Drei Sekunden ununterbrochener Schaden am Kern gelten als Deckungslücke
+    const was = this.alarm.on;
+    this.alarm.on = (this.time - this.alarm.last < 2) && (this.time - this.alarm.since > 3);
+    if (this.alarm.on) {
+      SFX.alarm();
+      if (!was && !this.alarm.seen) {
+        this.alarm.seen = true;
+        toast('Kern ungedeckt — hier fehlt ein Turm');
+      }
+    }
+
     this.beams = this.beams.filter(b => (b.life -= dt) > 0);
 
     for (const b of this.buildings.values()) {
@@ -499,6 +514,13 @@ const game = {
     this.particles = this.particles.filter(p => !p.dead);
   },
 
+  coreAttackers() {
+    const edge = (CORE.half + 0.5) * GRID.cell;
+    return this.enemies.filter(e =>
+      Math.abs(e.x - CORE_PX.x) < edge + e.radius + 2 &&
+      Math.abs(e.y - CORE_PX.y) < edge + e.radius + 2);
+  },
+
   turrets() {
     if (this.turretsDirty) {
       this._turrets = [...this.buildings.values()].filter(b => b.def.turret);
@@ -548,8 +570,10 @@ function render() {
 
   for (const b of game.buildings.values()) drawBuilding(b);
   if (game.selected) drawRange(game.selected.px, game.selected.py, game.stat(game.selected, 'range'), '#5fe0ff');
+  if (game.alarm.on) drawAlarmBelow();
 
   for (const e of game.enemies) e.draw(ctx);
+  if (game.alarm.on) drawAlarmAbove();
   for (const p of game.projectiles) p.draw(ctx);
 
   for (const b of game.beams) {
@@ -562,6 +586,48 @@ function render() {
 
   drawGhost();
   ctx.restore();
+}
+
+/* Alarm, Teil 1: zeigt, wo die Deckung endet — alle Turmreichweiten
+   schwach eingeblendet, dazu ein Warnring um den Kern. */
+function drawAlarmBelow() {
+  const puls = 0.5 + 0.5 * Math.sin(game.time * 6);
+
+  ctx.strokeStyle = 'rgba(255,93,115,.30)';
+  ctx.lineWidth = 1;
+  for (const b of game.turrets()) {
+    if (!b.supplied && !game.buffs.unpoweredRate) continue;
+    ctx.beginPath();
+    ctx.arc(b.px, b.py, game.stat(b, 'range') * GRID.cell, 0, 7);
+    ctx.stroke();
+  }
+
+  const r = (CORE.half + 0.5) * GRID.cell + 6;
+  ctx.strokeStyle = '#ff5d73';
+  ctx.globalAlpha = 0.35 + 0.45 * puls;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.arc(CORE_PX.x, CORE_PX.y, r + puls * 5, 0, 7); ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+/* Alarm, Teil 2: markiert jeden Gegner, der gerade am Kern steht. */
+function drawAlarmAbove() {
+  const puls = 0.5 + 0.5 * Math.sin(game.time * 6);
+  for (const e of game.coreAttackers()) {
+    const r = e.radius + 8 + puls * 3;
+    ctx.strokeStyle = '#ff5d73';
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.55 + 0.45 * puls;
+    ctx.beginPath(); ctx.arc(e.x, e.y, r, 0, 7); ctx.stroke();
+    for (let i = 0; i < 4; i++) {           // Fadenkreuz-Striche
+      const a = i * Math.PI / 2 + game.time * 0.8;
+      ctx.beginPath();
+      ctx.moveTo(e.x + Math.cos(a) * r, e.y + Math.sin(a) * r);
+      ctx.lineTo(e.x + Math.cos(a) * (r + 6), e.y + Math.sin(a) * (r + 6));
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
 }
 
 function drawGrid() {
@@ -851,6 +917,15 @@ function updateHud() {
     : (game.spawnQueue.length + game.enemies.length) + ' Feinde';
   el('nextWave').classList.toggle('hot', build);
   el('nextWave').disabled = !build;
+
+  const alarmEl = el('alarm');
+  alarmEl.hidden = !game.alarm.on;
+  if (game.alarm.on) {
+    const n = game.coreAttackers().length;
+    alarmEl.textContent = n > 1
+      ? 'Kern unter Beschuss — ' + n + ' Gegner ohne Turmdeckung'
+      : 'Kern unter Beschuss — kein Turm reicht dorthin';
+  }
 
   const prev = el('preview');
   if (build && !game.draft && game.plannedWave) {
