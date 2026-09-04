@@ -16,7 +16,14 @@ const SFX = (() => {
   let ferne = 0;                        // Entfernung der gerade gespielten Stimme
   let bed = null;                       // Klangbett: Drone, Puls, Flirren
   let netz = null;                      // Pufferton, folgt der Ladung
-  let muted = localStorage.getItem('cd_muted') === '1';
+  // Manche Browser sperren den Speicher bei file:// oder im privaten Fenster.
+  // Das darf höchstens die Ton-Einstellung kosten, nicht das ganze Spiel.
+  function merke(wert) {
+    try { if (wert === undefined) return localStorage.getItem('cd_muted');
+          localStorage.setItem('cd_muted', wert); } catch (e) { /* egal */ }
+    return null;
+  }
+  let muted = merke() === '1';
   const volume = 0.55;
   const last = {};
 
@@ -233,7 +240,7 @@ const SFX = (() => {
     get muted() { return muted; },
     toggle() {
       muted = !muted;
-      localStorage.setItem('cd_muted', muted ? '1' : '0');
+      merke(muted ? '1' : '0');
       if (master) master.gain.value = muted ? 0 : volume;
       return muted;
     },
