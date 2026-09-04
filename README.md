@@ -49,8 +49,9 @@ erscheinen entsprechend ihrem Gewicht seltener. Beides hält Partien auseinander
 |---|---|
 | `1`–`6` / Klick auf Karte | Gebäude wählen |
 | Linksklick | bauen bzw. bestehendes Gebäude auswählen |
-| Rechtsklick | Auswahl abbrechen / Gebäude abbauen (60 % zurück) |
+| Rechtsklick | Auswahl abbrechen / Gebäude abbauen (60 % des Bauwerts zurück) |
 | `U` / `S` | ausgewähltes Gebäude ausbauen / abbauen |
+| `R` | reparieren — ohne Auswahl: alles reparieren |
 | Leertaste | Welle sofort starten (Restzeit gibt Bonus-Materie) |
 | `P` | Pause, Button oben rechts: 1× / 2× / 3× |
 | `M` / Lautsprecher-Button | Ton an/aus (wird gespeichert) |
@@ -132,7 +133,25 @@ ab. Bei stumm geschaltetem Ton werden gar keine Audio-Nodes erzeugt.
 - **Frostturm** (45) — Sofortstrahl, bremst Gegner um 50 %
 - **Barriere** (10) — braucht keinen Strom, lenkt Bodentruppen um
 
-Jedes Gebäude hat drei Ausbaustufen (+35 % Schaden, +8 % Reichweite, mehr Struktur).
+Jedes Gebäude hat **fünf Ausbaustufen**: je +42 % Schaden, +7 % Reichweite, +28 % Struktur.
+Der Ausbau kostet mit jeder Stufe mehr (Blaster: 39, 56, 72, 89 — zusammen 286 gegenüber
+30 für den Neubau), dafür schaltet **Stufe 5 eine eigene Fähigkeit** frei:
+
+| Bauteil | Stufe 5 |
+|---|---|
+| Blaster | **Zwillingssalve** — feuert gleichzeitig auf ein zweites Ziel |
+| Kanone | **Brandsatz** — der Einschlag setzt Getroffene drei Sekunden in Brand |
+| Frostturm | **Vereisung** — friert bereits gebremste Gegner 0,85 s völlig ein (3 s Abklingzeit) |
+| Pylon | **Verstärkerfeld** — Türme in seinem Netzradius schlagen 15 % härter |
+| Reaktor | **Materiekonverter** — erzeugt zusätzlich 0,6 Materie pro Sekunde |
+| Barriere | **Reaktivpanzerung** — reißt beim Bersten alles im Umkreis mit |
+
+Am Bau erkennbar: Stufe 2 bis 4 an Kerben am Sockel, Stufe 5 an einem goldenen Ring.
+
+**Reparatur** (`R`): Ein beschädigter Bau wird für 35 % seines Werts anteilig zum Schaden
+instandgesetzt — bei ausgebauten Türmen deutlich billiger als Abbau und Neubau. Ohne
+Auswahl setzt `R` alles instand, was noch bezahlbar ist, das Kaputteste zuerst.
+Abbau erstattet 60 % des gesamten Bauwerts inklusive aller bezahlten Ausbaustufen.
 
 ## Gegner
 

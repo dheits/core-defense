@@ -114,7 +114,7 @@ Endlosspiel im Browser fast Pflicht. *Klein: Zustand ist bereits reine Daten.*
 ## 5 · Bedienung, die nach kurzer Zeit fehlt
 
 - Ziehen zum Bauen mehrerer Barrieren statt Einzelklicks
-- Reparieren (Materie gegen Struktur), heute muss man abreißen und neu bauen
+- ~~Reparieren (Materie gegen Struktur)~~ ✅ umgesetzt, Taste `R`
 - Zielpriorität je Turm: nächster, stärkster, schnellster
 - Turm auf leeres Feld verschieben, für halbe Kosten
 - Bauplan kopieren und spiegeln — passt gut, weil das Feld radial symmetrisch ist
