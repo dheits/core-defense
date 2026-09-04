@@ -177,6 +177,39 @@ Abschüsse hinterlassen Trümmerteile, die wegfliegen, rotieren und verglühen.
 Alle Animationen hängen an der Spielzeit, die Aufbau-Animation an der Uhr — damit ein
 Gebäude, das kurz vor einer Pause gesetzt wird, nicht unsichtbar bleibt.
 
+### Licht
+
+Über die fertige Szene läuft eine additive Lichtschicht: Mündungsfeuer, Explosionen,
+Geschosse, Strahlen, brennende Gegner, Reaktoren und der Kern hellen den Boden um sich
+herum auf, statt nur auf ihm zu liegen. Ein überlasteter Pylon glüht rot, der Netzstoß
+legt für seine sechs Sekunden ein kaltes Leuchten über jeden versorgten Turm.
+
+Damit das bezahlbar bleibt, wird je Farbe **einmal** ein 128 px großer Verlauf in ein
+Offscreen-Bild gezeichnet und danach nur noch skaliert aufgetragen — ein Durchgang, ein
+Compositing-Wechsel. Eine dichte Spätspiel-Szene mit 60 Bauten und 70 Gegnern kostet
+gemessene 0,5 ms je Bild.
+
+### Was auf dem Feld zurückbleibt
+
+Explosionen, gefallene Bauten und Abschüsse brennen sich in eine eigene Ebene ein, die
+nie gelöscht wird. Nach zwanzig Wellen sieht man dem Feld die Schlacht an. Dazu eine
+Vignette, die mit der Wellennummer dunkler wird und rot pulst, solange der Kern
+ungedeckt getroffen wird.
+
+### Schadensbild
+
+Ab 72 % Struktur bekommt ein Bau Sprünge, ab 55 % mehr davon, ab 35 % glühen sie und
+eine Bruchstelle glimmt. Der Rissverlauf wird aus der Position des Baus abgeleitet und
+liegt damit fest — ein zitterndes Rissbild wäre unruhig. Beschädigte Bauten rauchen,
+schwer getroffene sprühen zusätzlich Funken. Damit ist auf einen Blick zu sehen, wo die
+Reparatur (`R`) hingehört.
+
+### Risse
+
+Gegner erscheinen nicht einfach am Rand, sie treten durch einen Riss: ein leuchtender
+Schlitz quer zur Laufrichtung, der aufgeht, den Gegner ausspuckt und wieder zufällt.
+Bosse reißen ein deutlich größeres Loch.
+
 ## Sound
 
 Alle Effekte werden zur Laufzeit über die WebAudio-API synthetisiert — keine Audio-Dateien,
@@ -194,6 +227,27 @@ Die drei Kernbefehle sind klanglich verwandt, weil sie aus derselben Quelle beza
 werden: erst ein kurzes Aufladen, dann die Entspannung — bei der Entladung als Bersten,
 beim Netzstoß als aufsteigende Sägezahnfahrt, beim Notpuls als heller Zweiklang. Eine
 Sturmwelle kündigt sich mit einem tiefen, leicht verstimmten Zweiklang an.
+
+### Klangbett
+
+Drei Schichten laufen dauerhaft und werden nur in der Lautstärke geregelt, damit die
+Stimmung sich ändert, ohne dass je ein Ton „startet": eine tiefe Drone, ein pulsierender
+Mittelbau, dessen Schlag mit der Wellenstärke von 0,9 auf 2,6 Hz steigt, und ein hohes
+Flirren, das erst auftaucht, wenn ein Boss steht, der Kern brennt oder der Alarm läuft.
+Große Ereignisse drücken das Bett kurz weg (Ducking), damit sie Platz haben. Solange die
+Seite nur gelesen wird, schweigt es ganz.
+
+### Der Puffer als Ton
+
+Eine eigene Drone folgt der Ladung: Sie fällt von 100 auf 48 Hz, während der Puffer
+leerläuft, und wird dabei **lauter** statt leiser — hörbar erst unterhalb von 55 %.
+Man hört den Engpass kommen, bevor man auf die Leiste sieht.
+
+### Entfernung und Größe
+
+Ferne Geräusche verlieren ihre Höhen: Ein Tiefpass fährt von 16 kHz in der Feldmitte auf
+knapp 4 kHz am Rand — dieselbe Dämpfung wie in echter Luft. Und ein großer Gegner birst
+tiefer und länger als ein kleiner, weil die Tonhöhe des Abschussgeräuschs am Radius hängt.
 
 Der AudioContext startet erst nach der ersten Nutzergeste (Browser-Autoplay-Regel).
 Häufige Sounds sind pro Typ zeitlich gedrosselt und in Tonhöhe und Filter leicht gestreut,

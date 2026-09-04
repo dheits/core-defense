@@ -20,6 +20,11 @@ function shade(hex, f) {
 
 // Stereo-Ortung: links auf dem Feld heißt links im Kopfhörer
 function panOf(x) { return Math.max(-1, Math.min(1, (x / W - 0.5) * 1.7)); }
+// Entfernung vom Feldmittelpunkt, 0 bis 1 — dämpft ferne Geräusche
+function farOf(x, y) {
+  const dx = (x - W / 2) / (W / 2), dy = (y - H / 2) / (H / 2);
+  return Math.min(1, Math.hypot(dx, dy) / 1.35);
+}
 
 // Winkel -> Himmelsrichtung (x nach rechts = Ost, y nach unten = Süd)
 function compass(a) {
@@ -191,7 +196,7 @@ class Enemy {
       this.enraged = true;
       this.speed = this.def.speed * 1.45;
       game.shake = Math.max(game.shake, 7);
-      SFX.bossRage(panOf(this.x));
+      SFX.bossRage(panOf(this.x), farOf(this.x, this.y));
     }
 
     // Zapfer und Nexus saugen den Puffer leer, sobald sie nah genug sind

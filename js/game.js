@@ -8,6 +8,59 @@ const netCanvas = document.createElement('canvas');
 netCanvas.width = W; netCanvas.height = H;
 const netCtx = netCanvas.getContext('2d');
 
+/* Bodenspuren. Wird nie gelöscht: Explosionen und gefallene Bauten
+   brennen sich ein, und nach zwanzig Wellen sieht man dem Feld die
+   Schlacht an. */
+const spurCanvas = document.createElement('canvas');
+spurCanvas.width = W; spurCanvas.height = H;
+const spurCtx = spurCanvas.getContext('2d');
+
+function brandfleck(x, y, r, staerke) {
+  const g = spurCtx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, 'rgba(14,8,6,' + staerke * 1.25 + ')');
+  g.addColorStop(.55, 'rgba(40,23,16,' + staerke + ')');
+  g.addColorStop(.86, 'rgba(112,72,48,' + staerke * .38 + ')');
+  g.addColorStop(1, 'rgba(96,62,42,0)');
+  spurCtx.fillStyle = g;
+  // Leicht unrunde Form, damit nicht überall derselbe Kreis liegt
+  spurCtx.save();
+  spurCtx.translate(x, y);
+  spurCtx.rotate(Math.random() * 6.28);
+  spurCtx.scale(1, .78 + Math.random() * .34);
+  spurCtx.translate(-x, -y);
+  spurCtx.beginPath(); spurCtx.arc(x, y, r, 0, 7); spurCtx.fill();
+  spurCtx.restore();
+}
+
+/* Lichtschicht. Statt jedes Leuchten neu zu berechnen, wird ein
+   Farbverlauf einmal je Farbe in ein kleines Bild gezeichnet und
+   danach nur noch skaliert additiv aufgetragen — das ist schnell
+   genug für hundert Lichter je Bild. */
+const lichtCache = new Map();
+function lichtBild(hex) {
+  let c = lichtCache.get(hex);
+  if (c) return c;
+  const n = parseInt(hex.slice(1), 16);
+  const rgb = (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255);
+  c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const rg = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  rg.addColorStop(0, 'rgba(' + rgb + ',.95)');
+  rg.addColorStop(.22, 'rgba(' + rgb + ',.45)');
+  rg.addColorStop(.55, 'rgba(' + rgb + ',.13)');
+  rg.addColorStop(1, 'rgba(' + rgb + ',0)');
+  g.fillStyle = rg;
+  g.fillRect(0, 0, 128, 128);
+  lichtCache.set(hex, c);
+  return c;
+}
+function licht(x, y, r, hex, alpha) {
+  if (alpha <= 0.01) return;
+  ctx.globalAlpha = Math.min(1, alpha);
+  ctx.drawImage(lichtBild(hex), x - r, y - r, r * 2, r * 2);
+}
+
 const game = {
   time: 0, speed: 1, paused: false, over: false,
   matter: START_MATTER,
@@ -27,6 +80,7 @@ const game = {
   shake: 0,
   // Leitungslast, Kernbefehle, Sturmwelle
   sources: [], overloadedNodes: 0,
+  lichter: [], risse: [],           // kurzlebige Lichtquellen, Spawn-Risse
   cooldowns: { discharge: 0, surge: 0, pulse: 0 },
   surge: 0, shockwave: null, mod: null,
 
@@ -66,6 +120,11 @@ const game = {
     return b.def.energy * this.buffs.energy * this.typeBuff(b, 'energy')
       * (b.overload ? this.buffs.overloadCost : 1);
   },
+  // Ein kurzer Lichtschein an einer Stelle — Treffer, Explosion, Abschuss
+  blitz(x, y, r, hex, life) {
+    this.lichter.push({ x, y, r, hex, life, max: life });
+  },
+
   // Dauerlast eines Turms in Energie pro Sekunde — genau die Größe,
   // die durch die Leitungen bis zu ihm fließen muss.
   drawOf(b) {
@@ -93,7 +152,7 @@ const game = {
     if (this.matter < c) { SFX.deny(); return toast('Zu wenig Materie'); }
     this.matter -= c;
     b.hp = b.maxHp;
-    SFX.repair(panOf(b.px));
+    SFX.repair(panOf(b.px), farOf(b.px, b.py));
     for (let i = 0; i < 10; i++)
       this.particles.push(new Particle(b.px, b.py, '#6bff9f', { speed: rand(30, 110), life: .45 }));
     updateInspector();
@@ -332,6 +391,8 @@ const game = {
       for (let i = 0; i < 16; i++)
         this.particles.push(new Particle(enemy.x, enemy.y, i % 2 ? '#ff9f5a' : '#ffe0a8',
           { speed: rand(60, 260), life: rand(.2, .5) }));
+      this.blitz(enemy.x, enemy.y, r * 1.5, '#ffb066', .3);
+      brandfleck(enemy.x, enemy.y, r * .8, .1);
     } else {
       this.hurt(enemy, dmg, kind);
       // Kettenblitz: der Treffer springt auf das nächste Ziel über
@@ -390,7 +451,9 @@ const game = {
           if (o !== e && !o.dead && dist(o.x, o.y, e.x, e.y) <= r)
             this.hurt(o, this.buffs.deathSpark, 'spark');
       }
-      SFX.kill(e.def.boss, panOf(e.x));
+      SFX.kill(e.def.boss, panOf(e.x), farOf(e.x, e.y), e.radius / 9);
+      this.blitz(e.x, e.y, GRID.cell * (e.def.boss ? 6 : 1.3), e.def.color, e.def.boss ? .9 : .22);
+      brandfleck(e.x, e.y, e.radius * (e.def.boss ? 4.5 : 1.5), e.def.boss ? .3 : .055);
       this.matter += e.def.bounty * this.buffs.bounty;
       const n = e.def.boss ? 40 : 12;
       for (let i = 0; i < n; i++)
@@ -420,9 +483,11 @@ const game = {
   damageBuilding(b, dmg) {
     b.hp -= dmg;
     b.flash = 0.12;
-    SFX.buildingHit(panOf(b.px));
+    SFX.buildingHit(panOf(b.px), farOf(b.px, b.py));
     if (b.hp <= 0) {
-      SFX.buildingLost(panOf(b.px));
+      SFX.buildingLost(panOf(b.px), farOf(b.px, b.py));
+      this.blitz(b.px, b.py, GRID.cell * 2.6, '#ffb066', .45);
+      brandfleck(b.px, b.py, GRID.cell * 1.15, .28);
       for (let i = 0; i < 18; i++)
         this.particles.push(new Particle(b.px, b.py, b.def.color, { speed: rand(50, 220), life: rand(.3, .7) }));
       for (let i = 0; i < 6; i++)
@@ -433,7 +498,9 @@ const game = {
           if (dist(e.x, e.y, b.px, b.py) <= r) this.hurt(e, SPECIALS.wall.blast, 'proj');
         for (let i = 0; i < 22; i++)
           this.particles.push(new Particle(b.px, b.py, '#ffd166', { speed: rand(80, 320), life: rand(.3, .6) }));
-        SFX.buildingLost(panOf(b.px));
+        this.blitz(b.px, b.py, r * 1.6, '#ffd166', .55);
+        brandfleck(b.px, b.py, r * .9, .22);
+        SFX.buildingLost(panOf(b.px), farOf(b.px, b.py));
       }
       this.buildings.delete(key(b.x, b.y));
       this.turretsDirty = true;
@@ -455,6 +522,8 @@ const game = {
       this.hurt(enemy, this.buffs.coreShock, 'shock');
     }
     this.shake = Math.max(this.shake, 8);
+    this.blitz(enemy ? enemy.x : CORE_PX.x, enemy ? enemy.y : CORE_PX.y,
+               GRID.cell * 2.2, '#ff5d73', .3);
     for (let i = 0; i < 8; i++)
       this.particles.push(new Particle(CORE_PX.x + rand(-30, 30), CORE_PX.y + rand(-30, 30),
         '#5fe0ff', { speed: rand(60, 200), life: .5 }));
@@ -593,6 +662,9 @@ const game = {
 
   spawn(s) {
     const p = edgePoint(s.angle, 34);
+    // Gegner kommen nicht einfach am Rand vorbei, sie treten durch einen Riss
+    this.risse.push({ x: p.x, y: p.y, a: s.angle, t: 0,
+                      life: s.boss ? .95 : .5, gross: s.boss ? 1.9 : 1 });
     const e = new Enemy(s.type, p.x, p.y, this.wave);
     const hpMul = this.modv('hp', 1);
     if (hpMul !== 1) { e.maxHp = Math.max(1, Math.round(e.maxHp * hpMul)); e.hp = e.maxHp; }
@@ -619,6 +691,10 @@ const game = {
       if (this.cooldowns[id] > 0) this.cooldowns[id] = Math.max(0, this.cooldowns[id] - dt);
     if (this.surge > 0) this.surge = Math.max(0, this.surge - dt);
     if (this.shockwave && (this.shockwave.t += dt) > 0.55) this.shockwave = null;
+    for (const l of this.lichter) l.life -= dt;
+    if (this.lichter.length) this.lichter = this.lichter.filter(l => l.life > 0);
+    for (const r of this.risse) r.t += dt;
+    if (this.risse.length) this.risse = this.risse.filter(r => r.t < r.life);
 
     if (this.phase === 'build') {
       this.buildTimer -= dt;
@@ -672,6 +748,16 @@ const game = {
 
     for (const b of this.buildings.values()) {
       if (b.flash > 0) b.flash -= dt;
+      // Beschädigte Bauten rauchen, schwer getroffene sprühen Funken
+      const hpF = b.hp / b.maxHp;
+      if (hpF < .6 && Math.random() < dt * (1 - hpF) * 6) {
+        this.particles.push(new Particle(b.px + rand(-6, 6), b.py + rand(-6, 2), '#8493a6',
+          { angle: -Math.PI / 2 + rand(-.5, .5), speed: rand(18, 40),
+            life: rand(.8, 1.5), size: rand(2.6, 5.4) }));
+        if (hpF < .3 && Math.random() < .4)
+          this.particles.push(new Particle(b.px + rand(-5, 5), b.py + rand(-5, 5), '#ffa64a',
+            { speed: rand(30, 90), life: rand(.2, .45), size: 1.8 }));
+      }
       if (this.buffs.repair && b.hp < b.maxHp)
         b.hp = Math.min(b.maxHp, b.hp + this.buffs.repair * dt);
       // Materiekonverter des voll ausgebauten Reaktors
@@ -707,10 +793,10 @@ const game = {
       b.cd = this.cooldownOf(b);
       b.pulse = 1;
       b.aim = Math.atan2(target.y - b.py, target.x - b.px);
-      const pan = panOf(b.px);
-      if (b.type === 'cannon') SFX.cannon(pan);
-      else if (b.type === 'frost') SFX.frost(pan);
-      else SFX.blaster(pan);
+      const pan = panOf(b.px), weit = farOf(b.px, b.py);
+      if (b.type === 'cannon') SFX.cannon(pan, weit);
+      else if (b.type === 'frost') SFX.frost(pan, weit);
+      else SFX.blaster(pan, weit);
       const voll = b.level >= UPGRADE.maxLevel;
       if (b.def.hitscan) {
         this.hurt(target, dmg, 'beam');
@@ -813,6 +899,7 @@ const game = {
         this.hurt(e, dmg * (1 - 0.55 * d / r), 'beam');   // Energieschaden: Schilde zuerst
       }
       this.shockwave = { t: 0, r };
+      this.blitz(CORE_PX.x, CORE_PX.y, r, '#9beeff', .8);
       this.shake = Math.max(this.shake, 11);
       for (let i = 0; i < 30; i++) {
         const a = Math.random() * 6.283;
@@ -887,6 +974,7 @@ function render() {
     ctx.translate(rand(-game.shake, game.shake), rand(-game.shake, game.shake));
 
   drawGrid();
+  ctx.drawImage(spurCanvas, 0, 0);
   ctx.drawImage(netCanvas, 0, 0);
   drawFlow();
   drawSpawnWarnings();
@@ -896,6 +984,7 @@ function render() {
   if (game.selected) drawRange(game.selected.px, game.selected.py, game.stat(game.selected, 'range'), '#5fe0ff');
   if (game.alarm.on) drawAlarmBelow();
 
+  drawRisse();
   for (const e of game.enemies) e.draw(ctx);
   if (game.alarm.on) drawAlarmAbove();
   for (const p of game.projectiles) p.draw(ctx);
@@ -909,8 +998,112 @@ function render() {
   for (const p of game.particles) p.draw(ctx);
   if (game.shockwave) drawShockwave();
 
+  drawLichter();
   drawGhost();
   ctx.restore();
+  drawVignette();
+}
+
+/* Lichtschicht: alles, was leuchtet, wird additiv über die Szene
+   gelegt — Mündungsfeuer hellt dadurch den Boden auf, statt nur auf
+   ihm zu liegen. Ein Durchgang, ein Compositing-Wechsel. */
+function drawLichter() {
+  const c = GRID.cell;
+  ctx.globalCompositeOperation = 'lighter';
+
+  const puls = .5 + .5 * Math.sin(game.time * 2);
+  licht(CORE_PX.x, CORE_PX.y, c * 3.1, '#5fe0ff', .11 + puls * .05);
+
+  for (const b of game.buildings.values()) {
+    if (!b.supplied) continue;
+    if (b.type === 'reactor') {
+      const fl = .8 + .2 * Math.sin(game.time * 7 + b.x * 2);
+      licht(b.px, b.py, c * (1 + b.level * .22), '#ffd166', .09 * fl);
+    } else if (b.type === 'pylon') {
+      const heiss = b.node && b.node.ratio > 1;
+      licht(b.px, b.py, c * 1.05, heiss ? '#ff5d73' : '#5fe0ff',
+            heiss ? .13 + .09 * Math.sin(game.time * 9) : .06);
+    } else if (b.def.turret && b.pulse > .35) {
+      // Mündungsfeuer wirft Licht nach vorn
+      const f = (b.pulse - .35) / .65;
+      const d = c * .9;
+      licht(b.px + Math.cos(b.aim) * d, b.py + Math.sin(b.aim) * d,
+            c * (b.type === 'cannon' ? 2.1 : 1.35), '#fff3d0', f * .3);
+    }
+  }
+  for (const p of game.projectiles)
+    licht(p.x, p.y, c * .6, p.def.color, .18);
+  for (const b of game.beams)
+    licht(b.x2, b.y2, c * .9, b.color, (b.life / .12) * .22);
+  for (const e of game.enemies)
+    if (e.burnUntil > game.time)
+      licht(e.x, e.y, c * .9, '#ff8a3c', .11 + .08 * Math.random());
+  for (const l of game.lichter)
+    licht(l.x, l.y, l.r * (1.3 - .3 * (l.life / l.max)), l.hex, (l.life / l.max) * .5);
+  for (const r of game.risse) {
+    const f = Math.sin((r.t / r.life) * Math.PI);
+    licht(r.x, r.y, c * 1.5 * r.gross * f, '#ff7d9c', f * .4);
+  }
+  if (game.surge > 0)
+    for (const b of game.turrets())
+      if (b.supplied) licht(b.px, b.py, c * 1.05, '#9beeff', .08 + .04 * Math.sin(game.time * 12));
+
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+}
+
+/* Risse: ein Schlitz, der aufgeht, den Gegner ausspuckt und zufällt */
+function drawRisse() {
+  for (const r of game.risse) {
+    const f = r.t / r.life;
+    const auf = Math.sin(f * Math.PI);
+    ctx.save();
+    ctx.translate(r.x, r.y);
+    ctx.rotate(r.a);
+    const h = GRID.cell * (.55 + 1.15 * auf) * r.gross;
+    const w = GRID.cell * .14 * auf * r.gross;
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = 'rgba(255,110,150,' + (.4 * auf).toFixed(3) + ')';
+    ctx.beginPath(); ctx.ellipse(0, 0, w * 2.6, h, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(255,232,240,' + (.9 * auf).toFixed(3) + ')';
+    ctx.beginPath(); ctx.ellipse(0, 0, Math.max(.6, w), h * .9, 0, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+}
+
+/* Vignette: dunkle Ränder, die mit der Wellennummer zunehmen, und ein
+   roter Puls, solange der Kern getroffen wird. Zwei fertige Bilder,
+   damit nicht jedes Bild ein Verlauf über die volle Fläche entsteht. */
+const vignetten = {};
+function vignette(hex) {
+  let c = vignetten[hex];
+  if (c) return c;
+  c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const n = parseInt(hex.slice(1), 16);
+  const rgb = (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255);
+  const rg = g.createRadialGradient(W / 2, H / 2, H * .32, W / 2, H / 2, W * .68);
+  rg.addColorStop(0, 'rgba(' + rgb + ',0)');
+  rg.addColorStop(.65, 'rgba(' + rgb + ',.35)');
+  rg.addColorStop(1, 'rgba(' + rgb + ',1)');
+  g.fillStyle = rg; g.fillRect(0, 0, W, H);
+  vignetten[hex] = c;
+  return c;
+}
+function drawVignette() {
+  const dunkel = Math.min(.5, .16 + game.wave * .008);
+  ctx.globalAlpha = dunkel;
+  ctx.drawImage(vignette('#02040a'), 0, 0);
+  const not = game.alarm.on ? .18 + .12 * Math.sin(game.time * 6)
+            : Math.max(0, .45 - game.coreHp / game.coreHpMax) * .5;
+  if (not > .01) {
+    ctx.globalAlpha = not;
+    ctx.drawImage(vignette('#7a0d20'), 0, 0);
+  }
+  ctx.globalAlpha = 1;
 }
 
 /* Energie, die sichtbar fließt: Pulse wandern vom Kern nach außen,
@@ -1071,6 +1264,8 @@ function drawBuilding(b) {
   else if (b.type === 'reactor') drawReactor(b, s, body);
   else                          drawTurret(b, s, body);
 
+  if (hpF < .72) drawSchaden(b, s, hpF);
+
   // Ausbaustufe als Kerben, die letzte Stufe als Ring um den Sockel
   if (b.level >= UPGRADE.maxLevel) {
     ctx.strokeStyle = 'rgba(255,209,102,' + (.55 + .35 * Math.sin(game.time * 3 + b.x)).toFixed(2) + ')';
@@ -1103,6 +1298,50 @@ function drawBuilding(b) {
     ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(x - w / 2, y - c * .5 + 2, w, 3);
     ctx.fillStyle = hpF > .35 ? '#6bff9f' : '#ffb04a';
     ctx.fillRect(x - w / 2, y - c * .5 + 2, w * hpF, 3);
+  }
+}
+
+/* Schadensbild. Ein Sprung auf dunklem Körper wäre unsichtbar, wenn er
+   nur dunkel wäre — deshalb bekommt jeder Riss eine dunkle Kerbe UND eine
+   glühende Kante, die mit dem Schaden heller wird. Der Verlauf liegt fest,
+   abgeleitet aus der Position: ein zitterndes Rissbild wäre unruhig. */
+function drawSchaden(b, s, hpF) {
+  const schwer = 1 - hpF;
+  let seed = (b.x * 73856093 ^ b.y * 19349663) >>> 0;
+  const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const n = hpF < .35 ? 5 : (hpF < .55 ? 3 : 2);
+  const risse = [];
+  for (let i = 0; i < n; i++) {
+    const a = rnd() * 6.283, len = s * (.5 + rnd() * .72), k = (rnd() - .5) * .95;
+    risse.push([
+      Math.cos(a) * s * .16, Math.sin(a) * s * .16,
+      Math.cos(a + k * .4) * len * .58, Math.sin(a + k * .4) * len * .58,
+      Math.cos(a + k) * len, Math.sin(a + k) * len
+    ]);
+  }
+  const zeichne = () => {
+    for (const r of risse) {
+      ctx.beginPath();
+      ctx.moveTo(r[0], r[1]); ctx.lineTo(r[2], r[3]); ctx.lineTo(r[4], r[5]);
+      ctx.stroke();
+    }
+  };
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = 'rgba(0,0,0,.8)';
+  ctx.lineWidth = 2.4;
+  zeichne();
+  ctx.strokeStyle = 'rgba(255,158,96,' + (.22 + .6 * schwer).toFixed(2) + ')';
+  ctx.lineWidth = .9;
+  zeichne();
+  ctx.lineCap = 'butt';
+
+  // Unter 40 % glimmt es an einer Bruchstelle
+  if (hpF < .4) {
+    const fl = .35 + .45 * Math.abs(Math.sin(game.time * 5 + b.x * 1.7));
+    ctx.fillStyle = 'rgba(255,120,50,' + fl.toFixed(2) + ')';
+    ctx.beginPath();
+    ctx.arc(risse[0][4] * .8, risse[0][5] * .8, 1.9 + fl, 0, 7);
+    ctx.fill();
   }
 }
 
@@ -1622,8 +1861,30 @@ el('muteBtn').innerHTML = SFX.muted ? '&#128263;' : '&#128266;';
 el('muteBtn').onclick = toggleMute;
 
 // AudioContext darf erst nach einer Nutzergeste starten
-addEventListener('pointerdown', () => SFX.unlock(), { once: true });
-addEventListener('keydown', () => SFX.unlock(), { once: true });
+let tonBereit = false;
+const tonAn = () => { SFX.unlock(); tonBereit = true; };
+addEventListener('pointerdown', tonAn, { once: true });
+addEventListener('keydown', tonAn, { once: true });
+
+/* Klangbett an die Lage koppeln — viermal je Sekunde reicht, die
+   Schichten blenden ohnehin weich über. Läuft nach der Uhr, damit
+   auch die Pause und das Ende richtig klingen. */
+let moodTimer = 0;
+function updateMood(dt) {
+  if (!tonBereit || (moodTimer -= dt) > 0) return;
+  moodTimer = 0.25;
+  // Solange die Seite nur gelesen wird, schweigt auch das Bett
+  if (!game.inView || !el('overlay').hidden) return SFX.mood({ phase: 'aus' });
+  const feinde = game.enemies.length + game.spawnQueue.length * 0.4;
+  const kernNot = 1 - game.coreHp / game.coreHpMax;
+  SFX.mood({
+    phase: game.over ? 'build' : game.phase,
+    intensity: game.over ? 0 : Math.min(1, feinde / 20 + game.wave / 70),
+    danger: game.over ? 0 : Math.max(game.boss ? 0.75 : 0, game.alarm.on ? 0.9 : 0,
+                                     kernNot > 0.6 ? 0.7 : 0),
+    buffer: game.over ? 1 : game.energy / game.energyMax
+  });
+}
 
 el('nextWave').onclick = () => game.startWave();
 el('pauseBtn').onclick = togglePause;
@@ -1665,6 +1926,7 @@ function frame(now) {
   }
   render();
   updateHud();
+  updateMood(dt);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

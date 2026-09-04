@@ -171,11 +171,14 @@ Puffer) und **Sturmwellen** (Wellenmodifikatoren), zusammen mit sechs neuen Kart
 die genau darauf antworten — Hochspannung, Sammelschiene, Lastverteiler, Kondensatorbank,
 Schwungrad und die seltene Abschirmung.
 
+Die Grafik- und Sound-Runde ist danach vollständig abgearbeitet: additive Lichtschicht,
+bleibende Brandspuren, Schadensbild mit Rauch und glühenden Sprüngen, Riss-Animation beim
+Erscheinen und eine Vignette, die mit der Wellennummer wächst — beim Sound das dreischichtige
+Klangbett, die Puffer-Drone, Entfernungsdämpfung, Ducking und größenabhängige Abschüsse.
+
 Bleibt aus der Liste: Kernmodi, getrennte Akkus, Bestenliste, Tagesseed, Bilanz nach der
-Welle, Speicherstand und die Bedienkomfort-Punkte. Aus der Grafik-Runde ist der
-Energiefluss auf den Leitungen gebaut; die additive Lichtschicht, bleibende Brandspuren,
-Schadensstufen an Gebäuden und die Riss-Animation beim Spawn stehen noch aus, ebenso beim
-Sound die adaptiven Schichten und die Puffer-Drone.
+Welle, Speicherstand, das erzeugte Gelände, das Druckgedächtnis der Gegner und die
+Bedienkomfort-Punkte.
 
 ## Wenn ich drei Dinge auswählen müsste (ursprüngliche Empfehlung)
 
