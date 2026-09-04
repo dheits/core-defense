@@ -298,6 +298,15 @@ const SFX = (() => {
                attack: 0.03, send: 0.6 }));
     },
 
+    repair(pan) {
+      noise({ dur: 0.05, freq: 3000, freqTo: 900, gain: 0.06, filter: 'bandpass', q: 2,
+              shape: 3, pan });
+      tone({ type: 'triangle', freq: 520, dur: 0.09, gain: 0.06, pan, send: 0.12 });
+      tone({ type: 'triangle', freq: 780, dur: 0.14, gain: 0.06, delay: 0.08, pan, send: 0.2 });
+      noise({ dur: 0.06, freq: 2400, freqTo: 700, gain: 0.045, filter: 'bandpass', q: 2,
+              shape: 3, delay: 0.05, pan });
+    },
+
     /* ---------------- Phasen ---------------- */
     waveStart() {
       [0, 0.16, 0.32].forEach((d, i) =>

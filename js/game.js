@@ -49,7 +49,7 @@ const game = {
     if (base === undefined) return undefined;
     const lvl = b.level - 1;
     if (name === 'damage') {
-      const d = base * Math.pow(UPGRADE.damage, lvl) * this.buffs.damage * this.typeBuff(b, 'dmg');
+      const d = base * Math.pow(UPGRADE.damage, lvl) * this.buffs.damage * this.typeBuff(b, 'dmg') * (b.boost || 1);
       return b.overload ? d * OVERLOAD.damage : d;
     }
     if (name === 'range')
@@ -63,7 +63,45 @@ const game = {
   },
   costOf(type) { return Math.round(BUILDINGS[type].cost * this.buffs.buildCost); },
   upgradeCost(b) {
-    return Math.round(b.def.cost * UPGRADE.costFactor * b.level * 1.6 * this.buffs.buildCost);
+    return Math.round(upgradeSteps(b.def.cost, b.level) * this.buffs.buildCost);
+  },
+  // Was in einem Bau steckt: Grundpreis plus alle bezahlten Ausbaustufen
+  buildingValue(b) {
+    let v = this.costOf(b.type);
+    for (let l = 1; l < b.level; l++)
+      v += Math.round(upgradeSteps(b.def.cost, l) * this.buffs.buildCost);
+    return v;
+  },
+  repairCost(b) {
+    const fehlt = 1 - b.hp / b.maxHp;
+    return Math.ceil(fehlt * this.buildingValue(b) * REPAIR_SHARE);
+  },
+  repair(b) {
+    if (b.hp >= b.maxHp) return toast('Unbeschädigt');
+    const c = this.repairCost(b);
+    if (this.matter < c) { SFX.deny(); return toast('Zu wenig Materie'); }
+    this.matter -= c;
+    b.hp = b.maxHp;
+    SFX.repair(panOf(b.px));
+    for (let i = 0; i < 10; i++)
+      this.particles.push(new Particle(b.px, b.py, '#6bff9f', { speed: rand(30, 110), life: .45 }));
+    updateInspector();
+  },
+  // Ohne Auswahl: alles instand setzen, was noch bezahlbar ist
+  repairAll() {
+    const kaputt = [...this.buildings.values()]
+      .filter(b => b.hp < b.maxHp)
+      .sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp);
+    if (!kaputt.length) return toast('Alles unbeschädigt');
+    let n = 0, summe = 0;
+    for (const b of kaputt) {
+      const c = this.repairCost(b);
+      if (this.matter < c) break;
+      this.matter -= c; b.hp = b.maxHp; summe += c; n++;
+    }
+    if (!n) { SFX.deny(); return toast('Zu wenig Materie'); }
+    SFX.repair(0);
+    toast(n + (n === 1 ? ' Bau' : ' Bauten') + ' instandgesetzt  −' + summe + ' Materie');
   },
   structureOf(b) {
     return Math.round(b.def.hp * this.buffs.structure * Math.pow(UPGRADE.hp, b.level - 1));
@@ -101,7 +139,7 @@ const game = {
 
   sell(b) {
     SFX.sell();
-    this.matter += Math.round(this.costOf(b.type) * this.buffs.refund * b.level);
+    this.matter += Math.round(this.buildingValue(b) * this.buffs.refund);
     this.buildings.delete(key(b.x, b.y));
     this.turretsDirty = true;
     if (this.selected === b) this.select(null);
@@ -117,7 +155,7 @@ const game = {
     SFX.upgrade();
     b.maxHp = this.structureOf(b);
     b.hp = b.maxHp;
-    if (b.type === 'reactor') this.recomputeSupply();
+    this.recomputeSupply();
     for (let i = 0; i < 14; i++)
       this.particles.push(new Particle(b.px, b.py, '#ffd166', { speed: rand(50, 160), life: .5 }));
   },
@@ -157,6 +195,15 @@ const game = {
       b.supplied = !b.def.needsPower || sources.some(s => dist(b.x, b.y, s.x, s.y) <= s.r);
     }
     this.sources = sources;
+
+    // Verstärkerfeld: ausgebaute Pylone erhöhen den Schaden im eigenen Radius
+    const feld = [...this.buildings.values()]
+      .filter(b => b.type === 'pylon' && b.supplied && b.level >= UPGRADE.maxLevel);
+    for (const b of this.buildings.values()) {
+      if (!b.def.turret) continue;
+      b.boost = feld.some(p => dist(b.x, b.y, p.x, p.y) <= p.def.supply + extra)
+        ? SPECIALS.pylon.boost : 1;
+    }
 
     // Energie-Ökonomie neu bilanzieren
     let regen = CORE.regen + this.buffs.regen;
@@ -204,12 +251,14 @@ const game = {
   },
 
   /* ----------------------- Schaden -------------------------- */
-  dealDamage(enemy, dmg, def, kind) {
+  dealDamage(enemy, dmg, def, kind, burn) {
     if (def && def.splash) {
       const r = def.splash * this.buffs.splash * GRID.cell;
       for (const e of this.enemies) {
         const d = dist(e.x, e.y, enemy.x, enemy.y);
-        if (d <= r) this.hurt(e, dmg * (1 - 0.5 * d / r), 'proj');
+        if (d > r) continue;
+        this.hurt(e, dmg * (1 - 0.5 * d / r), 'proj');
+        if (burn) { e.burnDps = burn; e.burnUntil = this.time + SPECIALS.cannon.burnTime; }
       }
       for (let i = 0; i < 16; i++)
         this.particles.push(new Particle(enemy.x, enemy.y, i % 2 ? '#ff9f5a' : '#ffe0a8',
@@ -308,6 +357,14 @@ const game = {
         this.particles.push(new Particle(b.px, b.py, b.def.color, { speed: rand(50, 220), life: rand(.3, .7) }));
       for (let i = 0; i < 6; i++)
         this.particles.push(new Debris(b.px, b.py, b.def.color, 1.3));
+      if (b.type === 'wall' && b.level >= UPGRADE.maxLevel) {   // Reaktivpanzerung
+        const r = SPECIALS.wall.blastRange * GRID.cell;
+        for (const e of this.enemies)
+          if (dist(e.x, e.y, b.px, b.py) <= r) this.hurt(e, SPECIALS.wall.blast, 'proj');
+        for (let i = 0; i < 22; i++)
+          this.particles.push(new Particle(b.px, b.py, '#ffd166', { speed: rand(80, 320), life: rand(.3, .6) }));
+        SFX.buildingLost(panOf(b.px));
+      }
       this.buildings.delete(key(b.x, b.y));
       this.turretsDirty = true;
       if (this.selected === b) this.select(null);
@@ -530,6 +587,9 @@ const game = {
       if (b.flash > 0) b.flash -= dt;
       if (this.buffs.repair && b.hp < b.maxHp)
         b.hp = Math.min(b.maxHp, b.hp + this.buffs.repair * dt);
+      // Materiekonverter des voll ausgebauten Reaktors
+      if (b.type === 'reactor' && b.supplied && b.level >= UPGRADE.maxLevel)
+        this.matter += SPECIALS.reactor.matter * dt;
     }
 
     /* Türme feuern in der Reihenfolge ihrer Lastpriorität, und die
@@ -559,14 +619,27 @@ const game = {
       if (b.type === 'cannon') SFX.cannon(pan);
       else if (b.type === 'frost') SFX.frost(pan);
       else SFX.blaster(pan);
+      const voll = b.level >= UPGRADE.maxLevel;
       if (b.def.hitscan) {
         this.hurt(target, dmg, 'beam');
         if (b.def.slow)
           target.applySlow(Math.max(0.1, b.def.slow - this.buffs.slowBonus),
                            b.def.slowTime + this.buffs.slowTime, this.time);
+        // Vereisung: wer ohnehin kriecht, steht kurz ganz still
+        if (voll && b.type === 'frost' && target.slowed && target.freezeCd <= 0) {
+          target.frozenUntil = this.time + SPECIALS.frost.freezeTime;
+          target.freezeCd = SPECIALS.frost.freezeCd;
+        }
         this.beams.push({ x1: b.px, y1: b.py, x2: target.x, y2: target.y, life: .12, color: b.def.color });
       } else {
-        this.projectiles.push(new Projectile(b.px, b.py, target, b.def, dmg, 'proj'));
+        const p = new Projectile(b.px, b.py, target, b.def, dmg, 'proj');
+        if (voll && b.type === 'cannon') p.burn = dmg * SPECIALS.cannon.burnDps;
+        this.projectiles.push(p);
+        // Zwillingssalve: ein zweites Geschoss auf das nächstbeste Ziel
+        if (voll && b.type === 'blaster') {
+          const zweit = this.findTarget(b, target);
+          if (zweit) this.projectiles.push(new Projectile(b.px, b.py, zweit, b.def, dmg, 'proj'));
+        }
       }
     }
     for (const b of this.buildings.values()) if (b.pulse > 0) b.pulse -= dt * 4;
@@ -618,10 +691,11 @@ const game = {
     updateInspector();
   },
 
-  findTarget(b) {
+  findTarget(b, ausser) {
     const r = this.stat(b, 'range') * GRID.cell;
     let best = null, bestD = Infinity;
     for (const e of this.enemies) {
+      if (e === ausser) continue;
       const d = dist(e.x, e.y, b.px, b.py);
       if (d > r + e.radius) continue;
       const toCore = dist(e.x, e.y, CORE_PX.x, CORE_PX.y);   // Priorität: am nächsten am Kern
@@ -770,24 +844,29 @@ function drawBuilding(b) {
   if (b.type !== 'wall') {
     ctx.fillStyle = 'rgba(0,0,0,.35)';
     ctx.beginPath(); ctx.ellipse(0, s * .45, s * 1.05, s * .6, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = 'rgba(16,26,42,.95)';
-    ctx.strokeStyle = 'rgba(120,190,255,.22)';
-    ctx.lineWidth = 1;
+    ctx.fillStyle = 'rgba(26,40,62,.96)';
+    ctx.strokeStyle = 'rgba(140,200,255,.34)';
+    ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.arc(0, 0, s * .96, 0, 7); ctx.fill(); ctx.stroke();
   }
 
-  const body = b.flash > 0 ? '#fff' : 'rgba(14,22,36,.96)';
+  const body = b.flash > 0 ? '#fff' : 'rgba(22,34,54,.98)';
 
   if (b.type === 'wall')        drawWall(b, s, hpF);
   else if (b.type === 'pylon')  drawPylon(b, s, body);
   else if (b.type === 'reactor') drawReactor(b, s, body);
   else                          drawTurret(b, s, body);
 
-  // Ausbaustufe als Kerben am Sockel
-  if (b.level > 1) {
+  // Ausbaustufe als Kerben, die letzte Stufe als Ring um den Sockel
+  if (b.level >= UPGRADE.maxLevel) {
+    ctx.strokeStyle = 'rgba(255,209,102,' + (.55 + .35 * Math.sin(game.time * 3 + b.x)).toFixed(2) + ')';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(0, 0, s * 1.12, 0, 7); ctx.stroke();
+  } else if (b.level > 1) {
     ctx.fillStyle = '#ffd166';
-    for (let i = 0; i < b.level - 1; i++)
-      ctx.fillRect(-5 + i * 5, s + 2, 3, 3);
+    const n = b.level - 1;
+    for (let i = 0; i < n; i++)
+      ctx.fillRect(-(n * 5 - 2) / 2 + i * 5, s + 2, 3, 3);
   }
   ctx.restore();
 
@@ -1074,14 +1153,29 @@ function updateInspector() {
     rows.push(['Energie/Schuss', Math.round(game.energyOf(b) * 10) / 10]);
     rows.push(['Schuss alle', (Math.round(game.cooldownOf(b) * 100) / 100) + ' s']);
     rows.push(['Lastpriorität', PRIORITY[b.prio].name]);
+    if (b.boost > 1) rows.push(['Verstärkerfeld', '+' + Math.round((b.boost - 1) * 100) + ' %']);
   }
   if (b.def.regen) rows.push(['Ertrag', '+' + b.def.regen * b.level + '/s']);
   if (b.def.supply) rows.push(['Netzradius', b.def.supply + ' Z']);
   rows.push(['Strom', b.def.needsPower ? (b.supplied ? 'verbunden' : 'GETRENNT') : '—']);
   el('insStats').innerHTML = rows.map(r => `<span>${r[0]}</span><span>${r[1]}</span>`).join('');
-  el('upgradeBtn').textContent = b.level >= UPGRADE.maxLevel ? 'Max' : 'Ausbau ' + game.upgradeCost(b);
-  el('upgradeBtn').disabled = b.level >= UPGRADE.maxLevel;
-  el('sellBtn').textContent = 'Abbau +' + Math.round(game.costOf(b.type) * game.buffs.refund * b.level);
+  const voll = b.level >= UPGRADE.maxLevel;
+  el('upgradeBtn').textContent = voll ? 'Ausgebaut' : 'Ausbau ' + game.upgradeCost(b);
+  el('upgradeBtn').disabled = voll;
+  el('sellBtn').textContent = 'Abbau +' + Math.round(game.buildingValue(b) * game.buffs.refund);
+
+  const rb = el('repairBtn');
+  const heil = b.hp >= b.maxHp;
+  rb.textContent = heil ? 'Instand' : 'Reparieren ' + game.repairCost(b);
+  rb.disabled = heil;
+
+  // Stufe 5 schaltet die Sonderfähigkeit frei, Stufe 4 zeigt sie schon an
+  const sp = SPECIALS[b.type], spBox = el('insSpecial');
+  if (sp && b.level >= UPGRADE.maxLevel - 1) {
+    spBox.hidden = false;
+    spBox.classList.toggle('locked', !voll);
+    spBox.innerHTML = '<b>' + (voll ? sp.name : 'Stufe 5: ' + sp.name) + '</b>' + sp.desc;
+  } else spBox.hidden = true;
 
   const turretBox = el('insTurret');
   turretBox.hidden = !b.def.turret;
@@ -1231,6 +1325,7 @@ addEventListener('keydown', ev => {
   else if (k === 'm') toggleMute();
   else if (k === 'u' && game.selected) game.upgrade(game.selected);
   else if (k === 's' && game.selected) game.sell(game.selected);
+  else if (k === 'r') { if (game.selected) game.repair(game.selected); else game.repairAll(); }
   else if (k === 'o' && game.selected) game.toggleOverload(game.selected);
   else if (k === 'l' && game.selected && game.selected.def.turret) game.cyclePriority(game.selected);
 });
@@ -1258,6 +1353,7 @@ el('speedBtn').onclick = () => {
   game.speed = game.speed === 1 ? 2 : (game.speed === 2 ? 3 : 1);
   el('speedBtn').textContent = game.speed + '×';
 };
+el('repairBtn').onclick = () => game.selected && game.repair(game.selected);
 el('prioBtn').onclick = () => game.selected && game.cyclePriority(game.selected);
 el('overloadBtn').onclick = () => game.selected && game.toggleOverload(game.selected);
 el('upgradeBtn').onclick = () => game.selected && game.upgrade(game.selected);

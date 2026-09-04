@@ -87,7 +87,7 @@ class Projectile {
     if (this.trail.length > 5) this.trail.shift();
     if (d <= step + t.radius) {
       this.x = t.x; this.y = t.y;
-      game.dealDamage(t, this.damage, this.def, this.kind);
+      game.dealDamage(t, this.damage, this.def, this.kind, this.burn);
       this.dead = true;
       return;
     }
@@ -133,6 +133,8 @@ class Enemy {
     this.drainBeam = false;
     this.spawnCd = d.spawnEvery || 0;
     this.enraged = false;
+    this.burnDps = 0; this.burnUntil = 0;
+    this.frozenUntil = 0; this.freezeCd = 0;
     this.isGuard = false;                 // Boss-Eskorte, die ihn unverwundbar hält
     this.netTarget = null;                // Saboteur: das angepeilte Netzteil
 
@@ -160,6 +162,18 @@ class Enemy {
   update(dt, game) {
     if (this.slowUntil <= game.time) this.slowFactor = 1;
     if (this.hitFlash > 0) this.hitFlash -= dt;
+    if (this.freezeCd > 0) this.freezeCd -= dt;
+    if (this.burnUntil > game.time && this.burnDps) {   // Brandsatz
+      game.hurt(this, this.burnDps * dt, 'burn');
+      if (Math.random() < dt * 14)
+        game.particles.push(new Particle(this.x + rand(-4, 4), this.y + rand(-4, 4), '#ff9f5a',
+          { speed: rand(20, 60), life: .3, size: 2 }));
+      if (this.dead) return;
+    }
+    if (this.frozenUntil > game.time) {                 // Vereisung hält alles an
+      this.moving = 0;
+      return;
+    }
     if (this.recoil > 0) this.recoil = Math.max(0, this.recoil - dt * 6);
     this.spin += dt * (this.flying ? 34 : 3);
     this.moving = Math.max(0, this.moving - dt * 4);
@@ -381,6 +395,18 @@ class Enemy {
 
     ctx.restore();
 
+    if (this.frozenUntil > (window.game ? game.time : 0)) {   // eingefroren
+      ctx.strokeStyle = 'rgba(190,235,255,.95)';
+      ctx.fillStyle = 'rgba(150,215,255,.22)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const a = i / 6 * Math.PI * 2 - .3, rr = r + 5 + (i % 2 ? 2 : -1);
+        i ? ctx.lineTo(this.x + Math.cos(a) * rr, this.y - hover + Math.sin(a) * rr)
+          : ctx.moveTo(this.x + Math.cos(a) * rr, this.y - hover + Math.sin(a) * rr);
+      }
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
     if (this.slowed) {                           // Frost: heller Rand statt teurem Blur
       ctx.strokeStyle = 'rgba(160,215,255,.8)';
       ctx.lineWidth = 1.4;

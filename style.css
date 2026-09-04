@@ -80,7 +80,15 @@ button.danger:hover{background:rgba(190,50,70,.5);border-color:var(--red)}
 .ins-head span{font-size:11px;color:var(--cyan)}
 #insStats{font-size:11.5px;color:var(--dim);display:grid;grid-template-columns:1fr auto;gap:3px 8px}
 #insStats span:nth-child(even){color:var(--text)}
-.ins-actions{display:flex;gap:6px;margin-top:10px}
+.ins-actions{display:flex;gap:6px;margin-top:6px}
+#insSpecial{
+  margin-top:9px;padding:7px 9px;border-radius:5px;
+  background:rgba(255,209,102,.10);border:1px solid rgba(255,209,102,.35);
+  font-size:11px;line-height:1.45;color:var(--dim);
+}
+#insSpecial b{display:block;color:var(--gold);font-size:11.5px;letter-spacing:.06em;margin-bottom:2px}
+#insSpecial.locked{background:rgba(120,190,255,.07);border-color:var(--line)}
+#insSpecial.locked b{color:var(--cyan)}
 .ins-actions button{flex:1;padding:6px 4px;font-size:11px}
 
 /* ---- Toast + Overlay ---- */

@@ -64,7 +64,33 @@ const BUILDINGS = {
   }
 };
 
-const UPGRADE = { maxLevel: 3, costFactor: 0.85, damage: 1.35, range: 1.08, hp: 1.3 };
+/* ---------------------------------------------------------------
+   Ausbau bis Stufe 5. Die Kosten steigen je Stufe deutlich, dafür
+   schaltet die letzte Stufe eine Fähigkeit frei, die den Turm
+   qualitativ verändert — nicht nur seine Zahlen.
+---------------------------------------------------------------- */
+const UPGRADE = { maxLevel: 5, damage: 1.42, range: 1.07, hp: 1.28 };
+
+// Kosten für den Sprung von b.level auf die nächste Stufe
+function upgradeSteps(cost, level) { return Math.round(cost * (0.75 + 0.55 * level)); }
+
+// Anteil des Bauwerts, den eine vollständige Instandsetzung kostet
+const REPAIR_SHARE = 0.35;
+
+/* Stufe 5: je Bauart eine eigene Fähigkeit */
+const SPECIALS = {
+  blaster: { name: 'Zwillingssalve',   desc: 'Feuert gleichzeitig auf ein zweites Ziel' },
+  cannon:  { name: 'Brandsatz',        desc: 'Der Einschlag setzt Getroffene in Brand',
+             burnDps: 0.22, burnTime: 3 },
+  frost:   { name: 'Vereisung',        desc: 'Friert gebremste Gegner kurz völlig ein',
+             freezeTime: 0.85, freezeCd: 3 },
+  pylon:   { name: 'Verstärkerfeld',   desc: 'Türme im Netzradius schlagen 15 % härter',
+             boost: 1.15 },
+  reactor: { name: 'Materiekonverter', desc: 'Erzeugt zusätzlich 0,6 Materie je Sekunde',
+             matter: 0.6 },
+  wall:    { name: 'Reaktivpanzerung', desc: 'Reißt beim Bersten die Angreifer mit',
+             blast: 70, blastRange: 1.8 }
+};
 
 /* ---------------------------------------------------------------
    Gegner. speed = Pixel/s, dmg = Schaden pro Angriff (1 Angriff/s).
@@ -177,10 +203,18 @@ const PRIORITY = [
 const OVERLOAD = { damage: 2, cost: 3 };
 
 // Gegner-HP wächst mit der Wellennummer
-function waveHpScale(w) { return 1 + 0.16 * (w - 1) + 0.016 * (w - 1) * (w - 1); }
+// Bis Welle 20 die eingespielte Kurve; danach ein zweiter Term, weil ab dort
+// voll ausgebaute Türme mit Sonderfähigkeiten stehen.
+function waveHpScale(w) {
+  const spaet = w > 20 ? 0.02 * (w - 20) * (w - 20) : 0;
+  return 1 + 0.16 * (w - 1) + 0.016 * (w - 1) * (w - 1) + spaet;
+}
 
 // Wellenstärke: flacher Einstieg, ab etwa Welle 8 identisch zur alten Kurve
-function waveBudget(w)  { return 2.4 + w * 2.6 + w * w * 0.46; }
+function waveBudget(w) {
+  const spaet = w > 22 ? 0.35 * (w - 22) * (w - 22) : 0;
+  return 2.4 + w * 2.6 + w * w * 0.46 + spaet;
+}
 
 // Abstand zwischen zwei Gegnern beim Spawn — die ersten Wellen tröpfeln herein
 function spawnGap(w) {
