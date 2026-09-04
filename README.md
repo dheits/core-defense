@@ -87,17 +87,41 @@ wenn er über ihrer Schwelle steht (Normal ab 20 %, Sparlast ab 55 %). So bleibt
 Engpass Energie für die Seite, die wirklich halten muss, statt dass alle gleichzeitig
 verstummen. Abweichende Stufen stehen als Buchstabe am Turm.
 
+## Darstellung
+
+Alles ist Canvas-Zeichnung, keine Bilddateien. Jeder Gegnertyp hat eine eigene Silhouette
+und eine eigene Bewegung: Der Crawler läuft auf sechs Beinen und wippt dabei, der Runner
+zieht Fahrtwind hinter sich her, der Brute stampft, die Drohne schwebt über ihrem Schatten
+und dreht zwei Rotoren, der Mender trägt einen rotierenden Ring, der Titan stemmt vier
+schwere Beine. Die Schrittphase läuft nur, solange sich der Gegner wirklich bewegt —
+wer eine Barriere einschlägt, steht still und zuckt beim Schlag zurück.
+
+Die Anlagen stehen auf einer Bodenplatte, drehen ihren Turmkopf zum Ziel, federn beim
+Schuss zurück und blitzen an der Mündung auf; im Leerlauf schwenken sie langsam.
+Der Reaktor dreht seine Speichen schneller, wenn er am Netz hängt, der Pylon zeigt einen
+zuckenden Lichtbogen, Barrieren bekommen Risse, sobald ihre Struktur unter 65 % fällt.
+Abschüsse hinterlassen Trümmerteile, die wegfliegen, rotieren und verglühen.
+
+Alle Animationen hängen an der Spielzeit, die Aufbau-Animation an der Uhr — damit ein
+Gebäude, das kurz vor einer Pause gesetzt wird, nicht unsichtbar bleibt.
+
 ## Sound
 
 Alle Effekte werden zur Laufzeit über die WebAudio-API synthetisiert — keine Audio-Dateien,
-nichts nachzuladen. `js/audio.js` enthält zwei Bausteine (`tone` für Oszillator-Töne mit
-Hüllkurve und Frequenz-Slide, `noise` für gefilterte Rauschimpulse); daraus setzen sich
-Turmfeuer, Treffer, Bau- und Phasen-Signale zusammen.
+nichts nachzuladen. Jede Stimme ist wie ein echtes Geräusch dreiteilig aufgebaut:
+
+- **Transient** — der harte Anschlag mit sehr kurzer Anstiegszeit, darin steckt die Ortung
+- **Körper** — der Ton, oft mit Frequenzfahrt nach unten (Kanone: 165 → 42 Hz)
+- **Ausklang** — gefiltertes Rauschen, dessen Filter mitfährt
+
+Dazu kommen **Stereo-Ortung** (ein Turm am linken Feldrand klingt links) und ein kurzer
+**Raumhall** über eine synthetisch erzeugte Impulsantwort, mit unterschiedlichem Anteil
+je Geräusch: Explosionen bekommen viel, Blaster fast nichts.
 
 Der AudioContext startet erst nach der ersten Nutzergeste (Browser-Autoplay-Regel).
-Häufige Sounds sind pro Typ zeitlich gedrosselt, damit zwanzig Blaster nicht in eine
-Rauschwand kippen, und leicht in der Tonhöhe variiert. Ein Kompressor auf dem Master
-fängt Spitzen ab. Bei stumm geschaltetem Ton werden gar keine Audio-Nodes erzeugt.
+Häufige Sounds sind pro Typ zeitlich gedrosselt und in Tonhöhe und Filter leicht gestreut,
+damit zwanzig Blaster nicht wie ein einziger Automat klingen. Ein Kompressor fängt Spitzen
+ab. Bei stumm geschaltetem Ton werden gar keine Audio-Nodes erzeugt.
 
 ## Gebäude
 

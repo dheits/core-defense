@@ -86,7 +86,7 @@ const game = {
       type, def, x, y, level: 1,
       hp: 0, maxHp: 0,
       cd: 0, supplied: false, flash: 0, pulse: 0,
-      prio: 1, overload: false,
+      prio: 1, overload: false, bornAt: performance.now(), aim: -Math.PI / 2, scan: rand(0, 6.28),
       px: cellToPx(x), py: cellToPx(y)
     };
     b.maxHp = this.structureOf(b); b.hp = b.maxHp;
@@ -269,23 +269,28 @@ const game = {
           if (o !== e && !o.dead && dist(o.x, o.y, e.x, e.y) <= r)
             this.hurt(o, this.buffs.deathSpark, 'spark');
       }
-      SFX.kill(e.def.boss);
+      SFX.kill(e.def.boss, panOf(e.x));
       this.matter += e.def.bounty * this.buffs.bounty;
       const n = e.def.boss ? 40 : 12;
       for (let i = 0; i < n; i++)
         this.particles.push(new Particle(e.x, e.y, e.def.color,
           { speed: rand(50, e.def.boss ? 340 : 200), life: rand(.3, .8) }));
+      const teile = e.def.boss ? 14 : 4;
+      for (let i = 0; i < teile; i++)
+        this.particles.push(new Debris(e.x, e.y, e.def.color, e.def.boss ? 2 : 1));
     }
   },
 
   damageBuilding(b, dmg) {
     b.hp -= dmg;
     b.flash = 0.12;
-    SFX.buildingHit();
+    SFX.buildingHit(panOf(b.px));
     if (b.hp <= 0) {
-      SFX.buildingLost();
+      SFX.buildingLost(panOf(b.px));
       for (let i = 0; i < 18; i++)
         this.particles.push(new Particle(b.px, b.py, b.def.color, { speed: rand(50, 220), life: rand(.3, .7) }));
+      for (let i = 0; i < 6; i++)
+        this.particles.push(new Debris(b.px, b.py, b.def.color, 1.3));
       this.buildings.delete(key(b.x, b.y));
       this.turretsDirty = true;
       if (this.selected === b) this.select(null);
@@ -486,15 +491,16 @@ const game = {
         else dmg *= OVERLOAD.damage;
       }
       const target = this.findTarget(b);
-      if (!target) continue;
+      if (!target) { b.scan += dt * 0.5; b.aim = b.scan; continue; }
       if (this.energy < cost) { b.pulse = 0; SFX.lowPower(); continue; }
       this.energy -= cost;
       b.cd = this.cooldownOf(b);
       b.pulse = 1;
       b.aim = Math.atan2(target.y - b.py, target.x - b.px);
-      if (b.type === 'cannon') SFX.cannon();
-      else if (b.type === 'frost') SFX.frost();
-      else SFX.blaster();
+      const pan = panOf(b.px);
+      if (b.type === 'cannon') SFX.cannon(pan);
+      else if (b.type === 'frost') SFX.frost(pan);
+      else SFX.blaster(pan);
       if (b.def.hitscan) {
         this.hurt(target, dmg, 'beam');
         if (b.def.slow)
@@ -676,77 +682,226 @@ function drawCore() {
 }
 
 function drawBuilding(b) {
-  const c = GRID.cell, x = b.px, y = b.py;
-  const s = c * .40;
+  const c = GRID.cell, x = b.px, y = b.py, s = c * .40;
+  // Aufbau läuft nach der Uhr, nicht nach der Spielzeit — sonst bliebe ein
+  // Gebäude unsichtbar, das kurz vor einer Pause gesetzt wurde.
+  const grow = Math.min(1, (performance.now() - b.bornAt) / 340);
+  const kalt = !b.supplied && b.def.needsPower;
+  const hpF = b.hp / b.maxHp;
+
   ctx.save();
   ctx.translate(x, y);
-
-  if (!b.supplied && b.def.needsPower) {          // unversorgt -> rot blinkend
-    ctx.globalAlpha = .55 + .25 * Math.sin(game.time * 6);
+  if (grow < 1) {
+    ctx.globalAlpha = grow;
+    ctx.scale(.55 + .45 * grow, .55 + .45 * grow);
   }
-  ctx.fillStyle = b.flash > 0 ? '#fff' : 'rgba(14,22,36,.95)';
-  ctx.strokeStyle = b.def.color;
-  ctx.lineWidth = 1.8;
+  if (kalt) ctx.globalAlpha *= .55 + .25 * Math.sin(game.time * 6);
 
-  if (b.type === 'wall') {
-    ctx.fillStyle = b.flash > 0 ? '#fff' : 'rgba(40,48,62,.98)';
-    ctx.fillRect(-s, -s, s * 2, s * 2);
-    ctx.strokeRect(-s, -s, s * 2, s * 2);
-    ctx.strokeStyle = 'rgba(255,255,255,.10)';
-    ctx.beginPath(); ctx.moveTo(-s, 0); ctx.lineTo(s, 0); ctx.stroke();
-  } else if (b.type === 'pylon') {
-    ctx.beginPath();
-    ctx.moveTo(0, -s); ctx.lineTo(s, 0); ctx.lineTo(0, s); ctx.lineTo(-s, 0);
-    ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = b.def.color;
-    ctx.beginPath(); ctx.arc(0, 0, 3 + Math.sin(game.time * 3) * .8, 0, 7); ctx.fill();
-  } else if (b.type === 'reactor') {
-    ctx.beginPath(); ctx.arc(0, 0, s, 0, 7); ctx.fill(); ctx.stroke();
-    ctx.rotate(game.time * 1.6);
-    ctx.strokeStyle = b.def.color; ctx.lineWidth = 2;
-    for (let i = 0; i < 3; i++) {
-      ctx.rotate(Math.PI * 2 / 3);
-      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -s * .72); ctx.stroke();
-    }
-  } else {                                        // Türme
-    ctx.beginPath(); ctx.arc(0, 0, s, 0, 7); ctx.fill(); ctx.stroke();
-    ctx.rotate(b.aim || -Math.PI / 2);
-    const kick = (b.pulse > 0 ? b.pulse : 0) * 3;
-    ctx.fillStyle = b.def.color;
-    if (b.type === 'cannon') ctx.fillRect(-kick + 2, -4.5, s * 1.25, 9);
-    else if (b.type === 'frost') {
-      ctx.fillRect(-kick + 2, -2.5, s * 1.1, 5);
-      ctx.beginPath(); ctx.arc(s * 1.1, 0, 3, 0, 7); ctx.fill();
-    } else ctx.fillRect(-kick + 2, -3, s * 1.15, 6);
+  // Bodenplatte für alle Bauten außer der Barriere
+  if (b.type !== 'wall') {
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.ellipse(0, s * .45, s * 1.05, s * .6, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(16,26,42,.95)';
+    ctx.strokeStyle = 'rgba(120,190,255,.22)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(0, 0, s * .96, 0, 7); ctx.fill(); ctx.stroke();
   }
 
-  // Level-Pips
+  const body = b.flash > 0 ? '#fff' : 'rgba(14,22,36,.96)';
+
+  if (b.type === 'wall')        drawWall(b, s, hpF);
+  else if (b.type === 'pylon')  drawPylon(b, s, body);
+  else if (b.type === 'reactor') drawReactor(b, s, body);
+  else                          drawTurret(b, s, body);
+
+  // Ausbaustufe als Kerben am Sockel
   if (b.level > 1) {
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#ffd166';
-    for (let i = 0; i < b.level - 1; i++) ctx.fillRect(x - 5 + i * 5, y + s + 2, 3, 3);
+    for (let i = 0; i < b.level - 1; i++)
+      ctx.fillRect(-5 + i * 5, s + 2, 3, 3);
   }
   ctx.restore();
 
-  if (b.overload) {                        // pulsierender Ring
+  if (b.overload) {                              // pulsierender Ring
     ctx.strokeStyle = '#ff9f5a';
     ctx.globalAlpha = .45 + .4 * Math.sin(game.time * 8);
     ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(x, y, s + 4, 0, 7); ctx.stroke();
     ctx.globalAlpha = 1;
   }
-  if (b.def.turret && b.prio !== 1) {      // abweichende Lastpriorität
+  if (b.def.turret && b.prio !== 1) {            // abweichende Lastpriorität
     ctx.fillStyle = PRIORITY[b.prio].color;
     ctx.font = '600 9px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(PRIORITY[b.prio].short, x + c * .34, y - c * .28);
     ctx.textAlign = 'left';
   }
-
   if (b.hp < b.maxHp) {
     const w = c * .8;
     ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(x - w / 2, y - c * .5 + 2, w, 3);
-    ctx.fillStyle = '#6bff9f'; ctx.fillRect(x - w / 2, y - c * .5 + 2, w * (b.hp / b.maxHp), 3);
+    ctx.fillStyle = hpF > .35 ? '#6bff9f' : '#ffb04a';
+    ctx.fillRect(x - w / 2, y - c * .5 + 2, w * hpF, 3);
+  }
+}
+
+/* Türme: Sockel, drehbarer Turmkopf, Rückstoß und Mündungsfeuer */
+function drawTurret(b, s, body) {
+  const kick = Math.max(0, b.pulse) * (b.type === 'cannon' ? 5 : 3);
+  ctx.fillStyle = body;
+  ctx.strokeStyle = b.def.color;
+  ctx.lineWidth = 1.8;
+
+  ctx.save();
+  ctx.rotate(b.aim || -Math.PI / 2);
+  ctx.translate(-kick, 0);
+
+  const col = b.def.color;
+  if (b.type === 'cannon') {
+    ctx.fillStyle = 'rgba(10,16,28,.98)';
+    ctx.fillRect(2, -5.5, s * 1.15, 11);          // Rohr
+    ctx.strokeRect(2, -5.5, s * 1.15, 11);
+    ctx.fillStyle = col;
+    ctx.fillRect(s * .95, -6.5, 5, 13);           // Mündungsbremse
+    ctx.fillRect(s * .55, -7, 3, 14);
+  } else if (b.type === 'frost') {
+    ctx.fillStyle = 'rgba(10,16,28,.98)';
+    ctx.fillRect(2, -3, s * .95, 6);
+    ctx.strokeStyle = col; ctx.lineWidth = 1.6;
+    ctx.strokeRect(2, -3, s * .95, 6);
+    ctx.fillStyle = col;                          // Emitterkopf
+    ctx.beginPath(); ctx.arc(s * 1.05, 0, 3.4, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(180,220,255,.5)';     // Kühlring
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(s * 1.05, 0, 5.5 + Math.sin(game.time * 4) * .8, 0, 7);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = 'rgba(10,16,28,.98)';         // Doppellauf
+    ctx.fillRect(2, -4.4, s * 1.1, 3.4);
+    ctx.fillRect(2, 1, s * 1.1, 3.4);
+    ctx.strokeStyle = col; ctx.lineWidth = 1.2;
+    ctx.strokeRect(2, -4.4, s * 1.1, 3.4);
+    ctx.strokeRect(2, 1, s * 1.1, 3.4);
+  }
+
+  // Turmkopf über den Rohren
+  ctx.fillStyle = body;
+  ctx.strokeStyle = col;
+  ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.arc(0, 0, s * .62, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = col;
+  ctx.beginPath(); ctx.arc(0, 0, s * .22, 0, 7); ctx.fill();
+
+  // Mündungsfeuer, solange der Schuss frisch ist
+  if (b.pulse > .45) {
+    const f = (b.pulse - .45) / .55;
+    const mx = b.type === 'cannon' ? s * 1.35 : (b.type === 'frost' ? s * 1.2 : s * 1.25);
+    const size = (b.type === 'cannon' ? 9 : 5.5) * f;
+    ctx.globalAlpha = f;
+    ctx.fillStyle = '#fff7d6';
+    ctx.beginPath();
+    ctx.moveTo(mx + size * 1.8, 0);
+    ctx.lineTo(mx, size); ctx.lineTo(mx - size * .5, 0); ctx.lineTo(mx, -size);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = b.def.color;
+    ctx.beginPath(); ctx.arc(mx, 0, size * .7, 0, 7); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+}
+
+/* Pylon: Mast mit Isolatoren und einem Lichtbogen im Kopf */
+function drawPylon(b, s, body) {
+  ctx.fillStyle = body;
+  ctx.strokeStyle = b.def.color;
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(0, -s); ctx.lineTo(s * .8, 0); ctx.lineTo(0, s); ctx.lineTo(-s * .8, 0);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(95,224,255,.5)';
+  ctx.lineWidth = 1;
+  for (const sgn of [1, -1]) {                   // Isolatorarme
+    ctx.beginPath();
+    ctx.moveTo(sgn * s * .45, -s * .3);
+    ctx.lineTo(sgn * s * .72, -s * .55);
+    ctx.stroke();
+  }
+
+  const p = .5 + .5 * Math.sin(game.time * 3 + b.x);
+  ctx.fillStyle = b.def.color;
+  ctx.globalAlpha = .55 + .45 * p;
+  ctx.beginPath(); ctx.arc(0, 0, 2.6 + p * 1.2, 0, 7); ctx.fill();
+  ctx.globalAlpha = 1;
+
+  if (b.supplied) {                              // zuckender Lichtbogen
+    ctx.strokeStyle = 'rgba(190,240,255,.75)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-s * .5, -s * .1);
+    for (let i = 1; i <= 3; i++)
+      ctx.lineTo(-s * .5 + i * s * .33, Math.sin(game.time * 22 + i * 2 + b.y) * 2.2 - s * .1);
+    ctx.stroke();
+  }
+}
+
+/* Reaktor: Gehäuse, drehende Speichen, atmender Kern */
+function drawReactor(b, s, body) {
+  ctx.fillStyle = body;
+  ctx.strokeStyle = b.def.color;
+  ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.arc(0, 0, s, 0, 7); ctx.fill(); ctx.stroke();
+
+  ctx.save();
+  ctx.rotate(game.time * (b.supplied ? 1.9 : .25));
+  ctx.strokeStyle = b.def.color;
+  ctx.lineWidth = 2.4;
+  for (let i = 0; i < 3; i++) {
+    ctx.rotate(Math.PI * 2 / 3);
+    ctx.beginPath(); ctx.moveTo(0, -s * .25); ctx.lineTo(0, -s * .78); ctx.stroke();
+  }
+  ctx.restore();
+
+  const glow = .45 + .35 * Math.sin(game.time * 4 + b.x);
+  ctx.fillStyle = 'rgba(255,209,102,' + glow.toFixed(2) + ')';
+  ctx.beginPath(); ctx.arc(0, 0, s * .34, 0, 7); ctx.fill();
+  ctx.fillStyle = '#fff8e2';
+  ctx.beginPath(); ctx.arc(0, 0, s * .14, 0, 7); ctx.fill();
+}
+
+/* Barriere: Blockwerk mit Nieten, das bei Schaden reißt */
+function drawWall(b, s, hpF) {
+  ctx.fillStyle = b.flash > 0 ? '#fff' : 'rgba(42,50,64,.98)';
+  ctx.fillRect(-s, -s, s * 2, s * 2);
+  ctx.strokeStyle = b.def.color;
+  ctx.lineWidth = 1.8;
+  ctx.strokeRect(-s, -s, s * 2, s * 2);
+
+  ctx.strokeStyle = 'rgba(255,255,255,.10)';     // Fugen
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-s, 0); ctx.lineTo(s, 0);
+  ctx.moveTo(0, -s); ctx.lineTo(0, 0);
+  ctx.stroke();
+
+  ctx.fillStyle = 'rgba(255,255,255,.16)';       // Nieten
+  for (const nx of [-s * .62, s * .62])
+    for (const ny of [-s * .62, s * .62])
+      ctx.fillRect(nx - 1.3, ny - 1.3, 2.6, 2.6);
+
+  if (hpF < .65) {                               // Risse, festes Muster je Feld
+    ctx.strokeStyle = 'rgba(0,0,0,.55)';
+    ctx.lineWidth = 1.2;
+    const seed = (b.x * 7 + b.y * 13) % 4;
+    const risse = hpF < .3 ? 3 : 1;
+    for (let i = 0; i <= risse; i++) {
+      const a = (seed + i) * 1.7;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * s, Math.sin(a) * s);
+      ctx.lineTo(Math.cos(a) * s * .25 + 2, Math.sin(a) * s * .25 - 2);
+      ctx.lineTo(-Math.cos(a) * s * .55, -Math.sin(a) * s * .55);
+      ctx.stroke();
+    }
   }
 }
 
