@@ -129,6 +129,12 @@ class Enemy {
     this.shieldCd = 0;
     this.slowResist = d.slowResist || 0;
     this.healBeams = [];
+    this.auraBeams = [];
+    this.drainBeam = false;
+    this.spawnCd = d.spawnEvery || 0;
+    this.enraged = false;
+    this.isGuard = false;                 // Boss-Eskorte, die ihn unverwundbar hält
+    this.netTarget = null;                // Saboteur: das angepeilte Netzteil
 
     this.slowUntil = 0; this.slowFactor = 1;
     this.attackCd = 0;
@@ -166,6 +172,53 @@ class Enemy {
     }
     if (this.def.regen) this.hp = Math.min(this.maxHp, this.hp + this.def.regen * dt);
 
+    // Boss geht ab der halben Gesundheit auf Angriff
+    if (this.def.boss && !this.enraged && this.hp < this.maxHp * BOSS_RAGE) {
+      this.enraged = true;
+      this.speed = this.def.speed * 1.45;
+      game.shake = Math.max(game.shake, 7);
+      SFX.bossRage(panOf(this.x));
+    }
+
+    // Zapfer und Nexus saugen den Puffer leer, sobald sie nah genug sind
+    this.drainBeam = false;
+    if (this.def.drain) {
+      const dc = dist(this.x, this.y, CORE_PX.x, CORE_PX.y);
+      if (dc < this.def.drainRange * GRID.cell) {
+        game.energy = Math.max(0, game.energy - this.def.drain * dt);
+        this.drainBeam = true;
+      }
+    }
+
+    // Nexus wirft laufend Brut aus
+    if (this.def.spawnEvery) {
+      this.spawnCd -= dt;
+      if (this.spawnCd <= 0) {
+        this.spawnCd = this.def.spawnEvery;
+        for (let i = 0; i < this.def.spawnCount; i++) {
+          const a = rand(0, Math.PI * 2), r = this.radius + 10;
+          game.enemies.push(new Enemy(this.def.spawnType,
+            this.x + Math.cos(a) * r, this.y + Math.sin(a) * r, game.wave));
+        }
+        for (let i = 0; i < 10; i++)
+          game.particles.push(new Particle(this.x, this.y, this.def.color,
+            { speed: rand(60, 170), life: .4 }));
+      }
+    }
+
+    // Wächter legt einen Schild über alles in Reichweite
+    if (this.def.shieldAura) {
+      this.auraBeams.length = 0;
+      const r = this.def.auraRange * GRID.cell;
+      for (const e of game.enemies) {
+        if (e === this || e.dead) continue;
+        if (dist(e.x, e.y, this.x, this.y) > r) continue;
+        if (e.shieldMax < this.def.shieldAura) { e.shieldMax = this.def.shieldAura; e.shieldCd = 0; }
+        if (e.shield < e.shieldMax * .35) e.shield = e.shieldMax * .35;
+        this.auraBeams.push(e);
+      }
+    }
+
     // Mender flickt seine Nachbarn
     if (this.def.heal) {
       this.healBeams.length = 0;
@@ -178,11 +231,23 @@ class Enemy {
       }
     }
 
-    // Richtung: immer zum Kern
-    const dx = CORE_PX.x - this.x, dy = CORE_PX.y - this.y;
+    // Saboteure peilen das nächste Netzteil an, alle anderen den Kern
+    let goalX = CORE_PX.x, goalY = CORE_PX.y;
+    if (this.def.huntsNet) {
+      if (!this.netTarget || this.netTarget.hp <= 0 || !game.buildings.has(key(this.netTarget.x, this.netTarget.y)))
+        this.netTarget = game.nearestNetPart(this.x, this.y);
+      if (this.netTarget) { goalX = this.netTarget.px; goalY = this.netTarget.py; }
+    }
+    const dx = goalX - this.x, dy = goalY - this.y;
     const dc = Math.hypot(dx, dy) || 1;
     let dirX = dx / dc, dirY = dy / dc;
     this.angle = Math.atan2(dirY, dirX);
+
+    // Am Ziel angekommen wird es zerlegt
+    if (this.netTarget && dc < this.radius + GRID.cell * .55) {
+      this.attack(dt, game, this.netTarget);
+      return;
+    }
 
     // Kern erreicht?
     const coreEdge = (CORE.half + 0.5) * GRID.cell;
@@ -261,6 +326,21 @@ class Enemy {
       ctx.setLineDash([]);
     }
 
+    for (const e of this.auraBeams) {            // Schildkuppel des Wächters
+      ctx.strokeStyle = 'rgba(143,166,255,.35)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(e.x, e.y); ctx.stroke();
+    }
+    if (this.drainBeam) {                        // Anzapfung zum Kern
+      const p = .5 + .5 * Math.sin(this.spin * 3);
+      ctx.strokeStyle = 'rgba(95,255,224,' + (.3 + p * .4).toFixed(2) + ')';
+      ctx.lineWidth = 1.6 + p;
+      ctx.setLineDash([7, 6]);
+      ctx.lineDashOffset = -this.spin * 8;
+      ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(CORE_PX.x, CORE_PX.y); ctx.stroke();
+      ctx.setLineDash([]); ctx.lineDashOffset = 0;
+    }
+
     // Schatten gibt Bodenhaftung — bei Fliegern klein und weit unten
     const hover = this.flying ? 6 + Math.sin(this.spin * 0.12) * 2.5 : 0;
     ctx.fillStyle = 'rgba(0,0,0,.32)';
@@ -279,12 +359,25 @@ class Enemy {
     ctx.lineWidth = 1.6;
     ctx.lineJoin = 'round';
 
-    if (d.boss) this.drawTitan(ctx, r, body, line);
-    else if (this.flying) this.drawDrone(ctx, r, body, line);
-    else if (d.heal) this.drawMender(ctx, r, body, line);
-    else if (d.armor) this.drawBrute(ctx, r, body, line);
-    else if (this.slowResist) this.drawRunner(ctx, r, body, line);
-    else this.drawCrawler(ctx, r, body, line);
+    switch (this.type) {
+      case 'runner':   this.drawRunner(ctx, r, body, line); break;
+      case 'brute':    this.drawBrute(ctx, r, body, line); break;
+      case 'drone':    this.drawDrone(ctx, r, body, line); break;
+      case 'mender':   this.drawMender(ctx, r, body, line); break;
+      case 'sabot':    this.drawSabot(ctx, r, body, line); break;
+      case 'splitter': this.drawSplitter(ctx, r, body, line); break;
+      case 'drainer':  this.drawDrainer(ctx, r, body, line); break;
+      case 'warden':   this.drawWarden(ctx, r, body, line); break;
+      case 'titan':    this.drawTitan(ctx, r, body, line); break;
+      case 'moloch':   this.drawMoloch(ctx, r, body, line); break;
+      case 'nexus':    this.drawNexus(ctx, r, body, line); break;
+      default:         this.drawCrawler(ctx, r, body, line);
+    }
+    if (this.enraged) {                          // Boss in der zweiten Phase
+      ctx.strokeStyle = 'rgba(255,90,60,' + (.4 + .4 * Math.sin(this.spin * 4)).toFixed(2) + ')';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(0, 0, r + 5, 0, 7); ctx.stroke();
+    }
 
     ctx.restore();
 
@@ -450,6 +543,137 @@ class Enemy {
     ctx.moveTo(-r * .38, 0); ctx.lineTo(r * .38, 0);
     ctx.moveTo(0, -r * .38); ctx.lineTo(0, r * .38);
     ctx.stroke();
+  }
+
+  drawSabot(ctx, r, body, line) {
+    this.legs(ctx, r, 2, .4, 1.25, 1.8, shade(this.def.color, .6));
+    ctx.fillStyle = body; ctx.strokeStyle = line; ctx.lineWidth = 1.6;
+    ctx.beginPath();                              // schlanker Rumpf
+    ctx.moveTo(r, 0); ctx.lineTo(r * .2, r * .5);
+    ctx.lineTo(-r * .85, r * .35); ctx.lineTo(-r * .85, -r * .35);
+    ctx.lineTo(r * .2, -r * .5);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    const gr = Math.sin(this.walk * 3) * .25 * this.moving;   // Greifzangen
+    ctx.strokeStyle = shade(this.def.color, .85); ctx.lineWidth = 2;
+    for (const sgn of [1, -1]) {
+      ctx.beginPath();
+      ctx.moveTo(r * .5, sgn * r * .3);
+      ctx.lineTo(r * 1.25, sgn * (r * .25 + gr * r));
+      ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(255,230,107,.8)';     // Antenne mit Blinklicht
+    ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(-r * .5, 0); ctx.lineTo(-r * .95, -r * .7); ctx.stroke();
+    ctx.fillStyle = Math.sin(this.spin * 6) > 0 ? '#fff' : '#ffb700';
+    ctx.beginPath(); ctx.arc(-r * .95, -r * .7, 1.8, 0, 7); ctx.fill();
+  }
+
+  drawSplitter(ctx, r, body, line) {
+    const wob = Math.sin(this.walk * 3) * .08 * this.moving;
+    this.legs(ctx, r, 2, .45, .95, 2, shade(this.def.color, .6));
+    ctx.fillStyle = body; ctx.strokeStyle = line; ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r * (1 + wob), r * (.92 - wob), 0, 0, 7);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.25)';      // die drei Zellkerne
+    for (let i = 0; i < 3; i++) {
+      const a = this.spin * .6 + i * 2.09;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * r * .38, Math.sin(a) * r * .38, r * .26, 0, 7);
+      ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(0,0,0,.3)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(0, 0, r * .62, 0, 7); ctx.stroke();
+  }
+
+  drawDrainer(ctx, r, body, line) {
+    this.legs(ctx, r, 2, .4, 1.1, 1.8, shade(this.def.color, .6));
+    ctx.fillStyle = body; ctx.strokeStyle = line; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.ellipse(-r * .15, 0, r * .8, r * .7, 0, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = this.def.color; ctx.lineWidth = 2.2;   // Parabolschüssel
+    ctx.beginPath(); ctx.arc(r * .35, 0, r * .62, -1.15, 1.15); ctx.stroke();
+    const p = .5 + .5 * Math.sin(this.spin * 4);
+    ctx.fillStyle = 'rgba(95,255,224,' + (.4 + p * .6).toFixed(2) + ')';
+    ctx.beginPath(); ctx.arc(r * .38, 0, 2 + p * 1.6, 0, 7); ctx.fill();
+    ctx.save(); ctx.rotate(this.spin);                       // Sammelring
+    ctx.strokeStyle = 'rgba(95,255,224,.45)'; ctx.lineWidth = 1;
+    ctx.setLineDash([3, 4]);
+    ctx.beginPath(); ctx.arc(-r * .15, 0, r * .95, 0, 7); ctx.stroke();
+    ctx.setLineDash([]); ctx.restore();
+  }
+
+  drawWarden(ctx, r, body, line) {
+    const stomp = Math.sin(this.walk * 1.8) * 1.2 * this.moving;
+    this.legs(ctx, r, 2, .48, 1, 3, shade(this.def.color, .58));
+    ctx.save(); ctx.translate(0, stomp);
+    ctx.fillStyle = body; ctx.strokeStyle = line; ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(r * .75, -r * .6); ctx.lineTo(r * .95, 0); ctx.lineTo(r * .75, r * .6);
+    ctx.lineTo(-r * .75, r * .7); ctx.lineTo(-r * .9, 0); ctx.lineTo(-r * .75, -r * .7);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(143,166,255,.9)'; ctx.lineWidth = 2.4;  // Projektorbogen
+    ctx.beginPath(); ctx.arc(r * .2, 0, r * .78, -1.35, 1.35); ctx.stroke();
+    const p = .5 + .5 * Math.sin(this.spin * 2.5);
+    ctx.fillStyle = 'rgba(200,215,255,' + (.5 + p * .5).toFixed(2) + ')';
+    ctx.beginPath(); ctx.arc(r * .2, 0, r * .26, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+
+  drawMoloch(ctx, r, body, line) {
+    const stomp = Math.sin(this.walk * 1.1) * 2.6 * this.moving;
+    ctx.strokeStyle = shade(this.def.color, .5); ctx.lineWidth = 6; ctx.lineCap = 'round';
+    for (let i = 0; i < 2; i++) {
+      const bx = r * .4 - i * r * .8;
+      for (const sgn of [1, -1]) {
+        const ph = Math.sin(this.walk * 1.1 + i * 2.1 + (sgn > 0 ? 0 : Math.PI)) * this.moving;
+        ctx.beginPath();
+        ctx.moveTo(bx, sgn * r * .55);
+        ctx.lineTo(bx + ph * r * .28, sgn * r * 1.1);
+        ctx.stroke();
+      }
+    }
+    ctx.lineCap = 'butt';
+    ctx.save(); ctx.translate(0, stomp);
+    ctx.fillStyle = body; ctx.strokeStyle = line; ctx.lineWidth = 2.4;
+    ctx.beginPath();                               // Kolossrumpf
+    ctx.moveTo(r * .95, -r * .5); ctx.lineTo(r * 1.05, r * .5);
+    ctx.lineTo(r * .3, r); ctx.lineTo(-r * .8, r * .75);
+    ctx.lineTo(-r, 0); ctx.lineTo(-r * .8, -r * .75);
+    ctx.lineTo(r * .3, -r);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(0,0,0,.28)';             // Panzerplatten
+    ctx.fillRect(-r * .55, -r * .7, r * .45, r * 1.4);
+    ctx.fillRect(r * .1, -r * .55, r * .4, r * 1.1);
+    const gl = .5 + .4 * Math.sin(this.spin * 2.2);
+    ctx.strokeStyle = 'rgba(255,190,110,' + gl.toFixed(2) + ')';   // glühende Fugen
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-r * .1, -r * .8); ctx.lineTo(-r * .1, r * .8);
+    ctx.stroke();
+    ctx.fillStyle = '#fff3d6';
+    ctx.fillRect(r * .62, -r * .16, r * .3, r * .32);   // Sichtschlitz
+    ctx.restore();
+  }
+
+  drawNexus(ctx, r, body, line) {
+    ctx.save();
+    for (let k = 0; k < 2; k++) {                  // zwei gegenläufige Ringe
+      ctx.rotate(this.spin * (k ? -.7 : .5));
+      ctx.strokeStyle = k ? 'rgba(196,107,255,.5)' : 'rgba(230,180,255,.7)';
+      ctx.lineWidth = 2.4;
+      ctx.setLineDash([r * .5, r * .32]);
+      ctx.beginPath(); ctx.arc(0, 0, r * (k ? 1.12 : .9), 0, 7); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.restore();
+    const p = .5 + .5 * Math.sin(this.spin * 1.8);
+    ctx.fillStyle = body; ctx.strokeStyle = line; ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.ellipse(0, 0, r * .72, r * .82, 0, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,235,255,' + (.35 + p * .5).toFixed(2) + ')';   // Schlund
+    ctx.beginPath(); ctx.ellipse(0, 0, r * .34 * (.8 + p * .3), r * .46 * (.8 + p * .3), 0, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(0, 0, r * .12, 0, 7); ctx.fill();
   }
 
   drawTitan(ctx, r, body, line) {

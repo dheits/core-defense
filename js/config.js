@@ -89,9 +89,49 @@ const ENEMIES = {
              flying: true, shield: 34 },
   mender:  { name: 'Mender',  hp: 95,  speed: 44, dmg: 6,  radius: 11, bounty: 26,  color: '#7dffb0', budget: 3.5,
              heal: 7, healRange: 2.6 },
+
+  // Saboteur: läuft nicht zum Kern, sondern reißt dir das Netz auseinander
+  sabot:   { name: 'Saboteur', hp: 78, speed: 92, dmg: 16, radius: 10, bounty: 20, color: '#ffe66b', budget: 3.6,
+             huntsNet: true, slowResist: 0.3 },
+  // Splitter: aus einem werden drei
+  splitter:{ name: 'Splitter', hp: 135, speed: 40, dmg: 12, radius: 14, bounty: 24, color: '#b06bff', budget: 5.6,
+             splitInto: 'larve', splitCount: 3 },
+  larve:   { name: 'Larve',   hp: 24,  speed: 82, dmg: 5,  radius: 6,  bounty: 3,  color: '#d7a8ff', budget: 0 },
+  // Zapfer: zieht Energie aus dem Puffer, sobald er nah genug ist
+  drainer: { name: 'Zapfer',  hp: 96,  speed: 46, dmg: 8,  radius: 11, bounty: 24, color: '#5fffe0', budget: 4.1,
+             drain: 7, drainRange: 9 },
+  // Wächter: legt einen Schild über alles in seiner Nähe
+  warden:  { name: 'Wächter', hp: 145, speed: 36, dmg: 10, radius: 13, bounty: 30, color: '#8fa6ff', budget: 5.4,
+             shieldAura: 42, auraRange: 3.2, armor: 3 },
+
+  /* ---- Bosse ---- */
   titan:   { name: 'Titan',   hp: 1100, speed: 24, dmg: 70, radius: 23, bounty: 140, color: '#ff4d4d', budget: 30,
-             boss: true, armor: 10, regen: 9 }
+             boss: true, armor: 10, regen: 9 },
+  moloch:  { name: 'Moloch',  hp: 900, speed: 21, dmg: 95, radius: 28, bounty: 260, color: '#ff7a3d', budget: 34,
+             boss: true, armor: 14 },
+  nexus:   { name: 'Nexus',   hp: 820, speed: 27, dmg: 62, radius: 26, bounty: 240, color: '#c46bff', budget: 32,
+             boss: true, armor: 6, drain: 11, drainRange: 14, spawnEvery: 3.2, spawnType: 'larve', spawnCount: 2 }
 };
+
+/* ---------------------------------------------------------------
+   Boss-Ereignis: alle zehn Wellen, im Wechsel und jeweils mit
+   eigener Regel. Die Eskorte kommt zusammen mit dem Boss herein.
+---------------------------------------------------------------- */
+const BOSSES = [
+  { type: 'titan',  hint: 'Schwer gepanzert und heilt sich selbst' },
+  { type: 'moloch', hint: 'Unverwundbar, solange seine Wächter stehen',
+    escort: { type: 'warden', count: 3, guard: true } },
+  { type: 'nexus',  hint: 'Zapft deinen Puffer an und wirft ständig Brut aus',
+    escort: { type: 'drainer', count: 2 } }
+];
+const BOSS_EVERY = 10;
+const BOSS_RAGE = 0.5;          // ab dieser Restgesundheit wird er schneller
+const GUARD_REDUCTION = 0.12;   // so viel Schaden kommt beim bewachten Boss an
+
+function bossFor(wave) {
+  if (wave % BOSS_EVERY !== 0) return null;
+  return BOSSES[(wave / BOSS_EVERY - 1) % BOSSES.length];
+}
 
 // Kurzform der Eigenschaften für Wellenvorschau und Zeichnung
 function traitWords(d) {
@@ -102,11 +142,24 @@ function traitWords(d) {
   if (d.slowResist) t.push('kaum bremsbar');
   if (d.heal) t.push('heilt');
   if (d.regen) t.push('regeneriert');
+  if (d.huntsNet) t.push('jagt Pylone');
+  if (d.splitInto) t.push('teilt sich');
+  if (d.drain) t.push('zapft Energie');
+  if (d.shieldAura) t.push('schildet ab');
+  if (d.spawnEvery) t.push('wirft Brut aus');
   return t;
 }
 
 // Ab welcher Welle taucht ein Typ auf
-const UNLOCK = { crawler: 1, runner: 2, brute: 4, drone: 6, mender: 8, titan: 10 };
+// Höchstzahl je Welle für Sondertypen — sonst besteht eine Welle nur aus
+// Unterstützern und spielt sich zäh. Die Boss-Eskorte zählt separat.
+const TYPE_CAP = { mender: 3, warden: 2, drainer: 3, sabot: 4, splitter: 5 };
+
+// Larven entstehen nur durch Teilung, stehen also nicht im Wellenpool
+const UNLOCK = {
+  crawler: 1, runner: 2, brute: 4, drone: 6, mender: 8, sabot: 9,
+  splitter: 11, drainer: 13, warden: 15
+};
 
 /* ---------------------------------------------------------------
    Lastabwurf: Jeder Turm bekommt eine Stufe. Türme feuern in dieser
@@ -127,7 +180,7 @@ const OVERLOAD = { damage: 2, cost: 3 };
 function waveHpScale(w) { return 1 + 0.16 * (w - 1) + 0.016 * (w - 1) * (w - 1); }
 
 // Wellenstärke: flacher Einstieg, ab etwa Welle 8 identisch zur alten Kurve
-function waveBudget(w)  { return 2.4 + w * 2.6 + w * w * 0.50; }
+function waveBudget(w)  { return 2.4 + w * 2.6 + w * w * 0.46; }
 
 // Abstand zwischen zwei Gegnern beim Spawn — die ersten Wellen tröpfeln herein
 function spawnGap(w) {

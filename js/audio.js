@@ -274,6 +274,30 @@ const SFX = (() => {
       tone({ type: 'sine', freq: 92, to: 68, dur: 0.55, gain: 0.11, send: 0.2 });
     },
 
+    bossSpawn() {
+      tone({ type: 'sawtooth', freq: 44, to: 88, dur: 1.5, gain: 0.24, attack: 0.15,
+             filter: 'lowpass', filterFreq: 420, send: 0.7 });
+      tone({ type: 'sine', freq: 58, to: 40, dur: 1.8, gain: 0.26, attack: 0.08, send: 0.5 });
+      noise({ dur: 1.1, freq: 300, freqTo: 60, gain: 0.13, shape: 1.2, send: 0.8 });
+      [0, .34, .68].forEach((d, i) =>
+        tone({ type: 'square', freq: 233, dur: 0.24, gain: 0.06, delay: d,
+               filter: 'lowpass', filterFreq: 1400, send: 0.5 }));
+    },
+    bossRage(pan) {
+      tone({ type: 'sawtooth', freq: 150, to: 92, dur: 0.9, gain: 0.17,
+             filter: 'lowpass', filterFreq: 1100, send: 0.5, pan });
+      tone({ type: 'square', freq: 74, to: 58, dur: 1.1, gain: 0.12, send: 0.4, pan });
+      noise({ dur: 0.7, freq: 1800, freqTo: 140, gain: 0.12, shape: 1.4, send: 0.5, pan });
+    },
+    bossDown() {
+      noise({ dur: 0.06, freq: 7000, gain: 0.3, filter: 'highpass', shape: 4, attack: 0.001 });
+      noise({ dur: 1.5, freq: 2600, freqTo: 45, gain: 0.32, shape: 1.2, send: 0.85 });
+      tone({ type: 'sine', freq: 130, to: 24, dur: 1.5, gain: 0.3, attack: 0.005, send: 0.6 });
+      [392, 523, 659].forEach((f, i) =>
+        tone({ type: 'triangle', freq: f, dur: 0.9, gain: 0.07, delay: .35 + i * .1,
+               attack: 0.03, send: 0.6 }));
+    },
+
     /* ---------------- Phasen ---------------- */
     waveStart() {
       [0, 0.16, 0.32].forEach((d, i) =>

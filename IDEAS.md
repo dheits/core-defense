@@ -25,7 +25,7 @@ Zeilen im Feuerpfad, ein Knopf im Inspektor.*
 Besser: Der Spieler legt fest, wer zuerst Strom bekommt. Aus einem Ärgernis wird eine
 Planungsaufgabe. *Klein: Prioritätsfeld pro Turm, Sortierung im Feuerpfad.*
 
-**Saboteure** — ein Gegnertyp, der nicht den Kern will, sondern den nächstgelegenen
+**Saboteure** ✅ *umgesetzt* — ein Gegnertyp, der nicht den Kern will, sondern den nächstgelegenen
 Pylon. Trifft er, fällt ein ganzer Ast des Netzes aus, und die Türme dahinter werden
 kalt. Das macht die Kettenstruktur zur Schwachstelle, die sie logisch schon ist.
 *Mittel: eigene Zielsuche im Gegner-Update.*
@@ -56,7 +56,9 @@ Spannungskurve daran: zwei, drei Knöpfe, die der Spieler im richtigen Moment dr
 Not-Entladung des Puffers als Schockwelle, kurzzeitiger Netz-Überschuss, Reparaturpuls.
 Hier besonders passend, weil sie Energie kosten können. *Mittel.*
 
-**Bosse, die etwas verlangen.** Der Titan ist derzeit nur ein sehr dicker Crawler.
+**Bosse, die etwas verlangen.** ✅ *umgesetzt* — Moloch mit Wächter-Eskorte und Nexus mit
+Anzapfung und Brut, dazu zweite Phase, Ankündigung, HP-Leiste und Bossbeute.
+Ursprüngliche Notiz: Der Titan ist derzeit nur ein sehr dicker Crawler.
 Interessanter wäre ein Boss mit Eigenschaft: zieht Energie aus dem Netz, während er
 lebt; oder wirft eine Störzone, in der Türme nicht feuern. *Mittel.*
 
@@ -147,9 +149,11 @@ wirkt: Variante 1, eine schwache Nahverteidigung des Kerns ab Werk.
 Karten zwischen den Wellen (48 Stück, vier zur Wahl, mit turmspezifischen Karten,
 Zielkonflikten und Regeländerungen), Überladung mit Lastpriorität und die
 Konter-Eigenschaften sind gebaut (Stand September 2026), zusammen mit der
-Wellenvorschau, ohne die das Kontersystem nicht lesbar gewesen wäre. Bleibt aus der Liste: Saboteure, Kernmodi,
-getrennte Akkus, aktive Fähigkeiten, Boss-Eigenheiten, Bestenliste, Tagesseed,
-Bilanz nach der Welle, Speicherstand und die Bedienkomfort-Punkte.
+Wellenvorschau, ohne die das Kontersystem nicht lesbar gewesen wäre. Dazu kamen vier Gegnertypen (Saboteur, Splitter, Zapfer, Wächter) und das
+Boss-Ereignis mit drei Bossen im Wechsel.
+
+Bleibt aus der Liste: Kernmodi, getrennte Akkus, aktive Fähigkeiten, Bestenliste,
+Tagesseed, Bilanz nach der Welle, Speicherstand und die Bedienkomfort-Punkte.
 
 ## Wenn ich drei Dinge auswählen müsste (ursprüngliche Empfehlung)
 

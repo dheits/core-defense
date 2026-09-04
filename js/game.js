@@ -22,6 +22,7 @@ const game = {
   draft: null, plannedWave: null, turretsDirty: true,
   // Wird der Kern länger ungestört bearbeitet, ist irgendwo die Deckung offen
   alarm: { since: 0, last: -99, on: false, seen: false },
+  boss: null, bossReward: false, pendingSpawns: [],
   hover: { x: -1, y: -1, inside: false },
   shake: 0,
 
@@ -255,6 +256,7 @@ const game = {
       for (let i = 0; i < 8; i++)
         this.particles.push(new Particle(e.x, e.y, '#6bd5ff', { speed: rand(60, 180), life: .35, size: 2 }));
     }
+    if (e.def.boss && e.guarded) dmg *= GUARD_REDUCTION;
     const armor = Math.max(0, e.armor - this.buffs.pierce);
     if (armor) dmg = Math.max(dmg * 0.15, dmg - armor);   // nie ganz wirkungslos
     e.hp -= dmg;
@@ -278,6 +280,21 @@ const game = {
       const teile = e.def.boss ? 14 : 4;
       for (let i = 0; i < teile; i++)
         this.particles.push(new Debris(e.x, e.y, e.def.color, e.def.boss ? 2 : 1));
+
+      if (e.def.splitInto) {                      // aus einem werden drei
+        for (let i = 0; i < e.def.splitCount; i++) {
+          const a = i / e.def.splitCount * Math.PI * 2 + rand(0, 1);
+          this.pendingSpawns.push(new Enemy(e.def.splitInto,
+            e.x + Math.cos(a) * 13, e.y + Math.sin(a) * 13, this.wave));
+        }
+      }
+      if (e.def.boss) {                           // Bosse zahlen sich aus
+        this.matter += 150;
+        this.bossReward = true;
+        this.shake = Math.max(this.shake, 14);
+        SFX.bossDown();
+        toast(e.def.name.toUpperCase() + ' GEFALLEN  +150 Materie');
+      }
     }
   },
 
@@ -333,17 +350,30 @@ const game = {
       angles.push(base + i / groups * Math.PI * 2 + rand(-.35, .35));
 
     const queue = [];
-    // Boss alle 10 Wellen
-    if (n >= UNLOCK.titan && n % 10 === 0) {
-      queue.push({ type: 'titan', t: 1.5, angle: pick(angles) });
-      budget -= ENEMIES.titan.budget;
+    const boss = bossFor(n);
+    if (boss) {
+      const a = pick(angles);
+      queue.push({ type: boss.type, t: 2.2, angle: a, boss: true });
+      budget -= ENEMIES[boss.type].budget;
+      if (boss.escort) {
+        for (let i = 0; i < boss.escort.count; i++) {
+          queue.push({ type: boss.escort.type, t: .8 + i * .45,
+                       angle: a + (i - (boss.escort.count - 1) / 2) * .16,
+                       guard: !!boss.escort.guard });
+          budget -= ENEMIES[boss.escort.type].budget;
+        }
+      }
     }
     let t = 0;
     let gi = 0;
+    const gezogen = {};
     while (budget > 0 && queue.length < 400) {
-      const type = pick(pool);
+      const frei = pool.filter(x => (gezogen[x] || 0) < (TYPE_CAP[x] || 999));
+      if (!frei.length) break;
+      const type = pick(frei);
       const d = ENEMIES[type];
       if (d.budget > budget + 1) break;
+      gezogen[type] = (gezogen[type] || 0) + 1;
       budget -= d.budget;
       const a = angles[gi % angles.length] + rand(-.12, .12);
       gi += Math.random() < 0.28 ? 1 : 0;
@@ -378,8 +408,10 @@ const game = {
     if (this.buildTimer > 0) this.matter += Math.round(this.buildTimer * 2);
     this.wave++;
     this.phase = 'combat';
+    // Rollen (Boss, Wächter) müssen mitwandern, nicht nur Typ und Zeit
     this.spawnQueue = this.plannedWave.queue
-      .map(e => ({ type: e.type, angle: e.angle, at: this.time + e.t }));
+      .map(e => Object.assign({}, e, { at: this.time + e.t }))
+      .sort((a, b) => a.at - b.at);
     this.incoming = this.plannedWave.angles;
     this.plannedWave = null;
     if (this.buffs.waveStartFull) this.energy = this.energyMax;
@@ -391,6 +423,15 @@ const game = {
   openDraft() {
     const pool = CARDS.filter(c => (this.takenCards.get(c.id) || 0) < (c.max || CARD_MAX));
     const picks = [];
+    if (this.bossReward) {                        // Bossbeute: eine seltene Karte ist sicher dabei
+      this.bossReward = false;
+      const selten = pool.filter(c => (c.weight || 1) < 1);
+      if (selten.length) {
+        const c = selten[(Math.random() * selten.length) | 0];
+        picks.push(c);
+        pool.splice(pool.indexOf(c), 1);
+      }
+    }
     while (picks.length < DRAFT_SIZE && pool.length) {
       let total = 0;
       for (const c of pool) total += c.weight || 1;
@@ -419,9 +460,18 @@ const game = {
     toast(c.name);
   },
 
-  spawn(type, angle) {
-    const p = edgePoint(angle, 34);
-    this.enemies.push(new Enemy(type, p.x, p.y, this.wave));
+  spawn(s) {
+    const p = edgePoint(s.angle, 34);
+    const e = new Enemy(s.type, p.x, p.y, this.wave);
+    if (s.guard) e.isGuard = true;
+    this.enemies.push(e);
+    if (s.boss) {
+      this.boss = e;
+      this.shake = Math.max(this.shake, 12);
+      SFX.bossSpawn();
+      toast(e.def.name.toUpperCase() + ' ERSCHEINT');
+    }
+    return e;
   },
 
   /* ------------------------ Update -------------------------- */
@@ -436,8 +486,7 @@ const game = {
       if (this.buildTimer <= 0) this.startWave();
     } else {
       while (this.spawnQueue.length && this.spawnQueue[0].at <= this.time) {
-        const s = this.spawnQueue.shift();
-        this.spawn(s.type, s.angle);
+        this.spawn(this.spawnQueue.shift());
       }
       if (!this.spawnQueue.length && !this.enemies.length) {
         this.phase = 'build';
@@ -453,7 +502,16 @@ const game = {
     }
 
     for (const e of this.enemies) e.update(dt, this);
+    if (this.pendingSpawns.length) {              // Teilung und Brut erst nach dem Durchlauf
+      this.enemies.push(...this.pendingSpawns);
+      this.pendingSpawns.length = 0;
+    }
     this.enemies = this.enemies.filter(e => !e.dead);
+
+    // Solange ein Wächter steht, kommt beim Boss kaum Schaden an
+    if (this.boss && !this.boss.dead)
+      this.boss.guarded = this.enemies.some(x => x.isGuard && !x.dead);
+    else this.boss = null;
 
     // Drei Sekunden ununterbrochener Schaden am Kern gelten als Deckungslücke
     const was = this.alarm.on;
@@ -518,6 +576,17 @@ const game = {
 
     for (const p of this.particles) p.update(dt);
     this.particles = this.particles.filter(p => !p.dead);
+  },
+
+  // Nächstes Netzteil für Saboteure: Pylone zuerst, sonst Reaktoren
+  nearestNetPart(x, y) {
+    let best = null, bd = Infinity;
+    for (const b of this.buildings.values()) {
+      if (b.type !== 'pylon' && b.type !== 'reactor') continue;
+      const d = dist(x, y, b.px, b.py) * (b.type === 'pylon' ? 1 : 1.6);
+      if (d < bd) { bd = d; best = b; }
+    }
+    return best;
   },
 
   coreAttackers() {
@@ -1072,6 +1141,27 @@ function updateHud() {
     : (game.spawnQueue.length + game.enemies.length) + ' Feinde';
   el('nextWave').classList.toggle('hot', build);
   el('nextWave').disabled = !build;
+
+  const bb = el('bossbar');
+  if (game.boss && !game.boss.dead) {
+    const b = game.boss;
+    bb.hidden = false;
+    el('bossName').textContent = b.def.name;
+    const info = bossFor(game.wave);
+    el('bossHint').textContent = info ? info.hint : '';
+    el('bossFill').style.width = Math.max(0, b.hp / b.maxHp * 100) + '%';
+    const st = el('bossState');
+    st.textContent = b.guarded ? 'Abgeschirmt — erst die Wächter ausschalten'
+                   : (b.enraged ? 'Rasend' : '');
+    st.classList.toggle('guarded', !!b.guarded);
+  } else bb.hidden = true;
+
+  const bw = el('bossWarn');
+  const kommt = build && !game.draft ? bossFor(game.wave + 1) : null;
+  bw.hidden = !kommt;
+  if (kommt)
+    bw.innerHTML = 'Welle ' + (game.wave + 1) + ': <b>' + ENEMIES[kommt.type].name +
+                   '</b> — ' + kommt.hint;
 
   const alarmEl = el('alarm');
   alarmEl.hidden = !game.alarm.on;

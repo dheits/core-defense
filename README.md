@@ -136,9 +136,9 @@ Jedes Gebäude hat drei Ausbaustufen (+35 % Schaden, +8 % Reichweite, mehr Struk
 
 ## Gegner
 
-Crawler ab Welle 1, Runner ab 2, Brute ab 4, Drohne ab 6, Mender ab 8,
-Titan als Boss alle 10 Wellen. Jeder Typ ab Welle 2 bringt eine Eigenschaft mit,
-die einen bestimmten Turm erzwingt:
+Crawler ab Welle 1, Runner ab 2, Brute ab 4, Drohne ab 6, Mender ab 8, Saboteur ab 9,
+Splitter ab 11, Zapfer ab 13, Wächter ab 15. Jeder Typ ab Welle 2 bringt eine
+Eigenschaft mit, die einen bestimmten Turm oder eine bestimmte Reaktion erzwingt:
 
 | Gegner | Eigenschaft | Antwort |
 |---|---|---|
@@ -146,14 +146,35 @@ die einen bestimmten Turm erzwingt:
 | Brute | Panzerung 6 — **von jedem einzelnen Treffer** abgezogen | Kanone; ein Blaster kratzt für 1 |
 | Drohne | Schild, fliegt über Bauten hinweg | Frostturm (Strahl wirkt 1,5-fach am Schild), Reichweite |
 | Mender | heilt Gegner im Umkreis | zuerst abschießen |
-| Titan | Panzerung 10, heilt sich | gebündelter Einzelschaden |
+| Saboteur | läuft nicht zum Kern, sondern zerlegt deinen nächsten **Pylon** | Netzknoten mit Türmen decken |
+| Splitter | zerfällt beim Tod in drei Larven | Flächenschaden, sonst kommt die zweite Welle aus der ersten |
+| Zapfer | saugt aus 9 Zellen Entfernung 7 Energie pro Sekunde aus dem Puffer | zuerst abschießen, Reichweite hilft |
+| Wächter | legt einen Schild von 42 über alles in 3,2 Zellen | Frost bricht Schilde, oder den Wächter zuerst |
 
 Panzerung lässt immer mindestens 15 % des Schadens durch, kein Turm wird also völlig
 nutzlos. Geschosse richten an Schilden nur 65 % aus, der Frost-Strahl 150 %.
 Die Karten *Durchschlagmunition* und *Schildbrecher* heben beides teilweise auf.
 
+Unterstützungstypen sind je Welle gedeckelt (Wächter 2, Mender und Zapfer 3,
+Saboteure 4, Splitter 5), sonst besteht eine Welle nur aus Hilfstruppen.
+
 Die Vorschau in der Bauphase nennt Zusammensetzung, Richtung und Eigenschaften der
 nächsten Welle — ohne sie wäre das Kontersystem unsichtbar.
+
+## Das Boss-Ereignis
+
+Alle zehn Wellen kommt ein Boss, im Wechsel einer von drei — angekündigt schon in der
+Bauphase davor, mit eigener Leiste im HUD, eigenem Auftritt und zweiter Phase: Unter der
+halben Gesundheit wird jeder Boss um 45 % schneller und glüht rot.
+
+| Welle | Boss | Regel |
+|---|---|---|
+| 10, 40, … | **Titan** | Panzerung 10, heilt sich 9 pro Sekunde |
+| 20, 50, … | **Moloch** | Kommt mit drei **Wächtern**. Solange einer steht, kommen beim Moloch nur 12 % des Schadens an — erst die Eskorte, dann der Koloss. |
+| 30, 60, … | **Nexus** | Zapft aus 14 Zellen Entfernung 11 Energie pro Sekunde ab und wirft alle 3,2 Sekunden zwei Larven aus. Zwei Zapfer begleiten ihn. |
+
+Ein erlegter Boss bringt 150 Materie zusätzlich zum Kopfgeld — und die nächste
+Kartenwahl enthält garantiert eine seltene Karte.
 
 Der Einstieg ist bewusst ruhig: 170 Startmaterie, 34 Sekunden erste Bauphase (danach 22),
 und die ersten drei Wellen tröpfeln mit größeren Abständen aus einer Richtung herein.
