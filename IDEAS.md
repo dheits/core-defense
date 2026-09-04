@@ -72,7 +72,7 @@ Genau hier hört das Spiel gerade auf. Endlose Wellen ohne Fortschritt zwischen 
 Partien sind der Punkt, an dem die Recherche am deutlichsten war: Rogue Tower und
 Infinitode 2 leben von dem, was zwischen den Runden passiert.
 
-**Karten zwischen den Wellen.** ✅ *umgesetzt* (18 Karten). Nach jeder abgewehrten Welle drei Optionen zur Auswahl:
+**Karten zwischen den Wellen.** ✅ *umgesetzt* (48 Karten, vier zur Wahl). Nach jeder abgewehrten Welle drei Optionen zur Auswahl:
 +15 % Reichweite netzweit, Pylone kosten die Hälfte, Reaktoren geben Schaden statt
 Energie. Das erzeugt bei jeder Partie einen anderen Aufbau — die günstigste Art,
 Wiederspielwert einzubauen. *Mittel, und mit Abstand der beste Aufwand-Nutzen-Schnitt.*
@@ -119,11 +119,31 @@ Endlosspiel im Browser fast Pflicht. *Klein: Zustand ist bereits reine Daten.*
 
 ---
 
+## Gefunden, noch offen: der Kern kann sich nicht wehren
+
+Beim Balance-Testen aufgetaucht und wert, entschieden zu werden: Erreicht ein Gegner
+eine Ecke des Kerns, die kein Turm abdeckt, hämmert er dort ungestört weiter — in einem
+Testlauf zerlegte ein **einzelner** Crawler mit voller Lebensenergie den Kern in 60
+Sekunden, während drei feuerbereite Türme 133 px entfernt standen und ihre Reichweite
+bei 118 px endete. Das Spiel hat dagegen bisher nur die Karte *Kernstoß*, und die muss
+man erst ziehen.
+
+Drei Wege, je nach gewünschter Härte:
+1. Der Kern bekommt eine schwache Nahverteidigung ab Werk (etwa 4 Schaden pro Sekunde
+   im Umkreis von 2 Zellen) — verzeiht Deckungslücken, nimmt aber etwas Spannung.
+2. Eine Warnung: „Kern wird angegriffen" samt Marker, wenn länger als 3 Sekunden
+   ungestört Schaden ankommt — lässt die Lücke bestehen, macht sie aber sichtbar.
+3. So lassen: Rundumdeckung ist die Aufgabe des Spiels, und *Kernstoß* ist die Antwort
+   für alle, die sie ziehen.
+
+Empfehlung: 2, notfalls 1 in schwacher Dosierung.
+
 ## Erledigt
 
-Karten zwischen den Wellen, Überladung mit Lastpriorität und die Konter-Eigenschaften
-sind gebaut (Stand September 2026), zusammen mit der Wellenvorschau, ohne die das
-Kontersystem nicht lesbar gewesen wäre. Bleibt aus der Liste: Saboteure, Kernmodi,
+Karten zwischen den Wellen (48 Stück, vier zur Wahl, mit turmspezifischen Karten,
+Zielkonflikten und Regeländerungen), Überladung mit Lastpriorität und die
+Konter-Eigenschaften sind gebaut (Stand September 2026), zusammen mit der
+Wellenvorschau, ohne die das Kontersystem nicht lesbar gewesen wäre. Bleibt aus der Liste: Saboteure, Kernmodi,
 getrennte Akkus, aktive Fähigkeiten, Boss-Eigenheiten, Bestenliste, Tagesseed,
 Bilanz nach der Welle, Speicherstand und die Bedienkomfort-Punkte.
 

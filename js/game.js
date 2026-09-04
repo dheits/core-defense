@@ -18,7 +18,7 @@ const game = {
   enemies: [], projectiles: [], particles: [], beams: [],
   spawnQueue: [], incoming: [],
   tool: null, selected: null, inView: true,
-  buffs: Object.assign({}, BASE_BUFFS), takenCards: new Map(),
+  buffs: freshBuffs(), takenCards: new Map(),
   draft: null, plannedWave: null, turretsDirty: true,
   hover: { x: -1, y: -1, inside: false },
   shake: 0,
@@ -36,20 +36,27 @@ const game = {
   },
 
   /* ------------------- Bauen / Verkaufen -------------------- */
+  // Karten wirken teils global, teils nur auf einen Turmtyp
+  typeBuff(b, key) {
+    const t = this.buffs.type[b.type];
+    return t && t[key] !== undefined ? t[key] : 1;
+  },
   stat(b, name) {
     const base = b.def[name];
     if (base === undefined) return undefined;
     const lvl = b.level - 1;
     if (name === 'damage') {
-      const d = base * Math.pow(UPGRADE.damage, lvl) * this.buffs.damage;
+      const d = base * Math.pow(UPGRADE.damage, lvl) * this.buffs.damage * this.typeBuff(b, 'dmg');
       return b.overload ? d * OVERLOAD.damage : d;
     }
-    if (name === 'range') return base * Math.pow(UPGRADE.range, lvl) * this.buffs.range;
+    if (name === 'range')
+      return base * Math.pow(UPGRADE.range, lvl) * this.buffs.range * this.typeBuff(b, 'range');
     return base;
   },
-  cooldownOf(b) { return b.def.cooldown / this.buffs.rate; },
+  cooldownOf(b) { return b.def.cooldown / (this.buffs.rate * this.typeBuff(b, 'rate')); },
   energyOf(b) {
-    return b.def.energy * this.buffs.energy * (b.overload ? this.buffs.overloadCost : 1);
+    return b.def.energy * this.buffs.energy * this.typeBuff(b, 'energy')
+      * (b.overload ? this.buffs.overloadCost : 1);
   },
   costOf(type) { return Math.round(BUILDINGS[type].cost * this.buffs.buildCost); },
   upgradeCost(b) {
@@ -91,7 +98,7 @@ const game = {
 
   sell(b) {
     SFX.sell();
-    this.matter += Math.round(this.costOf(b.type) * SELL_REFUND * b.level);
+    this.matter += Math.round(this.costOf(b.type) * this.buffs.refund * b.level);
     this.buildings.delete(key(b.x, b.y));
     this.turretsDirty = true;
     if (this.selected === b) this.select(null);
@@ -206,6 +213,19 @@ const game = {
           { speed: rand(60, 260), life: rand(.2, .5) }));
     } else {
       this.hurt(enemy, dmg, kind);
+      // Kettenblitz: der Treffer springt auf das nächste Ziel über
+      if (this.buffs.chain && kind === 'proj') {
+        let best = null, bd = 2.2 * GRID.cell;
+        for (const o of this.enemies) {
+          if (o === enemy || o.dead) continue;
+          const d = dist(o.x, o.y, enemy.x, enemy.y);
+          if (d < bd) { bd = d; best = o; }
+        }
+        if (best) {
+          this.hurt(best, dmg * this.buffs.chain, 'chain');
+          this.beams.push({ x1: enemy.x, y1: enemy.y, x2: best.x, y2: best.y, life: .1, color: '#8affc1' });
+        }
+      }
       for (let i = 0; i < 4; i++)
         this.particles.push(new Particle(enemy.x, enemy.y, def ? def.color : '#fff',
           { speed: rand(30, 120), life: rand(.15, .3), size: 2 }));
@@ -217,6 +237,7 @@ const game = {
      zählt hier Einzelschaden mehr als Feuerrate. */
   hurt(e, dmg, kind) {
     if (e.dead) return;
+    if (e.flying) dmg *= this.buffs.vsAir;
     if (e.shield > 0) {
       const mult = kind === 'beam' ? 1.5 : (this.buffs.shieldPierce ? 1 : 0.65);
       const onShield = dmg * mult;
@@ -236,8 +257,16 @@ const game = {
     if (armor) dmg = Math.max(dmg * 0.15, dmg - armor);   // nie ganz wirkungslos
     e.hp -= dmg;
     e.hitFlash = 0.06;
+    if (this.buffs.hitSlow) e.applySlow(1 - this.buffs.hitSlow, 0.8, this.time);
     if (e.hp <= 0) {
       e.dead = true;
+      // Sprengbolzen: der Abschuss reißt Umstehende mit (nur eine Stufe tief)
+      if (this.buffs.deathSpark && kind !== 'spark') {
+        const r = 1.4 * GRID.cell;
+        for (const o of this.enemies)
+          if (o !== e && !o.dead && dist(o.x, o.y, e.x, e.y) <= r)
+            this.hurt(o, this.buffs.deathSpark, 'spark');
+      }
       SFX.kill(e.def.boss);
       this.matter += e.def.bounty * this.buffs.bounty;
       const n = e.def.boss ? 40 : 12;
@@ -263,9 +292,15 @@ const game = {
     }
   },
 
-  damageCore(dmg) {
+  damageCore(dmg, enemy) {
     this.coreHp -= dmg;
     SFX.coreHit();
+    if (enemy && this.buffs.coreShock) {          // Kernstoß: zurück und weh
+      const a = Math.atan2(enemy.y - CORE_PX.y, enemy.x - CORE_PX.x);
+      enemy.x += Math.cos(a) * 26;
+      enemy.y += Math.sin(a) * 26;
+      this.hurt(enemy, this.buffs.coreShock, 'shock');
+    }
     this.shake = Math.max(this.shake, 8);
     for (let i = 0; i < 8; i++)
       this.particles.push(new Particle(CORE_PX.x + rand(-30, 30), CORE_PX.y + rand(-30, 30),
@@ -338,16 +373,25 @@ const game = {
       .map(e => ({ type: e.type, angle: e.angle, at: this.time + e.t }));
     this.incoming = this.plannedWave.angles;
     this.plannedWave = null;
+    if (this.buffs.waveStartFull) this.energy = this.energyMax;
     SFX.waveStart();
     toast('WELLE ' + this.wave);
   },
 
   /* ---------------- Karten zwischen den Wellen ---------------- */
   openDraft() {
-    const pool = CARDS.filter(c => !(c.once && this.takenCards.has(c.id)));
+    const pool = CARDS.filter(c => (this.takenCards.get(c.id) || 0) < (c.max || CARD_MAX));
     const picks = [];
-    while (picks.length < 3 && pool.length)
-      picks.push(pool.splice((Math.random() * pool.length) | 0, 1)[0]);
+    while (picks.length < DRAFT_SIZE && pool.length) {
+      let total = 0;
+      for (const c of pool) total += c.weight || 1;
+      let r = Math.random() * total, idx = pool.length - 1;
+      for (let i = 0; i < pool.length; i++) {
+        r -= pool[i].weight || 1;
+        if (r <= 0) { idx = i; break; }
+      }
+      picks.push(pool.splice(idx, 1)[0]);
+    }
     if (!picks.length) return;
     this.draft = picks;
     showDraft(picks);
@@ -389,7 +433,9 @@ const game = {
       if (!this.spawnQueue.length && !this.enemies.length) {
         this.phase = 'build';
         this.buildTimer = BUILD_TIME;
-        this.matter += 30 + this.wave * 6;
+        this.matter += 30 + this.wave * 6 + this.buffs.matterPerWave;
+        if (this.buffs.coreRepair)
+          this.coreHp = Math.min(this.coreHpMax, this.coreHp + this.buffs.coreRepair);
         SFX.waveClear();
         toast('Welle ' + this.wave + ' abgewehrt  +' + (30 + this.wave * 6) + ' Materie');
         this.planNext();
@@ -411,12 +457,19 @@ const game = {
     /* Türme feuern in der Reihenfolge ihrer Lastpriorität, und die
        unteren Stufen fassen den Puffer erst über ihrer Schwelle an. */
     const frac = this.energy / this.energyMax;
+    const autoOverload = this.buffs.freeOverloadAt && frac >= this.buffs.freeOverloadAt;
     for (const b of this.turrets()) {
-      if (!b.supplied) continue;
-      b.cd -= dt;
+      const rateMul = b.supplied ? 1 : this.buffs.unpoweredRate;
+      if (!rateMul) continue;                     // ohne Netz und ohne Inselbetrieb: still
+      b.cd -= dt * rateMul;
       if (b.cd > 0) continue;
       if (frac < PRIORITY[b.prio].threshold) { b.pulse = 0; continue; }
-      const cost = this.energyOf(b);
+      let cost = this.energyOf(b);
+      let dmg = this.stat(b, 'damage');
+      if (autoOverload) {                         // Überladung geschenkt, solange der Puffer voll ist
+        if (b.overload) cost /= this.buffs.overloadCost;
+        else dmg *= OVERLOAD.damage;
+      }
       const target = this.findTarget(b);
       if (!target) continue;
       if (this.energy < cost) { b.pulse = 0; SFX.lowPower(); continue; }
@@ -424,7 +477,6 @@ const game = {
       b.cd = this.cooldownOf(b);
       b.pulse = 1;
       b.aim = Math.atan2(target.y - b.py, target.x - b.px);
-      const dmg = this.stat(b, 'damage');
       if (b.type === 'cannon') SFX.cannon();
       else if (b.type === 'frost') SFX.frost();
       else SFX.blaster();
@@ -739,7 +791,7 @@ function updateInspector() {
   el('insStats').innerHTML = rows.map(r => `<span>${r[0]}</span><span>${r[1]}</span>`).join('');
   el('upgradeBtn').textContent = b.level >= UPGRADE.maxLevel ? 'Max' : 'Ausbau ' + game.upgradeCost(b);
   el('upgradeBtn').disabled = b.level >= UPGRADE.maxLevel;
-  el('sellBtn').textContent = 'Abbau +' + Math.round(game.costOf(b.type) * SELL_REFUND * b.level);
+  el('sellBtn').textContent = 'Abbau +' + Math.round(game.costOf(b.type) * game.buffs.refund * b.level);
 
   const turretBox = el('insTurret');
   turretBox.hidden = !b.def.turret;

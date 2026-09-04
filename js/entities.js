@@ -210,8 +210,11 @@ class Enemy {
     this.attackCd -= dt;
     if (this.attackCd > 0) return;
     this.attackCd = 1;
-    if (building) game.damageBuilding(building, this.def.dmg);
-    else game.damageCore(this.def.dmg);
+    if (building) {
+      game.damageBuilding(building, this.def.dmg);
+      if (building.type === 'wall' && game.buffs.wallThorns)
+        game.hurt(this, game.buffs.wallThorns, 'thorns');
+    } else game.damageCore(this.def.dmg, this);
     const a = this.angle;
     for (let i = 0; i < 5; i++)
       game.particles.push(new Particle(this.x + Math.cos(a) * this.radius,

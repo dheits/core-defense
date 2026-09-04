@@ -124,10 +124,10 @@ const PRIORITY = [
 const OVERLOAD = { damage: 2, cost: 3 };
 
 // Gegner-HP wächst mit der Wellennummer
-function waveHpScale(w) { return 1 + 0.16 * (w - 1) + 0.021 * (w - 1) * (w - 1); }
+function waveHpScale(w) { return 1 + 0.16 * (w - 1) + 0.016 * (w - 1) * (w - 1); }
 
 // Wellenstärke: flacher Einstieg, ab etwa Welle 8 identisch zur alten Kurve
-function waveBudget(w)  { return 2.4 + w * 2.6 + w * w * 0.56; }
+function waveBudget(w)  { return 2.4 + w * 2.6 + w * w * 0.50; }
 
 // Abstand zwischen zwei Gegnern beim Spawn — die ersten Wellen tröpfeln herein
 function spawnGap(w) {
@@ -136,35 +136,59 @@ function spawnGap(w) {
 }
 
 /* ---------------------------------------------------------------
-   Karten zwischen den Wellen. Nach jeder abgewehrten Welle sind drei
+   Karten zwischen den Wellen. Nach jeder abgewehrten Welle sind vier
    davon zur Wahl — jede Partie läuft dadurch anders.
 
    apply(b, g): b sind die laufenden Multiplikatoren, g der Spielzustand
-   für alles, was sofort passieren soll. `once` heißt: nur einmal ziehbar.
+   für alles, was sofort passieren soll.
+   weight: Ziehwahrscheinlichkeit (1 = normal, darunter selten).
+   max:    wie oft eine Karte insgesamt genommen werden kann.
 ---------------------------------------------------------------- */
+const DRAFT_SIZE = 4;
+const CARD_MAX = 4;                    // Standardgrenze je Karte
+
 const BASE_BUFFS = {
+  // Grundwerte für alle Türme
   damage: 1, range: 1, rate: 1, energy: 1, splash: 1,
   slowBonus: 0, slowTime: 0,
-  regen: 0, capacity: 0, netRadius: 0,
-  bounty: 1, buildCost: 1, structure: 1, repair: 0,
-  pierce: 0,                  // durchschlägt so viel Panzerung
-  shieldPierce: false,        // Geschosse voll wirksam gegen Schilde
-  overloadCost: OVERLOAD.cost
+  // Energie und Netz
+  regen: 0, capacity: 0, netRadius: 0, regenMul: 1,
+  waveStartFull: false, freeOverloadAt: 0, unpoweredRate: 0,
+  // Bauwesen
+  bounty: 1, buildCost: 1, structure: 1, repair: 0, refund: SELL_REFUND,
+  coreRepair: 0, matterPerWave: 0,
+  // Wirkung gegen Eigenschaften
+  pierce: 0, shieldPierce: false, vsAir: 1,
+  chain: 0, deathSpark: 0, hitSlow: 0,
+  wallThorns: 0, coreShock: 0,
+  overloadCost: OVERLOAD.cost,
+  // Türme einzeln: Schaden, Rate, Reichweite, Verbrauch
+  type: {
+    blaster: { dmg: 1, rate: 1, range: 1, energy: 1 },
+    cannon:  { dmg: 1, rate: 1, range: 1, energy: 1 },
+    frost:   { dmg: 1, rate: 1, range: 1, energy: 1 }
+  }
 };
 
+// Tiefe Kopie — sonst teilen sich alle Partien dasselbe type-Objekt
+function freshBuffs() { return JSON.parse(JSON.stringify(BASE_BUFFS)); }
+
 const CARDS = [
-  { id:'optik',        name:'Fokussierte Optik',  desc:'+12 % Reichweite für alle Türme',
-    apply:b => b.range *= 1.12 },
-  { id:'ladung',       name:'Verdichtete Ladung', desc:'+15 % Schaden',
-    apply:b => b.damage *= 1.15 },
-  { id:'zyklus',       name:'Kürzere Zyklen',     desc:'+14 % Feuerrate',
-    apply:b => b.rate *= 1.14 },
-  { id:'supraleiter',  name:'Supraleiter',        desc:'Jeder Schuss kostet 15 % weniger Energie',
-    apply:b => b.energy *= 0.85 },
-  { id:'puffer',       name:'Größerer Puffer',    desc:'+45 Energiespeicher',
-    apply:b => b.capacity += 45 },
-  { id:'reaktorkern',  name:'Heißer Reaktorkern', desc:'+4 Energie pro Sekunde',
-    apply:b => b.regen += 4 },
+  /* --- Grundwerte, überall wirksam --- */
+  { id:'optik',        name:'Fokussierte Optik',  desc:'+14 % Reichweite für alle Türme',
+    apply:b => b.range *= 1.14 },
+  { id:'ladung',       name:'Verdichtete Ladung', desc:'+18 % Schaden',
+    apply:b => b.damage *= 1.18 },
+  { id:'zyklus',       name:'Kürzere Zyklen',     desc:'+16 % Feuerrate',
+    apply:b => b.rate *= 1.16 },
+  { id:'supraleiter',  name:'Supraleiter',        desc:'Jeder Schuss kostet 18 % weniger Energie',
+    apply:b => b.energy *= 0.82 },
+  { id:'puffer',       name:'Größerer Puffer',    desc:'+55 Energiespeicher',
+    apply:b => b.capacity += 55 },
+  { id:'reaktorkern',  name:'Heißer Reaktorkern', desc:'+5 Energie pro Sekunde',
+    apply:b => b.regen += 5 },
+  { id:'kuehlung',     name:'Kernkühlung',        desc:'+25 % Energie-Regeneration',
+    apply:b => b.regenMul *= 1.25 },
   { id:'netzausbau',   name:'Netzausbau',         desc:'Kern und Pylone reichen 0,7 Zellen weiter',
     apply:b => b.netRadius += 0.7 },
   { id:'bergung',      name:'Bergungstrupp',      desc:'+30 % Materie aus Abschüssen',
@@ -175,19 +199,106 @@ const CARDS = [
     apply:b => b.structure *= 1.3 },
   { id:'nanoreparatur',name:'Nanoreparatur',      desc:'Bauten heilen 2 Struktur pro Sekunde',
     apply:b => b.repair += 2 },
-  { id:'streuladung',  name:'Streuladung',        desc:'+35 % Wirkungsradius der Kanonen',
-    apply:b => b.splash *= 1.35 },
+  { id:'lieferung',    name:'Nachschublieferung', desc:'+25 Materie nach jeder Welle',
+    apply:b => b.matterPerWave += 25 },
+  { id:'kernwerft',    name:'Kernwerft',          desc:'Der Kern repariert nach jeder Welle 70 Struktur',
+    apply:b => b.coreRepair += 70 },
+
+  /* --- Blaster --- */
+  { id:'schnellwechsel',name:'Schnellwechsel',    desc:'Blaster: +45 % Feuerrate',
+    apply:b => b.type.blaster.rate *= 1.45 },
+  { id:'harteKerne',   name:'Gehärtete Kerne',    desc:'Blaster: +45 % Schaden',
+    apply:b => b.type.blaster.dmg *= 1.45 },
+  { id:'doppelrohr',   name:'Doppelrohr',         desc:'Blaster: 40 % weniger Energie je Schuss',
+    apply:b => b.type.blaster.energy *= 0.6 },
+
+  /* --- Kanone --- */
+  { id:'streuladung',  name:'Streuladung',        desc:'Kanonen: +45 % Wirkungsradius',
+    apply:b => b.splash *= 1.45 },
+  { id:'schwereRohre', name:'Schwere Rohre',      desc:'Kanonen: +50 % Schaden',
+    apply:b => b.type.cannon.dmg *= 1.5 },
+  { id:'autolader',    name:'Autolader',          desc:'Kanonen: +40 % Feuerrate',
+    apply:b => b.type.cannon.rate *= 1.4 },
+  { id:'langrohr',     name:'Langrohr',           desc:'Kanonen: +30 % Reichweite',
+    apply:b => b.type.cannon.range *= 1.3 },
+
+  /* --- Frost --- */
   { id:'frostbrand',   name:'Frostbrand',         desc:'Frost bremst stärker und länger',
     apply:b => { b.slowBonus += 0.12; b.slowTime += 0.6; } },
-  { id:'durchschlag',  name:'Durchschlagmunition',desc:'Jeder Treffer ignoriert 4 Panzerung',
-    apply:b => b.pierce += 4 },
-  { id:'kuehlung',     name:'Kernkühlung',        desc:'+25 % Energie-Regeneration',
-    apply:(b,g) => b.regenMul = (b.regenMul || 1) * 1.25 },
+  { id:'kaeltestrahl', name:'Kältestrahl',        desc:'Frost: +120 % Schaden',
+    apply:b => b.type.frost.dmg *= 2.2 },
+  { id:'weitwurf',     name:'Weitwurf',           desc:'Frost: +40 % Reichweite',
+    apply:b => b.type.frost.range *= 1.4 },
 
-  { id:'notreserve',   name:'Notreserve', once:true, desc:'Kern +150 Struktur, sofort instandgesetzt',
+  /* --- Antworten auf Gegner-Eigenschaften --- */
+  { id:'durchschlag',  name:'Durchschlagmunition',desc:'Jeder Treffer ignoriert 5 Panzerung',
+    apply:b => b.pierce += 5 },
+  { id:'flak',         name:'Flakmunition',       desc:'+60 % Schaden gegen fliegende Ziele',
+    apply:b => b.vsAir *= 1.6 },
+  { id:'unterkuehlung',name:'Unterkühlung',       desc:'Jeder Treffer bremst kurz um 10 %',
+    apply:b => b.hitSlow += 0.1 },
+  { id:'sprengbolzen', name:'Sprengbolzen',       desc:'Getötete Gegner reißen Umstehende mit',
+    apply:b => b.deathSpark += 18 },
+  { id:'kettenblitz',  name:'Kettenblitz',        desc:'Geschosse springen auf ein zweites Ziel über',
+    apply:b => b.chain += 0.5 },
+
+  /* --- Regeln statt Zahlen --- */
+  { id:'dornen',       name:'Dornenbarrieren',    desc:'Barrieren verletzen ihre Angreifer',
+    apply:b => b.wallThorns += 14 },
+  { id:'kernstoss',    name:'Kernstoß',           desc:'Der Kern verletzt und stößt zurück, was ihn angreift',
+    apply:b => b.coreShock += 20 },
+  { id:'inselbetrieb', name:'Inselbetrieb', weight:0.6, max:1,
+    desc:'Türme ohne Netzanschluss feuern mit halber Rate statt gar nicht',
+    apply:b => b.unpoweredRate = 0.5 },
+  { id:'kaltstart',    name:'Kaltstart', weight:0.7, max:1,
+    desc:'Zu Beginn jeder Welle ist der Puffer voll',
+    apply:b => b.waveStartFull = true },
+  { id:'ausschlachten',name:'Ausschlachten', max:1,
+    desc:'Abbau erstattet den vollen Preis',
+    apply:b => b.refund = 1 },
+
+  /* --- Zielkonflikte: stark, aber mit Preis --- */
+  { id:'zuendschnur',  name:'Zündschnur',         desc:'+38 % Schaden, aber 18 % weniger Struktur',
+    apply:b => { b.damage *= 1.38; b.structure *= 0.82; } },
+  { id:'hochlast',     name:'Hochlast',           desc:'+32 % Feuerrate, aber +25 % Energieverbrauch',
+    apply:b => { b.rate *= 1.32; b.energy *= 1.25; } },
+  { id:'schlank',      name:'Schlanke Bauweise',  desc:'28 % billiger bauen, 14 % weniger Struktur',
+    apply:b => { b.buildCost *= 0.72; b.structure *= 0.86; } },
+  { id:'fernzuendung', name:'Fernzündung',        desc:'+32 % Reichweite, aber 8 % weniger Schaden',
+    apply:b => { b.range *= 1.32; b.damage *= 0.92; } },
+  { id:'notstrom',     name:'Notstromkreis',      desc:'+8 Energie pro Sekunde, aber 30 Speicher weniger',
+    apply:b => { b.regen += 8; b.capacity -= 30; } },
+  { id:'anzapfung',    name:'Kernanzapfung',      desc:'+55 % Materie, aber Kern −70 Struktur',
+    apply:(b,g) => { b.bounty *= 1.55; g.coreHpMax -= 70; g.coreHp = Math.min(g.coreHp, g.coreHpMax); } },
+  { id:'brennstab',    name:'Brennstab',          desc:'+20 % Schaden, aber Bauten kosten 10 % mehr',
+    apply:b => { b.damage *= 1.2; b.buildCost *= 1.1; } },
+
+  /* --- Selten und einmalig --- */
+  { id:'notreserve',   name:'Notreserve', max:1, weight:0.8,
+    desc:'Kern +150 Struktur, sofort instandgesetzt',
     apply:(b,g) => { g.coreHpMax += 150; g.coreHp = g.coreHpMax; } },
-  { id:'schildbrecher',name:'Schildbrecher', once:true, desc:'Geschosse wirken voll gegen Schilde',
+  { id:'schildbrecher',name:'Schildbrecher', max:1, weight:0.7,
+    desc:'Geschosse wirken voll gegen Schilde',
     apply:b => b.shieldPierce = true },
-  { id:'ventil',       name:'Überlastventil', once:true, desc:'Überladung kostet nur noch das Doppelte',
-    apply:b => b.overloadCost = 2 }
+  { id:'ventil',       name:'Überlastventil', max:1, weight:0.7,
+    desc:'Überladung kostet nur noch das Doppelte',
+    apply:b => b.overloadCost = 2 },
+  { id:'zweiterRing',  name:'Zweiter Kernring', max:1, weight:0.5,
+    desc:'Kern und Pylone reichen 1,6 Zellen weiter',
+    apply:b => b.netRadius += 1.6 },
+  { id:'fusionszelle', name:'Fusionszelle', max:1, weight:0.5,
+    desc:'+10 Energie pro Sekunde und +90 Speicher',
+    apply:b => { b.regen += 10; b.capacity += 90; } },
+  { id:'werkstatt',    name:'Werkstatt', max:1, weight:0.4,
+    desc:'Jeder bestehende Bau steigt sofort eine Stufe auf',
+    apply:(b,g) => {
+      for (const x of g.buildings.values()) {
+        if (x.level >= UPGRADE.maxLevel) continue;
+        x.level++;
+        x.maxHp = g.structureOf(x); x.hp = x.maxHp;
+      }
+    } },
+  { id:'automatik',    name:'Automatikschaltung', max:1, weight:0.35,
+    desc:'Über 85 % Puffer feuern alle Türme überladen, ohne Aufpreis',
+    apply:b => b.freeOverloadAt = 0.85 }
 ];

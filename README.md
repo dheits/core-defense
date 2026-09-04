@@ -28,9 +28,20 @@ erhöhen Regeneration und Speicher.
 
 Zweite Währung ist **Materie**: fällt bei jedem Abschuss an und bezahlt alle Bauten.
 
-**3. Karten zwischen den Wellen.** Nach jeder abgewehrten Welle sind drei von 18 Karten
-zur Wahl, die für den Rest der Partie gelten — mehr Reichweite, billigere Bauteile,
-Durchschlagmunition, ein zweiter Kernpuffer. Jede Partie läuft dadurch anders.
+**3. Karten zwischen den Wellen.** Nach jeder abgewehrten Welle sind vier von 48 Karten
+zur Wahl, die für den Rest der Partie gelten. Der Pool hat fünf Sorten:
+
+- **Grundwerte** für alle Türme — Reichweite, Schaden, Feuerrate, Energie, Struktur
+- **Turmspezifisch** — „Kanonen: +50 % Schaden" nützt nur, wer Kanonen gebaut hat
+- **Antworten auf Gegner** — Durchschlagmunition, Flakmunition, Schildbrecher, Kettenblitz
+- **Zielkonflikte** — +38 % Schaden für 18 % weniger Struktur, 28 % billiger bauen für
+  weniger Struktur, mehr Materie für einen kleineren Kern
+- **Regeländerungen statt Zahlen** — Dornenbarrieren verletzen ihre Angreifer, der Kern
+  stößt zurück, Türme ohne Netz feuern mit halber Rate, über 85 % Puffer feuern alle
+  Türme überladen zum normalen Preis
+
+Jede Karte lässt sich höchstens viermal nehmen, einige nur einmal; seltene Karten
+erscheinen entsprechend ihrem Gewicht seltener. Beides hält Partien auseinander.
 
 ## Steuerung
 
