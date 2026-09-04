@@ -174,6 +174,10 @@
       <div id="preview" hidden></div>
       <div id="alarm" hidden></div>
       <div id="bossWarn" hidden></div>
+      <div id="modBadge" hidden></div>
+      <div id="netWarn" hidden></div>
+
+      <div id="powers"></div>
 
       <div id="bossbar" hidden>
         <div class="bb-head"><b id="bossName">-</b><span id="bossHint"></span></div>
@@ -229,7 +233,7 @@
 
 <!-- ============ Die drei Mechaniken ============ -->
 <section id="aufbau" class="l-details l-reveal">
-  <div class="l-sec-head"><h2>Drei Details, die alles bestimmen</h2></div>
+  <div class="l-sec-head"><h2>Vier Details, die alles bestimmen</h2></div>
 
   <div class="l-detail-grid">
     <article class="l-detail">
@@ -289,6 +293,32 @@
         steht keine offen, schlagen sie zu. Drohnen ab Welle 6 fliegen ohnehin darüber hinweg.
       </p>
     </article>
+
+    <article class="l-detail">
+      <span class="l-mark">Detail D</span>
+      <svg viewBox="0 0 200 130" aria-hidden="true">
+        <rect width="200" height="130" fill="url(#raster)"/>
+        <rect x="14" y="57" width="16" height="16" class="l-core-mini"/>
+        <path d="M30 65 H86" class="l-wire"/>
+        <path d="M94 65 H152" class="l-wire l-wire-hot"/>
+        <circle cx="90" cy="65" r="5.5" class="l-pylon"/>
+        <circle cx="158" cy="46" r="4.5" class="l-turret"/>
+        <circle cx="158" cy="65" r="4.5" class="l-turret"/>
+        <circle cx="158" cy="84" r="4.5" class="l-turret"/>
+        <circle cx="176" cy="65" r="4.5" class="l-turret"/>
+        <text x="96" y="52" class="l-svg-label l-svg-label-warn">17,1 / 15 &#8212; gedrosselt</text>
+        <text x="32" y="52" class="l-svg-label">frei</text>
+      </svg>
+      <h3>Jede Leitung trägt nur so viel</h3>
+      <p>
+        Angeschlossen zu sein reicht nicht. Der Kern gibt 58 Energie pro Sekunde nach außen,
+        ein Pylon 15 — und je Ausbaustufe 6 mehr. Was ein Ast anfordert, fließt durch jeden
+        Knoten davor; verlangt er zu viel, feuert alles dahinter langsamer. Deshalb zählt
+        nicht nur, wie weit dein Netz reicht, sondern welche Form es hat: zwei kurze Äste
+        tragen doppelt so viel wie ein langer, und ein Reaktor entlastet genau den Ast,
+        an dem er steht.
+      </p>
+    </article>
   </div>
 </section>
 
@@ -336,6 +366,9 @@
     <div><dt>Linksklick</dt><dd>bauen, auswählen</dd></div>
     <div><dt>Rechtsklick</dt><dd>abbrechen oder abbauen</dd></div>
     <div><dt><kbd>U</kbd> / <kbd>S</kbd></dt><dd>ausbauen / abbauen</dd></div>
+    <div><dt><kbd>R</kbd></dt><dd>reparieren</dd></div>
+    <div><dt><kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd></dt><dd>Kernbefehle</dd></div>
+    <div><dt><kbd>O</kbd> / <kbd>L</kbd></dt><dd>Überladung / Lastpriorität</dd></div>
     <div><dt><kbd>Leertaste</kbd></dt><dd>Welle sofort starten</dd></div>
     <div><dt><kbd>P</kbd></dt><dd>Pause</dd></div>
     <div><dt><kbd>M</kbd></dt><dd>Ton an und aus</dd></div>

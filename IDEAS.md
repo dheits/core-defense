@@ -30,6 +30,13 @@ Pylon. Trifft er, fällt ein ganzer Ast des Netzes aus, und die Türme dahinter 
 kalt. Das macht die Kettenstruktur zur Schwachstelle, die sie logisch schon ist.
 *Mittel: eigene Zielsuche im Gegner-Update.*
 
+**Leitungslast** ✅ *umgesetzt* — Versorgung ist nicht mehr binär. Jeder Knoten trägt nur
+eine begrenzte Menge Energie pro Sekunde weiter (Kern 58/s, Pylon 15/s plus 6/s je Stufe);
+was ein Ast anfordert, fließt durch alle Knoten davor, und ein überlasteter Ast drosselt
+alles hinter sich. Damit wird die *Form* des Netzes zur Entscheidung — und Reaktoren
+werden ortsgebunden wertvoll, weil sie genau den Ast entlasten, an dem sie stehen.
+*Mittel: `recomputeSupply()` von Flag auf Fluss umgestellt, plus Anzeige.*
+
 **Kernmodi** — der Kern verteilt seine Leistung: mehr Regeneration, mehr Speicher oder
 ein Schild, das Schaden absorbiert. Ein Umschalten kostet ein paar Sekunden Anlauf.
 *Klein bis mittel, rein in `game.js`.*
@@ -51,16 +58,22 @@ bestimmte Türme erzwingen: gepanzert (Kanone ja, Blaster nein), schnell und lei
 Hebel für taktische Tiefe und in `ENEMIES`/`dealDamage()` gut unterzubringen.
 *Mittel.*
 
-**Aktive Fähigkeiten mit Abklingzeit.** Kingdom Rush und Bloons hängen ihre gesamte
-Spannungskurve daran: zwei, drei Knöpfe, die der Spieler im richtigen Moment drückt —
-Not-Entladung des Puffers als Schockwelle, kurzzeitiger Netz-Überschuss, Reparaturpuls.
-Hier besonders passend, weil sie Energie kosten können. *Mittel.*
+**Aktive Fähigkeiten mit Abklingzeit.** ✅ *umgesetzt* als **Kernbefehle** (`Q`/`W`/`E`):
+Entladung wirft den halben Puffer als Druckwelle nach außen, Netzstoß verdoppelt sechs
+Sekunden lang den Schaden bei halbem Verbrauch, Notpuls setzt jeden versorgten Bau um ein
+Drittel instand. Alle drei bezahlen aus demselben Puffer, aus dem die Türme schießen —
+der Preis ist also nicht Materie, sondern das eigene Feuer danach.
 
 **Bosse, die etwas verlangen.** ✅ *umgesetzt* — Moloch mit Wächter-Eskorte und Nexus mit
 Anzapfung und Brut, dazu zweite Phase, Ankündigung, HP-Leiste und Bossbeute.
 Ursprüngliche Notiz: Der Titan ist derzeit nur ein sehr dicker Crawler.
 Interessanter wäre ein Boss mit Eigenschaft: zieht Energie aus dem Netz, während er
 lebt; oder wirft eine Störzone, in der Türme nicht feuern. *Mittel.*
+
+**Wellenmodifikatoren.** ✅ *umgesetzt* als **Sturmwellen**: Ab Welle 5 kann eine Welle
+eine Eigenschaft mitbringen (Störnebel, EMP-Front, Magnetsturm, Schwarm, Kältefest,
+Panzerkonvoi, Hetzjagd), angekündigt in der Vorschau und mit 50 % höherer Prämie belohnt.
+Jeder Sturm zielt auf eine Einseitigkeit im Aufbau. *Klein, weil nur Multiplikatoren.*
 
 **Mehr Turmtypen mit klarer Rolle** statt mehr Zahlen: Kettenblitz gegen Pulks,
 Minenleger für tote Winkel, Reparaturdrohne, Schildgenerator für Nachbarbauten.
@@ -152,8 +165,17 @@ Konter-Eigenschaften sind gebaut (Stand September 2026), zusammen mit der
 Wellenvorschau, ohne die das Kontersystem nicht lesbar gewesen wäre. Dazu kamen vier Gegnertypen (Saboteur, Splitter, Zapfer, Wächter) und das
 Boss-Ereignis mit drei Bossen im Wechsel.
 
-Bleibt aus der Liste: Kernmodi, getrennte Akkus, aktive Fähigkeiten, Bestenliste,
-Tagesseed, Bilanz nach der Welle, Speicherstand und die Bedienkomfort-Punkte.
+Dazu kamen die drei Systeme aus der zweiten Runde: **Leitungslast** (das Netz hat
+Kapazitäten statt nur Reichweite), **Kernbefehle** (drei aktive Fähigkeiten aus dem
+Puffer) und **Sturmwellen** (Wellenmodifikatoren), zusammen mit sechs neuen Karten,
+die genau darauf antworten — Hochspannung, Sammelschiene, Lastverteiler, Kondensatorbank,
+Schwungrad und die seltene Abschirmung.
+
+Bleibt aus der Liste: Kernmodi, getrennte Akkus, Bestenliste, Tagesseed, Bilanz nach der
+Welle, Speicherstand und die Bedienkomfort-Punkte. Aus der Grafik-Runde ist der
+Energiefluss auf den Leitungen gebaut; die additive Lichtschicht, bleibende Brandspuren,
+Schadensstufen an Gebäuden und die Riss-Animation beim Spawn stehen noch aus, ebenso beim
+Sound die adaptiven Schichten und die Puffer-Drone.
 
 ## Wenn ich drei Dinge auswählen müsste (ursprüngliche Empfehlung)
 

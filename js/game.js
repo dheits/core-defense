@@ -25,6 +25,10 @@ const game = {
   boss: null, bossReward: false, pendingSpawns: [],
   hover: { x: -1, y: -1, inside: false },
   shake: 0,
+  // Leitungslast, Kernbefehle, Sturmwelle
+  sources: [], overloadedNodes: 0,
+  cooldowns: { discharge: 0, surge: 0, pulse: 0 },
+  surge: 0, shockwave: null, mod: null,
 
   /* ------------------------- Raster ------------------------- */
   isCore(x, y) {
@@ -53,13 +57,20 @@ const game = {
       return b.overload ? d * OVERLOAD.damage : d;
     }
     if (name === 'range')
-      return base * Math.pow(UPGRADE.range, lvl) * this.buffs.range * this.typeBuff(b, 'range');
+      return base * Math.pow(UPGRADE.range, lvl) * this.buffs.range * this.typeBuff(b, 'range')
+             * this.modv('range', 1);
     return base;
   },
   cooldownOf(b) { return b.def.cooldown / (this.buffs.rate * this.typeBuff(b, 'rate')); },
   energyOf(b) {
     return b.def.energy * this.buffs.energy * this.typeBuff(b, 'energy')
       * (b.overload ? this.buffs.overloadCost : 1);
+  },
+  // Dauerlast eines Turms in Energie pro Sekunde — genau die Größe,
+  // die durch die Leitungen bis zu ihm fließen muss.
+  drawOf(b) {
+    if (!b.def.turret || !b.def.energy) return 0;
+    return this.energyOf(b) / this.cooldownOf(b);
   },
   costOf(type) { return Math.round(BUILDINGS[type].cost * this.buffs.buildCost); },
   upgradeCost(b) {
@@ -124,7 +135,7 @@ const game = {
     const b = {
       type, def, x, y, level: 1,
       hp: 0, maxHp: 0,
-      cd: 0, supplied: false, flash: 0, pulse: 0,
+      cd: 0, supplied: false, node: null, flow: 1, flash: 0, pulse: 0,
       prio: 1, overload: false, bornAt: performance.now(), aim: -Math.PI / 2, scan: rand(0, 6.28),
       px: cellToPx(x), py: cellToPx(y)
     };
@@ -166,33 +177,62 @@ const game = {
     updateInspector();
   },
 
-  /* --------------------- Energienetz ------------------------ */
+  /* --------------------- Energienetz ------------------------
+     Zwei Fragen auf einmal: Wer hängt am Netz — und wie viel Energie
+     kommt dort noch an? Die Versorgung breitet sich iterativ aus, jeder
+     Bau hängt sich an den NÄCHSTEN Knoten in Reichweite. Danach wird von
+     außen nach innen aufsummiert, was jeder Ast anfordert; ein Knoten,
+     der mehr tragen soll als er kann, drosselt alles hinter sich.
+     Deshalb ist nicht nur die Reichweite des Netzes eine Entscheidung,
+     sondern auch seine Form: ein langer Strang trägt wenig, zwei kurze
+     Äste tragen zusammen das Doppelte. */
   recomputeSupply() {
     const extra = this.buffs.netRadius;
-    const sources = [{ x: CORE.cx, y: CORE.cy, r: CORE.supply + extra, parent: null }];
+    const core = {
+      x: CORE.cx, y: CORE.cy, r: CORE.supply + extra, parent: null, node: null,
+      cap: FLOW.core * this.buffs.flow, demand: 0, through: 0, ratio: 0, flow: 1
+    };
+    const sources = [core];
     const pylons = [];
     for (const b of this.buildings.values()) {
-      b.supplied = false;
+      b.supplied = false; b.node = null;
       if (b.type === 'pylon') pylons.push(b);
     }
-    // Iterativ ausbreiten: ein Pylon zählt erst als Quelle, wenn er selbst versorgt ist
+
+    // Der nächstgelegene Knoten in Reichweite wird zum Elternteil —
+    // daraus entsteht der Baum, durch den die Energie fließt.
+    const nearestSource = (x, y) => {
+      let best = null, bd = Infinity;
+      for (const s of sources) {
+        const d = dist(x, y, s.x, s.y);
+        if (d <= s.r && d < bd) { bd = d; best = s; }
+      }
+      return best;
+    };
+
+    // Ein Pylon zählt erst als Quelle, wenn er selbst versorgt ist
     let changed = true;
     while (changed) {
       changed = false;
       for (const p of pylons) {
         if (p.supplied) continue;
-        const src = sources.find(s => dist(p.x, p.y, s.x, s.y) <= s.r);
-        if (src) {
-          p.supplied = true;
-          p.parent = src;
-          sources.push({ x: p.x, y: p.y, r: p.def.supply + extra, parent: src, node: p });
-          changed = true;
-        }
+        const src = nearestSource(p.x, p.y);
+        if (!src) continue;
+        p.supplied = true;
+        p.parent = src;
+        p.node = {
+          x: p.x, y: p.y, r: p.def.supply + extra, parent: src, node: p,
+          cap: flowCap(p) * this.buffs.flow, demand: 0, through: 0, ratio: 0, flow: 1
+        };
+        sources.push(p.node);
+        changed = true;
       }
     }
     for (const b of this.buildings.values()) {
       if (b.type === 'pylon') continue;
-      b.supplied = !b.def.needsPower || sources.some(s => dist(b.x, b.y, s.x, s.y) <= s.r);
+      if (!b.def.needsPower) { b.supplied = true; continue; }
+      b.node = nearestSource(b.x, b.y);
+      b.supplied = !!b.node;
     }
     this.sources = sources;
 
@@ -204,6 +244,31 @@ const game = {
       b.boost = feld.some(p => dist(b.x, b.y, p.x, p.y) <= p.def.supply + extra)
         ? SPECIALS.pylon.boost : 1;
     }
+
+    /* Lastrechnung. Erst meldet jeder Knoten an, was direkt an ihm hängt:
+       Türme ziehen, Reaktoren speisen dort ein, wo sie stehen. */
+    const feed = this.buffs.reactorFeed;
+    for (const b of this.buildings.values()) {
+      if (!b.supplied || !b.node) continue;
+      if (b.def.turret) b.node.demand += this.drawOf(b);
+      else if (b.type === 'reactor') b.node.demand -= b.def.regen * b.level * feed;
+    }
+    // Dann von außen nach innen aufsummieren. Die Knoten stehen in
+    // Ausbreitungsreihenfolge, ein Kind also immer hinter seinem Elternteil.
+    for (const s of sources) s.through = s.demand;
+    for (let i = sources.length - 1; i > 0; i--) {
+      const s = sources[i];
+      s.parent.through += Math.max(0, s.through);   // Überschuss bleibt im Ast
+    }
+    // Und zurück nach außen: jeder Knoten drosselt, was er nicht mehr trägt.
+    for (const s of sources) {
+      const need = Math.max(0, s.through);
+      s.ratio = need / s.cap;
+      s.flow = (s.parent ? s.parent.flow : 1) * Math.min(1, s.cap / Math.max(0.0001, need));
+    }
+    this.overloadedNodes = sources.filter(s => s.ratio > 1).length;
+    for (const b of this.buildings.values())
+      b.flow = b.node ? b.node.flow : 1;
 
     // Energie-Ökonomie neu bilanzieren
     let regen = CORE.regen + this.buffs.regen;
@@ -235,13 +300,17 @@ const game = {
       netCtx.lineWidth = 1;
       netCtx.beginPath(); netCtx.arc(px, py, r, 0, 7); netCtx.stroke();
     }
-    // Leitungen Kern -> Pylon -> Pylon
+    /* Leitungen Kern -> Pylon -> Pylon. Stärke und Farbe zeigen, wie
+       nah der Ast an seiner Grenze arbeitet — rot heißt gedrosselt. */
     netCtx.globalCompositeOperation = 'source-over';
-    netCtx.strokeStyle = 'rgba(95,224,255,.45)';
-    netCtx.lineWidth = 1.5;
-    netCtx.setLineDash([4, 5]);
     for (const s of this.sources) {
       if (!s.parent) continue;
+      const r = s.ratio || 0;
+      netCtx.strokeStyle = r > 1 ? 'rgba(255,93,115,.85)'
+                        : r > FLOW.warn ? 'rgba(255,180,90,.7)'
+                        : 'rgba(95,224,255,.45)';
+      netCtx.lineWidth = 1.2 + Math.min(1.5, r) * 1.9;
+      netCtx.setLineDash(r > 1 ? [3, 4] : [4, 5]);
       netCtx.beginPath();
       netCtx.moveTo(cellToPx(s.parent.x), cellToPx(s.parent.y));
       netCtx.lineTo(cellToPx(s.x), cellToPx(s.y));
@@ -310,7 +379,8 @@ const game = {
     if (armor) dmg = Math.max(dmg * 0.15, dmg - armor);   // nie ganz wirkungslos
     e.hp -= dmg;
     e.hitFlash = 0.06;
-    if (this.buffs.hitSlow) e.applySlow(1 - this.buffs.hitSlow, 0.8, this.time);
+    if (this.buffs.hitSlow && !this.modv('noSlow', false))
+      e.applySlow(1 - this.buffs.hitSlow, 0.8, this.time);
     if (e.hp <= 0) {
       e.dead = true;
       // Sprengbolzen: der Abschuss reißt Umstehende mit (nur eine Stufe tief)
@@ -398,7 +468,8 @@ const game = {
 
   /* ------------------------ Wellen -------------------------- */
   planWave(n) {
-    let budget = waveBudget(n);
+    const mod = modifierFor(n);
+    let budget = waveBudget(n) * (mod && mod.budget ? mod.budget : 1);
     const pool = Object.keys(UNLOCK).filter(t => n >= UNLOCK[t] && !ENEMIES[t].boss);
     const groups = clamp(1 + Math.floor(n / 3), 1, 5);
     const angles = [];
@@ -437,7 +508,7 @@ const game = {
       queue.push({ type, t, angle: a });
       t += spawnGap(n);
     }
-    return { queue, angles };
+    return { queue, angles, mod };
   },
 
   // Die nächste Welle steht schon in der Bauphase fest — sonst gäbe es
@@ -470,10 +541,13 @@ const game = {
       .map(e => Object.assign({}, e, { at: this.time + e.t }))
       .sort((a, b) => a.at - b.at);
     this.incoming = this.plannedWave.angles;
+    this.mod = this.plannedWave.mod || null;
     this.plannedWave = null;
     if (this.buffs.waveStartFull) this.energy = this.energyMax;
+    const sturm = this.modActive();
     SFX.waveStart();
-    toast('WELLE ' + this.wave);
+    if (sturm) SFX.storm();
+    toast('WELLE ' + this.wave + (sturm ? ' — ' + sturm.name.toUpperCase() : ''));
   },
 
   /* ---------------- Karten zwischen den Wellen ---------------- */
@@ -520,6 +594,10 @@ const game = {
   spawn(s) {
     const p = edgePoint(s.angle, 34);
     const e = new Enemy(s.type, p.x, p.y, this.wave);
+    const hpMul = this.modv('hp', 1);
+    if (hpMul !== 1) { e.maxHp = Math.max(1, Math.round(e.maxHp * hpMul)); e.hp = e.maxHp; }
+    e.speed *= this.modv('speed', 1);
+    e.armor += this.modv('armor', 0);
     if (s.guard) e.isGuard = true;
     this.enemies.push(e);
     if (s.boss) {
@@ -535,8 +613,12 @@ const game = {
   update(dt) {
     if (this.draft) return;               // Kartenwahl hält alles an
     this.time += dt;
-    this.energy = Math.min(this.energyMax, this.energy + this.regen * dt);
+    this.energy = Math.min(this.energyMax, this.energy + this.regen * dt * this.modv('regen', 1));
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 22);
+    for (const id in this.cooldowns)
+      if (this.cooldowns[id] > 0) this.cooldowns[id] = Math.max(0, this.cooldowns[id] - dt);
+    if (this.surge > 0) this.surge = Math.max(0, this.surge - dt);
+    if (this.shockwave && (this.shockwave.t += dt) > 0.55) this.shockwave = null;
 
     if (this.phase === 'build') {
       this.buildTimer -= dt;
@@ -548,11 +630,16 @@ const game = {
       if (!this.spawnQueue.length && !this.enemies.length) {
         this.phase = 'build';
         this.buildTimer = BUILD_TIME;
-        this.matter += 30 + this.wave * 6 + this.buffs.matterPerWave;
+        const sturm = this.modActive();
+        // Eine gehaltene Sturmwelle zahlt sich aus
+        const praemie = Math.round((30 + this.wave * 6) * (sturm ? 1 + MOD_BONUS : 1));
+        this.mod = null;
+        this.surge = 0;
+        this.matter += praemie + this.buffs.matterPerWave;
         if (this.buffs.coreRepair)
           this.coreHp = Math.min(this.coreHpMax, this.coreHp + this.buffs.coreRepair);
         SFX.waveClear();
-        toast('Welle ' + this.wave + ' abgewehrt  +' + (30 + this.wave * 6) + ' Materie');
+        toast('Welle ' + this.wave + ' abgewehrt  +' + praemie + ' Materie');
         this.planNext();
         this.openDraft();
       }
@@ -597,7 +684,8 @@ const game = {
     const frac = this.energy / this.energyMax;
     const autoOverload = this.buffs.freeOverloadAt && frac >= this.buffs.freeOverloadAt;
     for (const b of this.turrets()) {
-      const rateMul = b.supplied ? 1 : this.buffs.unpoweredRate;
+      // Was die Leitung nicht trägt, kommt hier als langsamere Feuerrate an
+      const rateMul = b.supplied ? (b.flow === undefined ? 1 : b.flow) : this.buffs.unpoweredRate;
       if (!rateMul) continue;                     // ohne Netz und ohne Inselbetrieb: still
       b.cd -= dt * rateMul;
       if (b.cd > 0) continue;
@@ -607,6 +695,10 @@ const game = {
       if (autoOverload) {                         // Überladung geschenkt, solange der Puffer voll ist
         if (b.overload) cost /= this.buffs.overloadCost;
         else dmg *= OVERLOAD.damage;
+      }
+      if (this.surge > 0) {                       // Netzstoß liegt über allem
+        dmg *= POWERS.surge.damage;
+        cost *= POWERS.surge.cost;
       }
       const target = this.findTarget(b);
       if (!target) { b.scan += dt * 0.5; b.aim = b.scan; continue; }
@@ -622,7 +714,7 @@ const game = {
       const voll = b.level >= UPGRADE.maxLevel;
       if (b.def.hitscan) {
         this.hurt(target, dmg, 'beam');
-        if (b.def.slow)
+        if (b.def.slow && !this.modv('noSlow', false))
           target.applySlow(Math.max(0.1, b.def.slow - this.buffs.slowBonus),
                            b.def.slowTime + this.buffs.slowTime, this.time);
         // Vereisung: wer ohnehin kriecht, steht kurz ganz still
@@ -632,13 +724,12 @@ const game = {
         }
         this.beams.push({ x1: b.px, y1: b.py, x2: target.x, y2: target.y, life: .12, color: b.def.color });
       } else {
-        const p = new Projectile(b.px, b.py, target, b.def, dmg, 'proj');
+        const p = this.shoot(b, target, dmg);
         if (voll && b.type === 'cannon') p.burn = dmg * SPECIALS.cannon.burnDps;
-        this.projectiles.push(p);
         // Zwillingssalve: ein zweites Geschoss auf das nächstbeste Ziel
         if (voll && b.type === 'blaster') {
           const zweit = this.findTarget(b, target);
-          if (zweit) this.projectiles.push(new Projectile(b.px, b.py, zweit, b.def, dmg, 'proj'));
+          if (zweit) this.shoot(b, zweit, dmg);
         }
       }
     }
@@ -649,6 +740,14 @@ const game = {
 
     for (const p of this.particles) p.update(dt);
     this.particles = this.particles.filter(p => !p.dead);
+  },
+
+  // Ein Geschoss auf den Weg bringen — der Magnetsturm bremst es hier ab
+  shoot(b, target, dmg) {
+    const p = new Projectile(b.px, b.py, target, b.def, dmg, 'proj');
+    p.speed *= this.modv('projSpeed', 1);
+    this.projectiles.push(p);
+    return p;
   },
 
   // Nächstes Netzteil für Saboteure: Pylone zuerst, sonst Reaktoren
@@ -669,6 +768,80 @@ const game = {
       Math.abs(e.y - CORE_PX.y) < edge + e.radius + 2);
   },
 
+  /* ------------------- Sturmwellen ---------------------------
+     Ein Modifikator gilt für die ganze Welle. Die Karte „Abschirmung"
+     hebt einzelne davon auf — deshalb geht jeder Zugriff durch modv(). */
+  modv(key, fallback) {
+    const m = this.mod;
+    if (!m || m[key] === undefined) return fallback;
+    if (this.buffs.modImmune.indexOf(m.id) >= 0) return fallback;
+    return m[key];
+  },
+  modActive() {
+    if (!this.mod) return null;
+    return this.buffs.modImmune.indexOf(this.mod.id) >= 0 ? null : this.mod;
+  },
+
+  /* ------------------- Kernbefehle ---------------------------
+     Bezahlt wird aus demselben Puffer, aus dem die Türme schießen.
+     Jeder Einsatz ist damit ein Tausch: jetzt viel Wirkung, danach
+     ein paar Sekunden dünnes Feuer. */
+  powerCost(p) { return this.energyMax * p.drain * this.buffs.powerDrain; },
+  powerCd(p) { return p.cd * this.buffs.powerCd; },
+  usePower(id) {
+    const p = POWERS[id];
+    if (!p || this.over || this.draft) return;
+    if (this.phase !== 'combat') { SFX.deny(); return toast('Kernbefehle wirken nur im Gefecht'); }
+    if (this.cooldowns[id] > 0) {
+      SFX.deny();
+      return toast(p.name + ' — noch ' + Math.ceil(this.cooldowns[id]) + ' s');
+    }
+    const kosten = this.powerCost(p);
+    if (this.energy < kosten) { SFX.deny(); return toast('Puffer zu leer für ' + p.name); }
+    if (id === 'pulse' && ![...this.buildings.values()].some(b => b.hp < b.maxHp)) {
+      SFX.deny(); return toast('Alles unbeschädigt');
+    }
+    this.energy -= kosten;
+    this.cooldowns[id] = this.powerCd(p);
+
+    if (id === 'discharge') {
+      const dmg = kosten * p.perEnergy;
+      const r = p.radius * GRID.cell;
+      for (const e of this.enemies.slice()) {
+        const d = dist(e.x, e.y, CORE_PX.x, CORE_PX.y);
+        if (d > r) continue;
+        this.hurt(e, dmg * (1 - 0.55 * d / r), 'beam');   // Energieschaden: Schilde zuerst
+      }
+      this.shockwave = { t: 0, r };
+      this.shake = Math.max(this.shake, 11);
+      for (let i = 0; i < 30; i++) {
+        const a = Math.random() * 6.283;
+        this.particles.push(new Particle(
+          CORE_PX.x + Math.cos(a) * 30, CORE_PX.y + Math.sin(a) * 30,
+          '#9beeff', { speed: rand(160, 320), life: .5, size: 2.4, angle: a }));
+      }
+      SFX.discharge();
+      toast('Entladung — ' + Math.round(dmg) + ' Schaden im Umkreis');
+    } else if (id === 'surge') {
+      this.surge = p.time;
+      SFX.surge();
+      toast('Netzstoß — ' + p.time + ' s doppelter Schaden');
+    } else if (id === 'pulse') {
+      let n = 0;
+      for (const b of this.buildings.values()) {
+        if (b.hp >= b.maxHp) continue;
+        if (b.def.needsPower && !b.supplied) continue;   // was kalt ist, wird nicht geheilt
+        b.hp = Math.min(b.maxHp, b.hp + b.maxHp * p.heal);
+        n++;
+        for (let i = 0; i < 6; i++)
+          this.particles.push(new Particle(b.px, b.py, '#6bff9f', { speed: rand(30, 110), life: .45 }));
+      }
+      SFX.pulse();
+      toast('Notpuls — ' + n + (n === 1 ? ' Bau' : ' Bauten') + ' instandgesetzt');
+    }
+    updateInspector();
+  },
+
   turrets() {
     if (this.turretsDirty) {
       this._turrets = [...this.buildings.values()].filter(b => b.def.turret);
@@ -681,6 +854,7 @@ const game = {
   toggleOverload(b) {
     if (!b.def.turret) return;
     b.overload = !b.overload;
+    this.recomputeSupply();          // dreifacher Verbrauch heißt dreifache Leitungslast
     SFX.select();
     updateInspector();
   },
@@ -714,6 +888,7 @@ function render() {
 
   drawGrid();
   ctx.drawImage(netCanvas, 0, 0);
+  drawFlow();
   drawSpawnWarnings();
   drawCore();
 
@@ -732,9 +907,48 @@ function render() {
     ctx.globalAlpha = 1;
   }
   for (const p of game.particles) p.draw(ctx);
+  if (game.shockwave) drawShockwave();
 
   drawGhost();
   ctx.restore();
+}
+
+/* Energie, die sichtbar fließt: Pulse wandern vom Kern nach außen,
+   Tempo und Farbe hängen an der Auslastung der Leitung. */
+function drawFlow() {
+  const t = game.time;
+  for (const s of game.sources) {
+    if (!s.parent) continue;
+    const r = s.ratio || 0;
+    if (r < 0.02) continue;
+    const x1 = cellToPx(s.parent.x), y1 = cellToPx(s.parent.y);
+    const x2 = cellToPx(s.x), y2 = cellToPx(s.y);
+    const len = Math.hypot(x2 - x1, y2 - y1);
+    const n = Math.max(1, Math.round(len / 30));
+    const tempo = 0.22 + Math.min(1.2, r) * 0.38;
+    ctx.fillStyle = r > 1 ? '#ff8d9c' : (r > FLOW.warn ? '#ffc27a' : '#9beeff');
+    for (let i = 0; i < n; i++) {
+      const f = (t * tempo + i / n) % 1;
+      ctx.globalAlpha = 0.22 + 0.5 * Math.sin(f * Math.PI);
+      ctx.beginPath();
+      ctx.arc(x1 + (x2 - x1) * f, y1 + (y2 - y1) * f, 2, 0, 7);
+      ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* Die Druckwelle der Entladung */
+function drawShockwave() {
+  const w = game.shockwave, f = w.t / 0.55;
+  ctx.strokeStyle = '#9beeff';
+  ctx.globalAlpha = (1 - f) * 0.9;
+  ctx.lineWidth = 6 * (1 - f) + 1;
+  ctx.beginPath(); ctx.arc(CORE_PX.x, CORE_PX.y, w.r * f, 0, 7); ctx.stroke();
+  ctx.globalAlpha = (1 - f) * 0.35;
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(CORE_PX.x, CORE_PX.y, w.r * f * 0.72, 0, 7); ctx.stroke();
+  ctx.globalAlpha = 1;
 }
 
 /* Alarm, Teil 1: zeigt, wo die Deckung endet — alle Turmreichweiten
@@ -1124,6 +1338,42 @@ function buildShop() {
   }
 }
 
+function buildPowers() {
+  const box = el('powers');
+  box.innerHTML = '';
+  for (const p of POWER_LIST) {
+    const d = document.createElement('button');
+    d.className = 'power';
+    d.dataset.id = p.id;
+    d.title = p.desc + '  (' + p.key.toUpperCase() + ')';
+    d.innerHTML = `<span class="pk">${p.key.toUpperCase()}</span>
+                   <span class="pn">${p.name}</span><span class="pc"></span>
+                   <i class="pcd"></i>`;
+    d.onclick = () => game.usePower(p.id);
+    box.appendChild(d);
+  }
+}
+
+function updatePowers() {
+  for (const d of el('powers').children) {
+    const p = POWERS[d.dataset.id];
+    const rest = game.cooldowns[p.id];
+    const kosten = Math.round(game.powerCost(p));
+    const bereit = rest <= 0 && game.phase === 'combat';
+    const reicht = game.energy >= kosten;
+    d.classList.toggle('ready', bereit && reicht);
+    d.classList.toggle('poor', bereit && !reicht);
+    d.classList.toggle('active', p.id === 'surge' && game.surge > 0);
+    d.classList.toggle('cooling', rest > 0);
+    const txt = rest > 0 ? Math.ceil(rest) + ' s' : kosten + ' Energie';
+    const line = d.querySelector('.pc');
+    if (line.textContent !== txt) line.textContent = txt;
+    // Der Schleier läuft von links nach rechts weg
+    d.querySelector('.pcd').style.width =
+      (rest > 0 ? (rest / game.powerCd(p) * 100) : 0) + '%';
+  }
+}
+
 function selectTool(type) {
   game.tool = game.tool === type ? null : type;
   game.select(null);
@@ -1155,8 +1405,14 @@ function updateInspector() {
     rows.push(['Lastpriorität', PRIORITY[b.prio].name]);
     if (b.boost > 1) rows.push(['Verstärkerfeld', '+' + Math.round((b.boost - 1) * 100) + ' %']);
   }
+  if (b.def.turret && b.supplied && b.flow < 0.995)
+    rows.push(['Netzdrossel', '−' + Math.round((1 - b.flow) * 100) + ' %']);
   if (b.def.regen) rows.push(['Ertrag', '+' + b.def.regen * b.level + '/s']);
   if (b.def.supply) rows.push(['Netzradius', b.def.supply + ' Z']);
+  // Am Pylon hängt die eigene Leitung, an allem anderen die des Knotens davor
+  if (b.type === 'pylon' && b.supplied && b.node)
+    rows.push(['Leitungslast', (Math.round(Math.max(0, b.node.through) * 10) / 10) +
+                               ' / ' + Math.round(b.node.cap) + '/s']);
   rows.push(['Strom', b.def.needsPower ? (b.supplied ? 'verbunden' : 'GETRENNT') : '—']);
   el('insStats').innerHTML = rows.map(r => `<span>${r[0]}</span><span>${r[1]}</span>`).join('');
   const voll = b.level >= UPGRADE.maxLevel;
@@ -1266,6 +1522,26 @@ function updateHud() {
       : 'Kern unter Beschuss — kein Turm reicht dorthin';
   }
 
+  // Sturmwelle: in der Bauphase als Ankündigung, im Gefecht als Merker
+  const mb = el('modBadge');
+  const sturm = build ? (game.plannedWave && game.plannedWave.mod &&
+                         game.buffs.modImmune.indexOf(game.plannedWave.mod.id) < 0
+                         ? game.plannedWave.mod : null)
+                      : game.modActive();
+  mb.hidden = !sturm || !!game.draft;
+  if (sturm)
+    mb.innerHTML = (build ? 'Welle ' + (game.wave + 1) + ': ' : 'Sturmwelle: ') +
+                   '<b>' + sturm.name + '</b> — <i>' + sturm.desc + '</i>';
+
+  const nw = el('netWarn');
+  nw.hidden = !game.overloadedNodes;
+  if (game.overloadedNodes)
+    nw.textContent = game.overloadedNodes === 1
+      ? 'Eine Leitung überlastet — Türme dahinter feuern langsamer'
+      : game.overloadedNodes + ' Leitungen überlastet — Türme dahinter feuern langsamer';
+
+  updatePowers();
+
   const prev = el('preview');
   if (build && !game.draft && game.plannedWave) {
     prev.hidden = false;
@@ -1319,6 +1595,8 @@ addEventListener('keydown', ev => {
   }
   for (const [type, def] of Object.entries(BUILDINGS))
     if (ev.key === def.key) return selectTool(type);
+  const power = POWER_LIST.find(p => p.key === k);
+  if (power) return game.usePower(power.id);
   if (ev.code === 'Space') { ev.preventDefault(); if (game.phase === 'build') game.startWave(); }
   else if (k === 'escape') { selectTool(null); game.select(null); }
   else if (k === 'p') togglePause();
@@ -1362,6 +1640,7 @@ el('ovBtn').onclick = () => location.reload();
 
 /* =========================== LOOP ============================= */
 buildShop();
+buildPowers();
 game.recomputeSupply();
 game.planNext();
 showOverlay('CORE DEFENSE',

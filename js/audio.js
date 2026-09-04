@@ -308,6 +308,42 @@ const SFX = (() => {
     },
 
     /* ---------------- Phasen ---------------- */
+    /* ---------------- Kernbefehle ----------------
+       Alle drei aus demselben Puffer bezahlt, also auch klanglich
+       verwandt: ein Aufladen, dann die Entspannung. */
+    discharge() {
+      tone({ type: 'sine', freq: 60, to: 220, dur: 0.16, gain: 0.14, attack: 0.05 });
+      noise({ dur: 0.06, freq: 7000, freqTo: 2000, gain: 0.24, filter: 'highpass',
+              shape: 4, attack: 0.001, delay: 0.15 });
+      tone({ type: 'sine', freq: 190, to: 32, dur: 0.75, gain: 0.3, attack: 0.004,
+             delay: 0.15, send: 0.55 });
+      noise({ dur: 0.8, freq: 3200, freqTo: 90, gain: 0.24, shape: 1.3, delay: 0.15, send: 0.6 });
+      tone({ type: 'triangle', freq: 900, to: 240, dur: 0.3, gain: 0.07, delay: 0.15, send: 0.4 });
+    },
+    surge() {
+      tone({ type: 'sawtooth', freq: 110, to: 460, dur: 0.5, gain: 0.09,
+             filter: 'lowpass', filterFreq: 1600, attack: 0.06, send: 0.35 });
+      tone({ type: 'square', freq: 220, to: 880, dur: 0.45, gain: 0.045, attack: 0.05, send: 0.3 });
+      noise({ dur: 0.5, freq: 400, freqTo: 4200, gain: 0.06, filter: 'bandpass',
+              q: 1.4, shape: 0.6, attack: 0.08, send: 0.4 });
+    },
+    pulse() {
+      tone({ type: 'sine', freq: 420, to: 700, dur: 0.3, gain: 0.09, attack: 0.01, send: 0.35 });
+      tone({ type: 'sine', freq: 630, to: 1050, dur: 0.34, gain: 0.05, attack: 0.02,
+             delay: 0.05, send: 0.4 });
+      noise({ dur: 0.3, freq: 2200, freqTo: 6000, gain: 0.035, filter: 'bandpass',
+              q: 2, shape: 0.8, attack: 0.03, send: 0.3 });
+    },
+    // Ankündigung einer Sturmwelle: tiefer, unruhiger Zweiklang
+    storm() {
+      tone({ type: 'sawtooth', freq: 130, to: 108, dur: 0.9, gain: 0.07,
+             filter: 'lowpass', filterFreq: 800, attack: 0.1, send: 0.5 });
+      tone({ type: 'sawtooth', freq: 196, to: 164, dur: 0.9, gain: 0.05, detune: 14,
+             filter: 'lowpass', filterFreq: 900, attack: 0.14, delay: 0.06, send: 0.5 });
+      noise({ dur: 1.1, freq: 300, freqTo: 1400, gain: 0.04, filter: 'bandpass',
+              q: 0.9, shape: 0.5, attack: 0.3, send: 0.6 });
+    },
+
     waveStart() {
       [0, 0.16, 0.32].forEach((d, i) =>
         tone({ type: 'square', freq: i === 2 ? 494 : 370, dur: 0.15, gain: 0.07, delay: d,

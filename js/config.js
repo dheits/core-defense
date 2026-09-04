@@ -202,6 +202,76 @@ const PRIORITY = [
 // Überladung: doppelter Schaden, dreifacher Energiehunger
 const OVERLOAD = { damage: 2, cost: 3 };
 
+/* ---------------------------------------------------------------
+   Leitungslast. Versorgung ist nicht mehr nur „angeschlossen ja/nein":
+   Jeder Knoten trägt nur eine begrenzte Menge Energie pro Sekunde
+   weiter. Was ein Ast anfordert, fließt durch alle Pylone davor —
+   ein überladener Ast drosselt alles hinter sich.
+
+   Der Kern gibt viel ab, ein einzelner Pylon deutlich weniger. Damit
+   wird die Form des Netzes zur Entscheidung: ein langer Strang trägt
+   wenig, zwei kurze Äste tragen zusammen doppelt so viel. Reaktoren
+   speisen dort ein, wo sie stehen, und entlasten ihren eigenen Ast.
+---------------------------------------------------------------- */
+const FLOW = {
+  core: 58,          // Energie/s, die der Kern selbst nach außen abgibt
+  pylon: 15,         // Grundlast eines Pylons ...
+  perLevel: 6,       // ... plus je Ausbaustufe (Stufe 5 = 39)
+  warn: 0.85         // ab hier färbt sich die Leitung
+};
+function flowCap(b) {
+  return FLOW.pylon + FLOW.perLevel * (b.level - 1);
+}
+
+/* ---------------------------------------------------------------
+   Kernbefehle: drei Fähigkeiten, die aus dem Puffer bezahlt werden.
+   Sie kosten genau das, was sonst die Türme verschießen — deshalb ist
+   jeder Einsatz ein Tausch, kein Geschenk. Nur im Gefecht verfügbar.
+---------------------------------------------------------------- */
+const POWERS = {
+  discharge: {
+    id: 'discharge', name: 'Entladung', key: 'q', cd: 26, drain: 0.55,
+    perEnergy: 2.9, radius: 5.6,
+    desc: 'Wirft den halben Puffer als Druckwelle nach außen. Schaden wächst mit der Ladung.'
+  },
+  surge: {
+    id: 'surge', name: 'Netzstoß', key: 'w', cd: 34, drain: 0.4,
+    time: 6, damage: 2, cost: 0.55,
+    desc: '6 s doppelter Schaden bei knapp halbem Verbrauch — danach ist der Puffer leer.'
+  },
+  pulse: {
+    id: 'pulse', name: 'Notpuls', key: 'e', cd: 40, drain: 0.45, heal: 0.34,
+    desc: 'Setzt jeden Bau im Netz um ein Drittel instand, ohne Materie.'
+  }
+};
+const POWER_LIST = [POWERS.discharge, POWERS.surge, POWERS.pulse];
+
+/* ---------------------------------------------------------------
+   Wellenmodifikatoren. Ab Welle 5 kann eine Welle eine Eigenschaft
+   mitbringen, die in der Vorschau angekündigt wird. Sie greift genau
+   dort an, wo ein einseitiger Aufbau blind ist — und zahlt dafür eine
+   höhere Prämie.
+---------------------------------------------------------------- */
+const MODIFIERS = [
+  { id: 'nebel',    name: 'Störnebel',     desc: 'Alle Türme sehen 25 % kürzer',            range: 0.75 },
+  { id: 'emp',      name: 'EMP-Front',     desc: 'Der Puffer lädt kaum noch nach',          regen: 0.2 },
+  { id: 'magnet',   name: 'Magnetsturm',   desc: 'Geschosse fliegen 40 % langsamer',        projSpeed: 0.6 },
+  { id: 'schwarm',  name: 'Schwarm',       desc: 'Weit mehr Gegner, dafür dünnhäutig',      budget: 1.7, hp: 0.55 },
+  { id: 'kaeltefest',name:'Kältefest',     desc: 'Gegner lassen sich nicht bremsen',        noSlow: true },
+  { id: 'konvoi',   name: 'Panzerkonvoi',  desc: 'Jeder Gegner trägt 4 Panzerung mehr',     armor: 4 },
+  { id: 'hetzjagd', name: 'Hetzjagd',      desc: 'Gegner laufen 30 % schneller',            speed: 1.3 }
+];
+const MOD_FROM_WAVE = 5;      // vorher lernt man noch die Grundregeln
+let MOD_CHANCE = 0.35;
+const MOD_BONUS = 0.5;        // halbe Prämie obendrauf für eine gehaltene Sturmwelle
+
+// Auf Bosswellen kein Modifikator — die sind für sich schon ein Ereignis.
+function modifierFor(w) {
+  if (w < MOD_FROM_WAVE || bossFor(w)) return null;
+  if (Math.random() > MOD_CHANCE) return null;
+  return MODIFIERS[(Math.random() * MODIFIERS.length) | 0];
+}
+
 // Gegner-HP wächst mit der Wellennummer
 // Bis Welle 20 die eingespielte Kurve; danach ein zweiter Term, weil ab dort
 // voll ausgebaute Türme mit Sonderfähigkeiten stehen.
@@ -240,6 +310,9 @@ const BASE_BUFFS = {
   slowBonus: 0, slowTime: 0,
   // Energie und Netz
   regen: 0, capacity: 0, netRadius: 0, regenMul: 1,
+  flow: 1, reactorFeed: 1,
+  // Kernbefehle und Sturmwellen
+  powerCd: 1, powerDrain: 1, modImmune: [],
   waveStartFull: false, freeOverloadAt: 0, unpoweredRate: 0,
   // Bauwesen
   bounty: 1, buildCost: 1, structure: 1, repair: 0, refund: SELL_REFUND,
@@ -360,6 +433,18 @@ const CARDS = [
   { id:'brennstab',    name:'Brennstab',          desc:'+20 % Schaden, aber Bauten kosten 10 % mehr',
     apply:b => { b.damage *= 1.2; b.buildCost *= 1.1; } },
 
+  /* --- Netz, Kernbefehle, Sturmwellen --- */
+  { id:'hochspannung', name:'Hochspannung',     desc:'Alle Leitungen tragen 35 % mehr Last',
+    apply:b => b.flow *= 1.35 },
+  { id:'sammelschiene',name:'Sammelschiene',    desc:'+20 % Leitungslast und 0,4 Zellen mehr Netzradius',
+    apply:b => { b.flow *= 1.2; b.netRadius += 0.4; } },
+  { id:'lastverteiler',name:'Lastverteiler',    desc:'Reaktoren entlasten ihren Ast doppelt so stark',
+    apply:b => b.reactorFeed *= 2 },
+  { id:'kondensator',  name:'Kondensatorbank',  desc:'Kernbefehle sind 28 % schneller wieder bereit',
+    apply:b => b.powerCd *= 0.72 },
+  { id:'schwungrad',   name:'Schwungrad',       desc:'Kernbefehle ziehen 35 % weniger aus dem Puffer',
+    apply:b => b.powerDrain *= 0.65 },
+
   /* --- Selten und einmalig --- */
   { id:'notreserve',   name:'Notreserve', max:1, weight:0.8,
     desc:'Kern +150 Struktur, sofort instandgesetzt',
@@ -385,6 +470,9 @@ const CARDS = [
         x.maxHp = g.structureOf(x); x.hp = x.maxHp;
       }
     } },
+  { id:'abschirmung',  name:'Abschirmung', max:1, weight:0.5,
+    desc:'Störnebel und EMP-Front wirken nicht mehr gegen dich',
+    apply:b => b.modImmune = b.modImmune.concat(['nebel', 'emp']) },
   { id:'automatik',    name:'Automatikschaltung', max:1, weight:0.35,
     desc:'Über 85 % Puffer feuern alle Türme überladen, ohne Aufpreis',
     apply:b => b.freeOverloadAt = 0.85 }

@@ -26,9 +26,12 @@ Netzes blinkt rot und feuert nicht.
 9/s nachlädt. Bei zu vielen Türmen versiegt mitten in der Welle das Feuer — Reaktoren
 erhöhen Regeneration und Speicher.
 
+**3. Jede Leitung trägt nur so viel.** Der Anschluss ans Netz ist nicht die ganze Frage —
+es zählt auch, wie viel Energie dort noch ankommt. Siehe *Leitungslast* weiter unten.
+
 Zweite Währung ist **Materie**: fällt bei jedem Abschuss an und bezahlt alle Bauten.
 
-**3. Karten zwischen den Wellen.** Nach jeder abgewehrten Welle sind vier von 48 Karten
+**4. Karten zwischen den Wellen.** Nach jeder abgewehrten Welle sind vier von 54 Karten
 zur Wahl, die für den Rest der Partie gelten. Der Pool hat fünf Sorten:
 
 - **Grundwerte** für alle Türme — Reichweite, Schaden, Feuerrate, Energie, Struktur
@@ -57,6 +60,7 @@ erscheinen entsprechend ihrem Gewicht seltener. Beides hält Partien auseinander
 | `M` / Lautsprecher-Button | Ton an/aus (wird gespeichert) |
 | `O` | Überladung des gewählten Turms |
 | `L` | Lastpriorität des gewählten Turms |
+| `Q` / `W` / `E` | Kernbefehle: Entladung, Netzstoß, Notpuls |
 | `1`–`3` bei der Kartenwahl | Karte nehmen |
 | `Esc` | alles abwählen |
 
@@ -87,6 +91,73 @@ Türme feuern in dieser Reihenfolge, und die unteren Stufen fassen den Puffer er
 wenn er über ihrer Schwelle steht (Normal ab 20 %, Sparlast ab 55 %). So bleibt im
 Engpass Energie für die Seite, die wirklich halten muss, statt dass alle gleichzeitig
 verstummen. Abweichende Stufen stehen als Buchstabe am Turm.
+
+## Leitungslast
+
+Versorgung ist nicht binär. Jeder Knoten trägt nur eine begrenzte Menge Energie pro
+Sekunde weiter: der Kern 58/s, ein Pylon 15/s und je Ausbaustufe 6/s mehr — Stufe 5
+also 39/s. Was ein Turm an Dauerlast anfordert (Energie je Schuss geteilt durch die
+Schussfolge), fließt durch **alle** Knoten zwischen ihm und dem Kern.
+
+Fordert ein Ast mehr, als seine Leitung trägt, wird alles dahinter gedrosselt: Die
+Feuerrate sinkt genau um das Verhältnis, das fehlt. Drei Blaster an einem frischen Pylon
+verlangen 12,9/s und passen gerade; der vierte hebt die Anforderung auf 17,1/s bei 15/s
+Kapazität, und alle vier feuern mit 88 % ihrer Rate.
+
+Am Kern hat das eine zweite, größere Wirkung. Weil jede Anforderung am Ende durch den
+Kernknoten läuft und Reaktoren dort gegengerechnet werden, sagt die Kernkapazität im
+Kern genau eines: **Deine Türme dürfen deine Erzeugung um höchstens 58 Energie pro
+Sekunde überziehen.** Der Puffer trägt weiterhin die Spitzen — die Leitungslast begrenzt
+das Dauerdefizit. Wer 30 Türme betreiben will, braucht die Reaktoren dazu, nicht nur
+einen großen Speicher.
+
+Damit ist nicht nur die *Reichweite* des Netzes eine Entscheidung, sondern seine **Form**:
+
+- Ein langer Strang trägt so viel wie sein schwächster Pylon; zwei kurze Äste tragen
+  zusammen das Doppelte.
+- **Reaktoren speisen dort ein, wo sie stehen.** Ein Reaktor am selben Pylon nimmt dessen
+  Leitung 5/s je Stufe ab — draußen am Rand ist er deshalb mehr wert als neben dem Kern.
+- Ein Pylon-Ausbau erhöht seine Tragfähigkeit, nicht nur seine Struktur.
+- Überladung verdreifacht auch die Last, nicht nur den Verbrauch.
+
+Sichtbar ist das direkt am Netz: Pulse wandern vom Kern nach außen, Tempo und Stärke
+folgen der Auslastung, und ab 85 % färbt sich die Leitung erst bernstein, dann rot.
+Der Inspektor zeigt am Pylon „Leitungslast 17,1 / 15/s", am Turm „Netzdrossel −12 %".
+
+## Kernbefehle
+
+Drei Fähigkeiten mit Abklingzeit, nur im Gefecht, bezahlt aus demselben Puffer, aus dem
+die Türme schießen. Jeder Einsatz ist damit ein Tausch: jetzt viel Wirkung, danach ein
+paar Sekunden dünnes Feuer.
+
+| Befehl | Taste | Puffer | Bereit nach | Wirkung |
+|---|---|---|---|---|
+| **Entladung** | `Q` | 55 % | 26 s | Druckwelle im Umkreis von 5,6 Zellen, 2,9 Schaden je Energie, nach außen abnehmend. Zählt als Energieschaden — Schilde nehmen ihn voll. |
+| **Netzstoß** | `W` | 40 % | 34 s | 6 s lang doppelter Schaden bei 55 % Verbrauch. Liegt über der Überladung. |
+| **Notpuls** | `E` | 45 % | 40 s | Setzt jeden versorgten Bau um ein Drittel instand, ohne Materie. Kalte Türme bleiben kaputt. |
+
+Die Karten *Kondensatorbank* (−28 % Abklingzeit) und *Schwungrad* (−35 % Pufferkosten)
+gehen in diese Richtung.
+
+## Sturmwellen
+
+Ab Welle 5 kann eine Welle eine Eigenschaft mitbringen — außer auf Bosswellen, die für
+sich schon ein Ereignis sind. Sie steht in der Vorschau, bevor man sie startet, und wer
+sie hält, bekommt **50 % mehr Prämie**.
+
+| Sturm | Wirkung |
+|---|---|
+| Störnebel | Alle Türme sehen 25 % kürzer |
+| EMP-Front | Der Puffer lädt kaum noch nach |
+| Magnetsturm | Geschosse fliegen 40 % langsamer — Strahlen nicht |
+| Schwarm | 70 % mehr Wellenbudget, dafür 45 % weniger Struktur je Gegner |
+| Kältefest | Gegner lassen sich nicht bremsen |
+| Panzerkonvoi | Jeder Gegner trägt 4 Panzerung mehr |
+| Hetzjagd | Gegner laufen 30 % schneller |
+
+Jeder Sturm zielt auf eine Einseitigkeit: *Kältefest* trifft den reinen Frost-Aufbau,
+*Störnebel* den auf Reichweite gebauten, *EMP-Front* den ohne Pufferreserve. Die seltene
+Karte *Abschirmung* nimmt Störnebel und EMP-Front dauerhaft die Wirkung.
 
 ## Darstellung
 
@@ -119,6 +190,11 @@ Dazu kommen **Stereo-Ortung** (ein Turm am linken Feldrand klingt links) und ein
 **Raumhall** über eine synthetisch erzeugte Impulsantwort, mit unterschiedlichem Anteil
 je Geräusch: Explosionen bekommen viel, Blaster fast nichts.
 
+Die drei Kernbefehle sind klanglich verwandt, weil sie aus derselben Quelle bezahlt
+werden: erst ein kurzes Aufladen, dann die Entspannung — bei der Entladung als Bersten,
+beim Netzstoß als aufsteigende Sägezahnfahrt, beim Notpuls als heller Zweiklang. Eine
+Sturmwelle kündigt sich mit einem tiefen, leicht verstimmten Zweiklang an.
+
 Der AudioContext startet erst nach der ersten Nutzergeste (Browser-Autoplay-Regel).
 Häufige Sounds sind pro Typ zeitlich gedrosselt und in Tonhöhe und Filter leicht gestreut,
 damit zwanzig Blaster nicht wie ein einziger Automat klingen. Ein Kompressor fängt Spitzen
@@ -126,7 +202,7 @@ ab. Bei stumm geschaltetem Ton werden gar keine Audio-Nodes erzeugt.
 
 ## Gebäude
 
-- **Pylon** (20) — trägt das Netz weiter, Radius 4,2 Zellen
+- **Pylon** (20) — trägt das Netz weiter, Radius 4,2 Zellen, Leitungslast 15/s (+6/s je Stufe)
 - **Reaktor** (55) — +5 Energie/s, +45 Speicher (skaliert mit Ausbaustufe)
 - **Blaster** (30) — schnelles, billiges Dauerfeuer
 - **Kanone** (65) — langsam, hoher Flächenschaden

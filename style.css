@@ -182,3 +182,50 @@ button.danger:hover{background:rgba(190,50,70,.5);border-color:var(--red)}
 .bb-state{margin-top:4px;font-size:10px;letter-spacing:.16em;text-transform:uppercase;
   color:#ffb46b;min-height:12px}
 .bb-state.guarded{color:#8fa6ff}
+
+/* ---- Kernbefehle ---- */
+#powers{                           /* unter Vorschau und Warnzeilen */
+  position:absolute;left:12px;top:134px;width:158px;
+  display:flex;flex-direction:column;gap:6px;
+}
+.power{
+  position:relative;overflow:hidden;text-align:left;padding:7px 9px;
+  display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;
+  gap:1px 7px;line-height:1.25;
+}
+.power .pk{
+  grid-row:1/3;align-self:center;width:19px;height:19px;line-height:18px;text-align:center;
+  border:1px solid var(--line);border-radius:4px;font-size:10px;color:var(--dim);
+}
+.power .pn{font-size:11.5px;color:var(--text);letter-spacing:.02em}
+.power .pc{font-size:10px;color:var(--dim);font-variant-numeric:tabular-nums}
+.power .pcd{                       /* Abklingzeit als Balken am unteren Rand */
+  position:absolute;left:0;bottom:0;height:2px;width:0;
+  background:var(--cyan);opacity:.75;pointer-events:none;
+}
+.power.cooling{opacity:.5}
+.power.ready{border-color:rgba(95,224,255,.5)}
+.power.ready .pk{color:var(--cyan);border-color:rgba(95,224,255,.5)}
+.power.poor .pn{color:var(--dim)}
+.power.active{background:rgba(60,150,220,.32);border-color:var(--cyan)}
+.power.active .pn{color:#fff}
+
+/* ---- Sturmwelle ---- */
+#modBadge{
+  position:absolute;top:76px;left:50%;transform:translateX(-50%);
+  padding:6px 18px;border:1px solid rgba(150,120,255,.6);border-radius:4px;
+  background:rgba(26,18,54,.82);color:#dcd2ff;
+  font-size:12px;letter-spacing:.09em;text-transform:uppercase;white-space:nowrap;
+  pointer-events:none;
+}
+#modBadge b{color:#b9a6ff;letter-spacing:.16em}
+#modBadge i{font-style:normal;color:var(--dim);text-transform:none;letter-spacing:.02em}
+
+/* ---- Überlastete Leitung ---- */
+#netWarn{
+  position:absolute;top:106px;left:50%;transform:translateX(-50%);
+  padding:4px 12px;border:1px solid rgba(255,180,90,.5);border-radius:4px;
+  background:rgba(48,30,8,.75);color:#ffddb0;
+  font-size:11px;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;
+  pointer-events:none;
+}

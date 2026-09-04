@@ -132,6 +132,7 @@ section:first-child{border-bottom:none}
   stroke-dasharray:5 5;opacity:.85}
 .l-supply-2{stroke-dasharray:3 5;opacity:.55}
 .l-wire{stroke:var(--bp-energy);stroke-width:1.6;fill:none}
+.l-wire-hot{stroke:#ff8d9c;stroke-width:3.4;stroke-dasharray:4 4}
 .l-core rect{fill:rgba(95,224,255,.10);stroke:var(--bp-energy);stroke-width:1.8}
 .l-core path{stroke:var(--bp-energy);stroke-width:1;opacity:.6;fill:none}
 .l-core-dot{fill:var(--bp-energy);filter:drop-shadow(0 0 9px rgba(95,224,255,.9))}
