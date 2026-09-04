@@ -1,0 +1,139 @@
+:root{
+  --bg:#05070d;
+  --panel:rgba(10,16,28,.88);
+  --line:rgba(120,190,255,.18);
+  --cyan:#5fe0ff;
+  --text:#cfe2f5;
+  --dim:#7b8ea6;
+  --gold:#ffd166;
+  --red:#ff5d73;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+/* Das Spiel lebt eingebettet in der Seite: #stage füllt seinen Container. */
+#stage{
+  position:relative;width:100%;aspect-ratio:1312/800;
+  color:var(--text);font:14px/1.4 "Segoe UI",system-ui,-apple-system,sans-serif;
+  user-select:none;-webkit-user-select:none;
+}
+canvas{
+  display:block;width:100%;height:100%;
+  background:radial-gradient(circle at 50% 50%,#0b1526 0%,#05070d 70%);
+  border-radius:6px;cursor:crosshair;
+}
+
+/* ---- Topbar ---- */
+#topbar{
+  position:absolute;top:0;left:0;right:0;display:flex;gap:10px;align-items:center;
+  padding:8px 12px;background:linear-gradient(180deg,rgba(5,8,15,.92),rgba(5,8,15,0));
+  pointer-events:none;
+}
+#topbar button{pointer-events:auto}
+.stat{display:flex;flex-direction:column;gap:3px;min-width:74px}
+.stat.wide{min-width:150px;flex:0 0 auto}
+.label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.label b{color:var(--text);letter-spacing:0}
+.label i{color:#5fe0a0;font-style:normal;letter-spacing:0}
+.value{font-size:19px;font-weight:600;color:#fff;font-variant-numeric:tabular-nums}
+.bar{height:8px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden}
+.fill{height:100%;width:100%;transition:width .12s linear}
+.fill.energy{background:linear-gradient(90deg,#2f9dff,#5fe0ff)}
+.fill.core{background:linear-gradient(90deg,#ff5d73,#ffd166)}
+#phaseBox .value{font-size:15px;color:var(--gold)}
+
+button{
+  font:inherit;font-size:12px;color:var(--text);cursor:pointer;
+  background:rgba(30,50,80,.6);border:1px solid var(--line);
+  border-radius:5px;padding:7px 11px;transition:.14s;
+}
+button:hover{background:rgba(60,120,190,.45);border-color:var(--cyan);color:#fff}
+button small{opacity:.55;font-size:10px}
+button.danger:hover{background:rgba(190,50,70,.5);border-color:var(--red)}
+#nextWave{margin-left:auto}
+#nextWave.hot{background:rgba(255,150,40,.28);border-color:var(--gold);color:#ffe6a8}
+
+/* ---- Shop ---- */
+#shop{
+  position:absolute;left:0;right:0;bottom:0;display:flex;gap:8px;justify-content:center;
+  padding:10px 12px 12px;background:linear-gradient(0deg,rgba(5,8,15,.94),rgba(5,8,15,0));
+}
+.card{
+  width:112px;padding:8px;border-radius:7px;text-align:left;
+  background:var(--panel);border:1px solid var(--line);cursor:pointer;transition:.14s;
+}
+.card:hover{border-color:var(--cyan);transform:translateY(-2px)}
+.card.active{border-color:var(--cyan);background:rgba(40,90,140,.55);box-shadow:0 0 16px rgba(95,224,255,.25)}
+.card.poor{opacity:.42}
+.card .n{display:flex;align-items:center;gap:5px;font-weight:600;color:#fff;font-size:12.5px}
+.card .dot{width:9px;height:9px;border-radius:3px}
+.card .c{font-size:11px;color:var(--gold);margin-top:3px}
+.card .d{font-size:10.5px;color:var(--dim);margin-top:4px;line-height:1.3;min-height:27px}
+.card .k{float:right;font-size:10px;color:var(--dim);border:1px solid var(--line);border-radius:3px;padding:0 4px}
+
+/* ---- Inspector ---- */
+#inspector{
+  position:absolute;right:12px;top:64px;width:196px;padding:11px;
+  background:var(--panel);border:1px solid var(--line);border-radius:7px;
+}
+.ins-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+.ins-head b{color:#fff;font-size:14px}
+.ins-head span{font-size:11px;color:var(--cyan)}
+#insStats{font-size:11.5px;color:var(--dim);display:grid;grid-template-columns:1fr auto;gap:3px 8px}
+#insStats span:nth-child(even){color:var(--text)}
+.ins-actions{display:flex;gap:6px;margin-top:10px}
+.ins-actions button{flex:1;padding:6px 4px;font-size:11px}
+
+/* ---- Toast + Overlay ---- */
+#toast{
+  position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);
+  font-size:15px;color:#ffdca8;text-shadow:0 0 14px rgba(255,180,80,.6);
+  pointer-events:none;opacity:0;transition:opacity .3s;letter-spacing:.05em;
+}
+#toast.show{opacity:1}
+#overlay{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(3,6,12,.82);backdrop-filter:blur(3px);
+}
+#overlay .panel{text-align:center;padding:34px 46px;border:1px solid var(--line);
+  border-radius:10px;background:var(--panel)}
+#overlay h1{margin:0 0 10px;font-size:30px;letter-spacing:.16em;color:#fff}
+#overlay p{margin:0 0 20px;color:var(--dim);max-width:340px;line-height:1.6}
+#overlay button{padding:10px 22px;font-size:14px}
+
+/* ---- Wellenvorschau ---- */
+#preview{
+  position:absolute;top:56px;left:12px;right:12px;
+  font-size:11.5px;letter-spacing:.03em;color:var(--dim);
+  pointer-events:none;text-shadow:0 1px 6px rgba(0,0,0,.9);
+}
+#preview b{color:var(--gold);font-weight:600}
+#preview i{color:var(--text);font-style:normal}
+
+/* ---- Kartenwahl ---- */
+#draft{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(3,7,14,.86);backdrop-filter:blur(3px);z-index:20;
+}
+.draft-box{text-align:center;padding:26px 30px;max-width:660px}
+.draft-eyebrow{margin:0 0 6px;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+.draft-eyebrow b{color:var(--gold)}
+.draft-box h2{margin:0 0 22px;font-size:19px;font-weight:600;color:#fff;letter-spacing:.02em}
+#draftCards{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.draft-card{
+  width:186px;padding:16px 15px 15px;text-align:left;cursor:pointer;
+  background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  transition:.15s;position:relative;
+}
+.draft-card:hover{border-color:var(--cyan);transform:translateY(-3px);
+  box-shadow:0 12px 30px -14px rgba(95,224,255,.6)}
+.draft-card .num{
+  position:absolute;top:9px;right:10px;font-size:10px;color:var(--dim);
+  border:1px solid var(--line);border-radius:3px;padding:0 4px;
+}
+.draft-card h3{margin:0 0 7px;font-size:14.5px;color:var(--cyan);font-weight:600;padding-right:18px}
+.draft-card p{margin:0;font-size:11.5px;line-height:1.5;color:var(--dim)}
+.draft-card .have{display:block;margin-top:9px;font-size:10px;color:var(--gold);letter-spacing:.08em}
+
+/* ---- Inspektor: Turmschalter ---- */
+#insTurret{margin-top:6px}
+#overloadBtn.on{background:rgba(255,110,60,.34);border-color:#ff9f5a;color:#ffd9c0}

@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CORE DEFENSE — Tower Defense von innen nach außen</title>
+<meta name="description" content="Browser-Tower-Defense: Die Wellen kommen von außen, der Strom kommt aus der Mitte. Ohne Installation im Browser spielbar.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Saira:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="landing.css">
+<script>document.documentElement.className = "l-js";</script>
+</head>
+<body>
+
+<!-- ============ Zeichnungsrahmen: Kopf ============ -->
+<header class="l-head">
+  <span class="l-head-id">CD&#8209;001</span>
+  <span class="l-head-t">Core Defense</span>
+  <nav class="l-head-nav">
+    <a href="#spielen">Spielen</a>
+    <a href="#aufbau">Aufbau</a>
+    <a href="#bauteile">Bauteile</a>
+    <a href="#bedienung">Bedienung</a>
+  </nav>
+</header>
+
+<main>
+
+<!-- ============ Hero: die Zeichnung ============ -->
+<section class="l-hero l-in">
+  <div class="l-hero-text">
+    <p class="l-eyebrow">Tower Defense im Browser</p>
+    <h1>
+      <span class="l-line">Die Wellen kommen</span>
+      <span class="l-line">von außen.</span>
+      <span class="l-line l-accent">Der Strom kommt<br>aus der Mitte.</span>
+    </h1>
+    <p class="l-sub">
+      Kein Pfad, keine Karte, kein Ende: Gegner strömen aus jeder Richtung auf den Kern zu.
+      Der Kern hält deine Türme am Netz — und jeder Schuss zehrt an derselben Energie,
+      die ihn am Leben hält.
+    </p>
+    <div class="l-cta">
+      <a class="l-btn l-btn-primary" href="#spielen">Spielen</a>
+      <a class="l-btn" href="#aufbau">So funktioniert es</a>
+    </div>
+  </div>
+
+  <div class="l-hero-plan">
+    <svg viewBox="0 0 664 486" role="img" aria-labelledby="plantitel" class="l-plan">
+      <title id="plantitel">Schnitt durch das Versorgungsnetz: Kern in der Mitte, Pylonkette nach außen, Angriffe von allen Seiten</title>
+      <defs>
+        <pattern id="raster" width="20" height="20" patternUnits="userSpaceOnUse">
+          <path d="M20 0H0V20" fill="none" stroke="rgba(160,205,255,.13)" stroke-width="1"/>
+        </pattern>
+        <marker id="pfeil" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0 0 10 5 0 10z" fill="#ff6b81"/>
+        </marker>
+        <marker id="massL" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+          <path d="M10 0 0 5 10 10" fill="none" stroke="#ffb43d" stroke-width="1.4"/>
+        </marker>
+        <marker id="massR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+          <path d="M0 0 10 5 0 10" fill="none" stroke="#ffb43d" stroke-width="1.4"/>
+        </marker>
+      </defs>
+
+      <rect width="664" height="486" fill="url(#raster)"/>
+
+      <!-- Angriffsrichtungen -->
+      <g class="l-attack">
+        <path pathLength="1" class="l-draw" style="animation-delay:1.5s" d="M40 60 L214 194"   marker-end="url(#pfeil)"/>
+        <path pathLength="1" class="l-draw" style="animation-delay:1.62s" d="M534 92 L346 200" marker-end="url(#pfeil)"/>
+        <path pathLength="1" class="l-draw" style="animation-delay:1.74s" d="M60 430 L216 292" marker-end="url(#pfeil)"/>
+        <path pathLength="1" class="l-draw" style="animation-delay:1.86s" d="M492 424 L350 296" marker-end="url(#pfeil)"/>
+      </g>
+
+      <!-- Versorgungsradius des Kerns -->
+      <circle class="l-draw l-supply" pathLength="1" style="animation-delay:.35s" cx="280" cy="245" r="132"/>
+      <!-- Pylon und sein Radius -->
+      <circle class="l-draw l-supply l-supply-2" pathLength="1" style="animation-delay:.95s" cx="392" cy="176" r="104"/>
+      <path class="l-draw l-wire" pathLength="1" style="animation-delay:.85s" d="M280 245 L392 176"/>
+      <path class="l-draw l-wire" pathLength="1" style="animation-delay:1.15s" d="M392 176 L466 236"/>
+
+      <!-- Kern -->
+      <g class="l-core">
+        <rect class="l-draw" pathLength="1" style="animation-delay:.1s" x="256" y="221" width="48" height="48"/>
+        <path class="l-draw" pathLength="1" style="animation-delay:.2s" d="M256 221 L304 269 M304 221 L256 269"/>
+        <circle class="l-core-dot" cx="280" cy="245" r="9"/>
+      </g>
+
+      <!-- Bauteile -->
+      <g class="l-node">
+        <circle class="l-pylon" cx="392" cy="176" r="7.5"/>
+        <circle class="l-turret" cx="214" cy="197" r="6"/>
+        <circle class="l-turret" cx="228" cy="316" r="6"/>
+        <circle class="l-turret" cx="352" cy="299" r="6"/>
+        <circle class="l-turret" cx="466" cy="236" r="6"/>
+        <circle class="l-dead" cx="118" cy="118" r="6"/>
+      </g>
+
+      <!-- Bemaßung des Versorgungsradius -->
+      <g class="l-dim">
+        <path d="M280 245 H412" marker-start="url(#massL)" marker-end="url(#massR)"/>
+        <text x="346" y="237" text-anchor="middle">R 5,4 Zellen</text>
+      </g>
+
+      <!-- Beschriftungen -->
+      <g class="l-note">
+        <path d="M280 269 V330 H236" class="l-lead"/>
+        <text x="232" y="345" text-anchor="end">Kern <tspan>Energiequelle, 600 HP</tspan></text>
+
+        <path d="M392 168 V118 H452" class="l-lead"/>
+        <text x="456" y="114">Pylon <tspan>trägt das Netz weiter</tspan></text>
+
+        <path d="M466 244 V300 H500" class="l-lead"/>
+        <text x="504" y="304" text-anchor="end" class="l-note-r">Turm <tspan>feuert nur am Netz</tspan></text>
+
+        <path d="M124 118 H176" class="l-lead l-lead-dead"/>
+        <text x="182" y="122" class="l-note-dead">ohne Netz — kalt</text>
+      </g>
+    </svg>
+
+    <!-- Titelblock wie auf einer technischen Zeichnung -->
+    <dl class="l-titleblock">
+      <div><dt>Zeichnung</dt><dd>CD-001</dd></div>
+      <div><dt>Raster</dt><dd>41 × 25 Zellen</dd></div>
+      <div><dt>Kern</dt><dd>3 × 3, zentriert</dd></div>
+      <div><dt>Wellen</dt><dd>endlos</dd></div>
+    </dl>
+  </div>
+</section>
+
+<!-- ============ Das Spiel ============ -->
+<section id="spielen" class="l-play l-reveal">
+  <div class="l-sec-head">
+    <h2>Die Anlage in Betrieb</h2>
+    <button id="fsBtn" class="l-btn l-btn-small" type="button">Vollbild</button>
+  </div>
+
+  <div id="viewport">
+    <div id="fit">
+    <div id="stage">
+      <canvas id="game" width="1312" height="800"></canvas>
+
+      <div id="topbar">
+        <div class="stat">
+          <span class="label">Materie</span>
+          <span class="value" id="matter">0</span>
+        </div>
+        <div class="stat wide">
+          <span class="label">Energie <b id="energyTxt">0/0</b> <i id="regenTxt">+0/s</i></span>
+          <div class="bar"><div class="fill energy" id="energyBar"></div></div>
+        </div>
+        <div class="stat wide">
+          <span class="label">Kern <b id="coreTxt">0/0</b></span>
+          <div class="bar"><div class="fill core" id="coreBar"></div></div>
+        </div>
+        <div class="stat">
+          <span class="label">Welle</span>
+          <span class="value" id="wave">0</span>
+        </div>
+        <div class="stat" id="phaseBox">
+          <span class="label" id="phaseLabel">Bauphase</span>
+          <span class="value" id="phaseValue">--</span>
+        </div>
+        <button id="nextWave" class="ghost">Welle starten <small>(Leertaste)</small></button>
+        <button id="speedBtn" class="ghost">1&times;</button>
+        <button id="muteBtn" class="ghost" title="Ton (M)">&#128266;</button>
+        <button id="pauseBtn" class="ghost">Pause</button>
+      </div>
+
+      <div id="preview" hidden></div>
+
+      <div id="shop"></div>
+
+      <div id="draft" hidden>
+        <div class="draft-box">
+          <p class="draft-eyebrow">Welle <b id="draftWave">0</b> gehalten</p>
+          <h2>Eine Verbesserung für den Rest der Partie</h2>
+          <div id="draftCards"></div>
+        </div>
+      </div>
+
+      <div id="inspector" hidden>
+        <div class="ins-head"><b id="insName">-</b><span id="insLevel"></span></div>
+        <div id="insStats"></div>
+        <div class="ins-actions">
+          <button id="upgradeBtn"></button>
+          <button id="sellBtn" class="danger"></button>
+        </div>
+        <div class="ins-actions" id="insTurret" hidden>
+          <button id="prioBtn"></button>
+          <button id="overloadBtn"></button>
+        </div>
+      </div>
+
+      <div id="toast"></div>
+
+      <div id="overlay" hidden>
+        <div class="panel">
+          <h1 id="ovTitle">CORE DEFENSE</h1>
+          <p id="ovText"></p>
+          <button id="ovBtn">Neu starten</button>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+
+  <p class="l-play-note">
+    Läuft direkt hier, ohne Installation. Maus zum Bauen, Tastatur für alles andere —
+    die Tasten wirken nur, solange das Spielfeld im Bild ist.
+  </p>
+</section>
+
+<!-- ============ Die drei Mechaniken ============ -->
+<section id="aufbau" class="l-details l-reveal">
+  <div class="l-sec-head"><h2>Drei Details, die alles bestimmen</h2></div>
+
+  <div class="l-detail-grid">
+    <article class="l-detail">
+      <span class="l-mark">Detail A</span>
+      <svg viewBox="0 0 200 130" aria-hidden="true">
+        <rect width="200" height="130" fill="url(#raster)"/>
+        <circle cx="46" cy="65" r="34" class="l-supply"/>
+        <circle cx="118" cy="65" r="30" class="l-supply l-supply-2"/>
+        <path d="M46 65 H118" class="l-wire"/>
+        <rect x="38" y="57" width="16" height="16" class="l-core-mini"/>
+        <circle cx="118" cy="65" r="5.5" class="l-pylon"/>
+        <circle cx="140" cy="48" r="4.5" class="l-turret"/>
+        <circle cx="178" cy="96" r="4.5" class="l-dead"/>
+      </svg>
+      <h3>Das Netz wächst als Kette</h3>
+      <p>
+        Ein Turm feuert nur im Versorgungsradius des Kerns oder eines Pylons — und ein Pylon
+        zählt selbst erst als Knoten, wenn er versorgt ist. Deine Verteidigung wächst deshalb
+        zwingend von innen nach außen. Was den Anschluss verliert, wird kalt und blinkt rot.
+      </p>
+    </article>
+
+    <article class="l-detail">
+      <span class="l-mark">Detail B</span>
+      <svg viewBox="0 0 200 130" aria-hidden="true">
+        <rect width="200" height="130" fill="url(#raster)"/>
+        <rect x="20" y="46" width="160" height="18" class="l-tank"/>
+        <rect x="20" y="46" width="96" height="18" class="l-tank-fill"/>
+        <path d="M20 82 H116" class="l-dim-line"/>
+        <text x="20" y="38" class="l-svg-label">Puffer 130</text>
+        <text x="20" y="100" class="l-svg-label l-svg-label-warn">Schuss zieht ab · +9/s zurück</text>
+      </svg>
+      <h3>Jeder Schuss kostet Strom</h3>
+      <p>
+        Türme feuern aus demselben Puffer, der auch den Kern speist. Ein Blaster nimmt 1,2,
+        die Kanone 7 pro Schuss. Baust du zu viele Rohre und zu wenig Reaktoren, versiegt
+        mitten in der Welle das Feuer — ein eigener Warnton sagt dir, wann es soweit ist.
+      </p>
+    </article>
+
+    <article class="l-detail">
+      <span class="l-mark">Detail C</span>
+      <svg viewBox="0 0 200 130" aria-hidden="true">
+        <rect width="200" height="130" fill="url(#raster)"/>
+        <circle cx="100" cy="65" r="12" class="l-core-ring"/>
+        <g class="l-attack l-attack-static">
+          <path d="M12 22 L78 55" marker-end="url(#pfeil)"/>
+          <path d="M188 26 L124 56" marker-end="url(#pfeil)"/>
+          <path d="M16 112 L78 78" marker-end="url(#pfeil)"/>
+          <path d="M186 110 L124 78" marker-end="url(#pfeil)"/>
+        </g>
+      </svg>
+      <h3>Keine Wege, nur Richtungen</h3>
+      <p>
+        Gegner erscheinen rundum am Rand und laufen radial auf den Kern zu. Barrieren blocken
+        sie nicht, sie lenken: Solange eine Lücke bleibt, fließen die Angreifer daran vorbei —
+        steht keine offen, schlagen sie zu. Drohnen ab Welle 6 fliegen ohnehin darüber hinweg.
+      </p>
+    </article>
+  </div>
+</section>
+
+<!-- ============ Stückliste ============ -->
+<section id="bauteile" class="l-parts l-reveal">
+  <div class="l-sec-head"><h2>Stückliste</h2><span class="l-sec-note">Alle Werte auf Stufe 1</span></div>
+  <div class="l-table-wrap">
+    <table class="l-table">
+      <thead>
+        <tr><th>Pos</th><th>Bauteil</th><th>Materie</th><th>Struktur</th><th>Leistung</th><th>Aufgabe</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td><span class="l-key">1</span> Pylon</td><td>20</td><td>70</td><td>Radius 4,2 Z</td><td>Verlängert das Netz nach außen.</td></tr>
+        <tr><td>2</td><td><span class="l-key">2</span> Reaktor</td><td>55</td><td>90</td><td>+5/s, +45 Speicher</td><td>Hält das Feuer am Laufen.</td></tr>
+        <tr><td>3</td><td><span class="l-key">3</span> Blaster</td><td>30</td><td>80</td><td>7 Schaden, 3,6/s</td><td>Grundlast gegen alles Schnelle.</td></tr>
+        <tr><td>4</td><td><span class="l-key">4</span> Kanone</td><td>65</td><td>110</td><td>34 Schaden, Fläche</td><td>Räumt Pulks, frisst 7 Energie je Schuss.</td></tr>
+        <tr><td>5</td><td><span class="l-key">5</span> Frostturm</td><td>45</td><td>80</td><td>&minus;50 % Tempo</td><td>Kauft den anderen Türmen Zeit.</td></tr>
+        <tr><td>6</td><td><span class="l-key">6</span> Barriere</td><td>10</td><td>260</td><td>ohne Strom</td><td>Lenkt Bodentruppen in dein Feuer.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="l-parts-note">
+    Jedes Bauteil hat drei Stufen: +35 % Schaden, +8 % Reichweite, mehr Struktur.
+    Abbau erstattet 60 % zurück.
+  </p>
+</section>
+
+<!-- ============ Gegner ============ -->
+<section class="l-loads l-reveal">
+  <div class="l-sec-head"><h2>Was auf den Kern zuläuft</h2></div>
+  <ul class="l-load-grid">
+    <li><span class="l-load-when">ab Welle 1</span><h3>Crawler</h3><p>Zäh genug, um in Masse zu stören. Der Grundton jeder Welle.</p></li>
+    <li><span class="l-load-when">ab Welle 2</span><h3>Runner</h3><p>Doppelt so schnell, dünn gepanzert. Kommt durch, wo Feuerkraft fehlt.</p></li>
+    <li><span class="l-load-when">ab Welle 4</span><h3>Brute</h3><p>150 Struktur, langsam, schlägt Barrieren kurz und klein.</p></li>
+    <li><span class="l-load-when">ab Welle 6</span><h3>Drohne</h3><p>Fliegt über alles hinweg. Gegen sie hilft nur Reichweite.</p></li>
+    <li class="l-load-boss"><span class="l-load-when">alle 10 Wellen</span><h3>Titan</h3><p>1100 Struktur, 70 Schaden je Schlag. Dafür sparst du.</p></li>
+  </ul>
+</section>
+
+<!-- ============ Bedienung ============ -->
+<section id="bedienung" class="l-controls l-reveal">
+  <div class="l-sec-head"><h2>Bedienung</h2></div>
+  <dl class="l-keys">
+    <div><dt><kbd>1</kbd>&ndash;<kbd>6</kbd></dt><dd>Bauteil wählen</dd></div>
+    <div><dt>Linksklick</dt><dd>bauen, auswählen</dd></div>
+    <div><dt>Rechtsklick</dt><dd>abbrechen oder abbauen</dd></div>
+    <div><dt><kbd>U</kbd> / <kbd>S</kbd></dt><dd>ausbauen / abbauen</dd></div>
+    <div><dt><kbd>Leertaste</kbd></dt><dd>Welle sofort starten</dd></div>
+    <div><dt><kbd>P</kbd></dt><dd>Pause</dd></div>
+    <div><dt><kbd>M</kbd></dt><dd>Ton an und aus</dd></div>
+    <div><dt><kbd>Esc</kbd></dt><dd>Auswahl aufheben</dd></div>
+  </dl>
+</section>
+
+</main>
+
+<footer class="l-foot">
+  <span>CD-001 · Core Defense</span>
+  <span>HTML, CSS, Canvas. Kein Build, keine Abhängigkeiten, Sound zur Laufzeit erzeugt.</span>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/entities.js"></script>
+<script src="js/game.js"></script>
+<script src="js/landing.js"></script>
+</body>
+</html>
