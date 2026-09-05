@@ -23,15 +23,16 @@ Verteidigung wächst also zwingend als Kette von innen nach außen. Ein Turm au�
 Netzes blinkt rot und feuert nicht.
 
 **2. Schüsse kosten Energie.** Jeder Schuss zieht aus dem Energiepuffer, der mit
-9/s nachlädt. Bei zu vielen Türmen versiegt mitten in der Welle das Feuer — Reaktoren
-erhöhen Regeneration und Speicher.
+9/s nachlädt. Bei zu vielen Türmen versiegt mitten in der Welle das Feuer. Nachschub und
+Speicher sind dabei getrennt: **Reaktoren** liefern Energie pro Sekunde, **Akkus** fassen
+sie nur. Wie der Kern seine eigene Leistung verteilt, entscheidet der **Kernmodus**.
 
 **3. Jede Leitung trägt nur so viel.** Der Anschluss ans Netz ist nicht die ganze Frage —
 es zählt auch, wie viel Energie dort noch ankommt. Siehe *Leitungslast* weiter unten.
 
 Zweite Währung ist **Materie**: fällt bei jedem Abschuss an und bezahlt alle Bauten.
 
-**4. Karten zwischen den Wellen.** Nach jeder abgewehrten Welle sind vier von 54 Karten
+**4. Karten zwischen den Wellen.** Nach jeder abgewehrten Welle sind vier von 57 Karten
 zur Wahl, die für den Rest der Partie gelten. Der Pool hat fünf Sorten:
 
 - **Grundwerte** für alle Türme — Reichweite, Schaden, Feuerrate, Energie, Struktur
@@ -50,7 +51,7 @@ erscheinen entsprechend ihrem Gewicht seltener. Beides hält Partien auseinander
 
 | Eingabe | Wirkung |
 |---|---|
-| `1`–`6` / Klick auf Karte | Gebäude wählen |
+| `1`–`7` / Klick auf Karte | Gebäude wählen |
 | Linksklick | bauen bzw. bestehendes Gebäude auswählen |
 | Rechtsklick | Auswahl abbrechen / Gebäude abbauen (60 % des Bauwerts zurück) |
 | `U` / `S` | ausgewähltes Gebäude ausbauen / abbauen |
@@ -61,6 +62,7 @@ erscheinen entsprechend ihrem Gewicht seltener. Beides hält Partien auseinander
 | `O` | Überladung des gewählten Turms |
 | `L` | Lastpriorität des gewählten Turms |
 | `Q` / `W` / `E` | Kernbefehle: Entladung, Netzstoß, Notpuls |
+| `K` | Kernmodus wechseln (Einspeisung → Speicher → Schild) |
 | `1`–`3` bei der Kartenwahl | Karte nehmen |
 | `Esc` | alles abwählen |
 
@@ -116,13 +118,64 @@ Damit ist nicht nur die *Reichweite* des Netzes eine Entscheidung, sondern seine
 - Ein langer Strang trägt so viel wie sein schwächster Pylon; zwei kurze Äste tragen
   zusammen das Doppelte.
 - **Reaktoren speisen dort ein, wo sie stehen.** Ein Reaktor am selben Pylon nimmt dessen
-  Leitung 5/s je Stufe ab — draußen am Rand ist er deshalb mehr wert als neben dem Kern.
+  Leitung 6/s je Stufe ab, ein Akku hebt ihre Kapazität um 4/s je Stufe — draußen am Rand
+  sind beide deshalb mehr wert als neben dem Kern.
 - Ein Pylon-Ausbau erhöht seine Tragfähigkeit, nicht nur seine Struktur.
 - Überladung verdreifacht auch die Last, nicht nur den Verbrauch.
 
 Sichtbar ist das direkt am Netz: Pulse wandern vom Kern nach außen, Tempo und Stärke
 folgen der Auslastung, und ab 85 % färbt sich die Leitung erst bernstein, dann rot.
 Der Inspektor zeigt am Pylon „Leitungslast 17,1 / 15/s", am Turm „Netzdrossel −12 %".
+
+## Nachschub und Speicher
+
+Ein Reaktor erzeugt, ein Akku fasst — und keiner tut beides. Damit wird aus einer
+Nebenwirkung eine Bauentscheidung:
+
+| | Reaktor (50) | Akku (30) |
+|---|---|---|
+| Nachschub | +6 Energie/s je Stufe | — |
+| Speicher | — | +52 je Stufe |
+| Am Netz | entlastet seinen Ast um seine Erzeugung | trägt seinen Knoten mit 4/s je Stufe |
+| Stufe 5 | **Materiekonverter** — +0,6 Materie/s | **Spitzenlast** — einmal je Welle |
+
+**Regeneration trägt das Dauerfeuer, Speicher den Stoß.** Wer viele Blaster gleichmäßig
+feuern lässt, braucht Reaktoren; wer auf Kanonensalven und Kernbefehle setzt, braucht
+Puffer — Kernbefehle kosten einen *Anteil* des Speichers, ein großer Puffer macht die
+Entladung also stärker, nicht nur länger tragbar.
+
+Der Akku hat dabei eine zweite Wirkung, die zur Leitungslast passt: Was vor Ort gepuffert
+wird, muss die Leitung davor nicht als Spitze tragen. Ein Akku hebt deshalb die Kapazität
+des Knotens, an dem er hängt, um 4/s je Stufe — draußen am überlasteten Ast ist er damit
+so wertvoll wie ein Reaktor.
+
+**Spitzenlast** (Stufe 5): Fällt der Puffer unter 15 %, wirft der Akku einmal je Welle
+seinen ganzen Speicher nach. Am Bau sitzt ein weißer Punkt auf dem Pol, solange die
+Reserve geladen ist. Die Karte *Zellenstapel* gibt Akkus 45 % mehr Speicher.
+
+## Kernmodi
+
+Der Kern hat eine feste Leistung und verteilt sie. Keine der drei Stellungen ist neutral,
+jede gibt etwas und nimmt etwas — gewechselt wird mit `K` oder per Klick in der linken
+Spalte.
+
+| Modus | Vorteil | Preis |
+|---|---|---|
+| **Einspeisung** | +25 % Regeneration | −15 % Speicher |
+| **Speicher** | +40 % Speicher | −15 % Regeneration |
+| **Schild** | 60 % des Kernschadens zahlt der Puffer, 2,2 Energie je Schadenspunkt | −10 % auf Regeneration und Speicher |
+
+Das Umschalten kostet **3,5 Sekunden Anlauf**. In dieser Zeit wirkt *gar kein* Modus und
+der Nachschub fällt auf 60 % — ein Wechsel mitten im Gefecht ist deshalb teuer, in der
+Bauphase fast umsonst. Der Kern zeigt den Anlauf als Bogen, der sich schließt.
+
+Der Schildmodus ist die einzige Antwort, die der Kern selbst auf eine Deckungslücke hat:
+Er bezahlt Kernschaden mit Energie, die danach den Türmen fehlt. Bei leerem Puffer schützt
+er nicht mehr — er verschiebt den Schaden, er streicht ihn nicht.
+
+Zwei Karten greifen hier an: *Schnellschaltung* halbiert den Anlauf, *Zwitterkern*
+(selten, einmalig) nimmt dem laufenden Modus die Hälfte seines Nachteils, ohne den
+Vorteil anzutasten.
 
 ## Kernbefehle
 
@@ -257,7 +310,8 @@ ab. Bei stumm geschaltetem Ton werden gar keine Audio-Nodes erzeugt.
 ## Gebäude
 
 - **Pylon** (20) — trägt das Netz weiter, Radius 4,2 Zellen, Leitungslast 15/s (+6/s je Stufe)
-- **Reaktor** (55) — +5 Energie/s, +45 Speicher (skaliert mit Ausbaustufe)
+- **Reaktor** (50) — +6 Energie/s je Stufe, entlastet seinen Netzast
+- **Akku** (30) — +52 Speicher je Stufe, trägt seinen Knoten mit 4/s je Stufe
 - **Blaster** (30) — schnelles, billiges Dauerfeuer
 - **Kanone** (65) — langsam, hoher Flächenschaden
 - **Frostturm** (45) — Sofortstrahl, bremst Gegner um 50 %
@@ -274,6 +328,7 @@ Der Ausbau kostet mit jeder Stufe mehr (Blaster: 39, 56, 72, 89 — zusammen 286
 | Frostturm | **Vereisung** — friert bereits gebremste Gegner 0,85 s völlig ein (3 s Abklingzeit) |
 | Pylon | **Verstärkerfeld** — Türme in seinem Netzradius schlagen 15 % härter |
 | Reaktor | **Materiekonverter** — erzeugt zusätzlich 0,6 Materie pro Sekunde |
+| Akku | **Spitzenlast** — speist unter 15 % Puffer einmal je Welle seinen Speicher ein |
 | Barriere | **Reaktivpanzerung** — reißt beim Bersten alles im Umkreis mit |
 
 Am Bau erkennbar: Stufe 2 bis 4 an Kerben am Sockel, Stufe 5 an einem goldenen Ring.
@@ -339,6 +394,7 @@ und ein simulierter Spieler, der damit Partien spielt. Beides braucht nichts au�
 ```bash
 node tools/bot.js 100 40                 # 100 Partien bis Welle 40
 node tools/bot.js 60 40 noflow,nomod     # dieselbe Messung ohne Leitungslast und Sturmwellen
+node tools/bot.js 60 40 noakku          # ohne Akkus — der Bot lebt vom Kernpuffer allein
 node tools/bot.js 1 40 log               # eine Partie, Verlauf Welle für Welle
 ```
 
@@ -359,6 +415,14 @@ Drei Dinge sind beim Auswerten wichtig, sonst führt die Zahl in die Irre:
   Überladung und stellt Reaktoren nicht planvoll an überlastete Äste. Gerade bei der
   Leitungslast — einer Planungsaufgabe — unterschätzt er einen Menschen deutlich.
 
+Stand der letzten Messung (je 60 Läufe, dieselbe Bot-Version, Limit Welle 40): mit allem
+Median 16; ohne Akkus Median 11 — die Trennung von Nachschub und Speicher macht den
+Puffer also zu etwas, das man kaufen muss. Beim Kernmodus liegt der Bot mit fester
+Einspeisung bei Median 17 statt 16, sein „vor dem Boss auf Schild" bringt ihm nichts:
+Er schaltet früh und zahlt den Nachteil über die ganze Bauphase. Der Unterschied liegt
+im Rauschen — der Modus ist eine Entscheidung für Menschen, keine, die eine feste Regel
+gewinnt.
+
 ### Selbsttest
 
 Neben der Messung liegt eine Prüfdatei, die das nachrechnet, was sich nicht ansehen lässt:
@@ -368,7 +432,8 @@ node tools/pruefen.js
 ```
 
 Sie läuft in einer Zehntelsekunde und deckt Leitungslast, die drei Kernbefehle, alle
-sieben Sturmwellen, Reparatur und Abbau sowie die Sonderfähigkeiten der fünften Stufe ab.
+sieben Sturmwellen, die getrennten Akkus, die drei Kernmodi samt Anlauf und Schild,
+Reparatur und Abbau sowie die Sonderfähigkeiten der fünften Stufe ab.
 Die Prüfungen sind in zwei Sorten aufgeteilt, und der Unterschied ist wichtig:
 
 - **Verdrahtung.** Der Erwartungswert wird aus `js/config.js` abgeleitet. Diese Prüfungen
@@ -383,8 +448,8 @@ Die Prüfungen sind in zwei Sorten aufgeteilt, und der Unterschied ist wichtig:
 Beides ist gegengeprüft: Vier verstellte Werte in `config.js` haben fünf Anker umgeworfen,
 zwei ausgehängte Stellen im Feuerpfad zwei Verdrahtungsprüfungen.
 
-Die Schalter `noflow`, `nomod` und `nopower` schalten Leitungslast, Sturmwellen und
-Kernbefehle ab. So lässt sich messen, was ein einzelnes System zur Schwierigkeit
+Die Schalter `noflow`, `nomod`, `nopower`, `noakku` und `nomode` schalten Leitungslast,
+Sturmwellen, Kernbefehle, den Akkubau und den Moduswechsel des Bots ab. So lässt sich messen, was ein einzelnes System zur Schwierigkeit
 beiträgt. Der Prüfstand selbst (`tools/harness.js`) ist auch für schnelle Einzelfragen
 brauchbar:
 

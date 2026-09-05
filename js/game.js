@@ -78,8 +78,9 @@ const game = {
   boss: null, bossReward: false, pendingSpawns: [],
   hover: { x: -1, y: -1, inside: false },
   shake: 0,
-  // Leitungslast, Kernbefehle, Sturmwelle
+  // Leitungslast, Kernbefehle, Sturmwelle, Kernmodus
   sources: [], overloadedNodes: 0,
+  coreMode: 0, coreModeNext: 0, modeTimer: 0, shieldFlash: 0,
   lichter: [], risse: [],           // kurzlebige Lichtquellen, Spawn-Risse
   cooldowns: { discharge: 0, surge: 0, pulse: 0 },
   surge: 0, shockwave: null, mod: null,
@@ -130,6 +131,11 @@ const game = {
   drawOf(b) {
     if (!b.def.turret || !b.def.energy) return 0;
     return this.energyOf(b) / this.cooldownOf(b);
+  },
+  // Speicher, den ein Bau beisteuert — beim Akku greift die Karte „Zellenstapel"
+  capOf(b) {
+    if (!b.def.capacity) return 0;
+    return b.def.capacity * b.level * (b.type === 'akku' ? this.buffs.akkuCap : 1);
   },
   costOf(type) { return Math.round(BUILDINGS[type].cost * this.buffs.buildCost); },
   upgradeCost(b) {
@@ -195,7 +201,8 @@ const game = {
       type, def, x, y, level: 1,
       hp: 0, maxHp: 0,
       cd: 0, supplied: false, node: null, flow: 1, flash: 0, pulse: 0,
-      prio: 1, overload: false, bornAt: performance.now(), aim: -Math.PI / 2, scan: rand(0, 6.28),
+      prio: 1, overload: false, reserve: true, bornAt: performance.now(),
+      aim: -Math.PI / 2, scan: rand(0, 6.28),
       px: cellToPx(x), py: cellToPx(y)
     };
     b.maxHp = this.structureOf(b); b.hp = b.maxHp;
@@ -311,6 +318,9 @@ const game = {
       if (!b.supplied || !b.node) continue;
       if (b.def.turret) b.node.demand += this.drawOf(b);
       else if (b.type === 'reactor') b.node.demand -= b.def.regen * b.level * feed;
+      // Der Akku erzeugt nichts, aber er puffert vor Ort — die Leitung
+      // davor muss die Spitzen deshalb nicht allein tragen.
+      else if (b.type === 'akku') b.node.cap += akkuFlow(b);
     }
     // Dann von außen nach innen aufsummieren. Die Knoten stehen in
     // Ausbreitungsreihenfolge, ein Kind also immer hinter seinem Elternteil.
@@ -329,18 +339,17 @@ const game = {
     for (const b of this.buildings.values())
       b.flow = b.node ? b.node.flow : 1;
 
-    // Energie-Ökonomie neu bilanzieren
+    // Energie-Ökonomie neu bilanzieren: Reaktoren liefern, Akkus fassen
     let regen = CORE.regen + this.buffs.regen;
     let cap = CORE.energy + this.buffs.capacity;
     for (const b of this.buildings.values()) {
-      if (b.type === 'reactor' && b.supplied) {
-        regen += b.def.regen * b.level;
-        cap += b.def.capacity * b.level;
-      }
+      if (!b.supplied) continue;
+      if (b.def.regen) regen += b.def.regen * b.level;
+      if (b.def.capacity) cap += this.capOf(b);
     }
-    this.regen = Math.round(regen * (this.buffs.regenMul || 1) * 10) / 10;
-    this.energyMax = cap;
-    this.energy = Math.min(this.energy, cap);
+    this.regen = Math.round(regen * (this.buffs.regenMul || 1) * this.modeMul('regen') * 10) / 10;
+    this.energyMax = Math.max(1, Math.round(cap * this.modeMul('cap')));
+    this.energy = Math.min(this.energy, this.energyMax);
     this.drawNet();
   },
 
@@ -511,6 +520,18 @@ const game = {
   },
 
   damageCore(dmg, enemy) {
+    // Schildmodus: Der Puffer nimmt einen Teil des Treffers auf — solange
+    // Energie da ist. Was der Puffer schluckt, fehlt danach den Türmen.
+    const m = this.activeMode();
+    if (m && m.absorb && this.energy > 0) {
+      const gefangen = Math.min(dmg * m.absorb, this.energy / m.perDamage);
+      if (gefangen > 0.01) {
+        this.energy -= gefangen * m.perDamage;
+        dmg -= gefangen;
+        this.shieldFlash = 0.4;
+        SFX.shieldHit();
+      }
+    }
     this.coreHp -= dmg;
     SFX.coreHit();
     if (this.time - this.alarm.last > 2) this.alarm.since = this.time;   // neue Serie
@@ -613,6 +634,7 @@ const game = {
     this.mod = this.plannedWave.mod || null;
     this.plannedWave = null;
     if (this.buffs.waveStartFull) this.energy = this.energyMax;
+    for (const b of this.buildings.values()) if (b.type === 'akku') b.reserve = true;
     const sturm = this.modActive();
     SFX.waveStart();
     if (sturm) SFX.storm();
@@ -690,6 +712,16 @@ const game = {
     for (const id in this.cooldowns)
       if (this.cooldowns[id] > 0) this.cooldowns[id] = Math.max(0, this.cooldowns[id] - dt);
     if (this.surge > 0) this.surge = Math.max(0, this.surge - dt);
+    if (this.shieldFlash > 0) this.shieldFlash = Math.max(0, this.shieldFlash - dt);
+    if (this.modeTimer > 0) {                 // Anlauf des Kernmodus
+      this.modeTimer = Math.max(0, this.modeTimer - dt);
+      if (this.modeTimer === 0) {
+        this.coreMode = this.coreModeNext;
+        this.recomputeSupply();
+        SFX.modeReady();
+        toast('Kernmodus: ' + CORE_MODES[this.coreMode].name);
+      }
+    }
     if (this.shockwave && (this.shockwave.t += dt) > 0.55) this.shockwave = null;
     for (const l of this.lichter) l.life -= dt;
     if (this.lichter.length) this.lichter = this.lichter.filter(l => l.life > 0);
@@ -763,6 +795,18 @@ const game = {
       // Materiekonverter des voll ausgebauten Reaktors
       if (b.type === 'reactor' && b.supplied && b.level >= UPGRADE.maxLevel)
         this.matter += SPECIALS.reactor.matter * dt;
+      // Spitzenlast: der ausgebaute Akku wirft seine Ladung nach, einmal je Welle
+      if (b.type === 'akku' && b.supplied && b.reserve && this.phase === 'combat' &&
+          b.level >= UPGRADE.maxLevel && this.energy < this.energyMax * SPECIALS.akku.at) {
+        b.reserve = false;
+        const menge = this.capOf(b);
+        this.energy = Math.min(this.energyMax, this.energy + menge);
+        this.blitz(b.px, b.py, GRID.cell * 2.4, b.def.color, .5);
+        for (let i = 0; i < 12; i++)
+          this.particles.push(new Particle(b.px, b.py, b.def.color, { speed: rand(60, 190), life: .5 }));
+        SFX.reserve();
+        toast('Spitzenlast — ' + Math.round(menge) + ' Energie nachgespeist');
+      }
     }
 
     /* Türme feuern in der Reihenfolge ihrer Lastpriorität, und die
@@ -867,6 +911,36 @@ const game = {
     if (!this.mod) return null;
     return this.buffs.modImmune.indexOf(this.mod.id) >= 0 ? null : this.mod;
   },
+
+  /* ------------------- Kernmodi ------------------------------
+     Der Kern hat eine feste Leistung und verteilt sie. Keine der drei
+     Stellungen ist neutral: Jede gibt etwas und nimmt etwas. Während
+     des Anlaufs wirkt gar keine — das ist der Preis fürs Umschalten,
+     und der Grund, es in der Bauphase zu tun. */
+  modeMul(key) {
+    if (this.modeTimer > 0) return key === 'regen' ? CORE_SWITCH.regen : 1;
+    const v = CORE_MODES[this.coreMode][key];
+    if (v === undefined) return 1;
+    // Nur der Nachteil lässt sich mildern („Zwitterkern"), nicht der Vorteil
+    return v < 1 ? 1 - (1 - v) * this.buffs.modePenalty : v;
+  },
+  // Der laufende Modus — während des Anlaufs keiner
+  activeMode() { return this.modeTimer > 0 ? null : CORE_MODES[this.coreMode]; },
+  modeSwitchTime() { return CORE_SWITCH.time * this.buffs.modeSwitch; },
+  setMode(i) {
+    if (this.over || this.draft) return;
+    const m = CORE_MODES[i];
+    if (!m) return;
+    if (this.modeTimer > 0) { SFX.deny(); return toast('Kern läuft noch an'); }
+    if (i === this.coreMode) return;
+    this.coreModeNext = i;
+    this.modeTimer = this.modeSwitchTime();
+    this.recomputeSupply();                   // Anlauf drosselt sofort
+    SFX.modeSwitch();
+    toast(m.name + ' — ' + (Math.round(this.modeTimer * 10) / 10) + ' s Anlauf');
+    updateInspector();
+  },
+  cycleMode() { this.setMode((this.coreMode + 1) % CORE_MODES.length); },
 
   /* ------------------- Kernbefehle ---------------------------
      Bezahlt wird aus demselben Puffer, aus dem die Türme schießen.
@@ -1019,6 +1093,9 @@ function drawLichter() {
     if (b.type === 'reactor') {
       const fl = .8 + .2 * Math.sin(game.time * 7 + b.x * 2);
       licht(b.px, b.py, c * (1 + b.level * .22), '#ffd166', .09 * fl);
+    } else if (b.type === 'akku') {
+      const voll = clamp(game.energy / game.energyMax, 0, 1);
+      licht(b.px, b.py, c * (.85 + b.level * .12), '#c9a0ff', .03 + voll * .07);
     } else if (b.type === 'pylon') {
       const heiss = b.node && b.node.ratio > 1;
       licht(b.px, b.py, c * 1.05, heiss ? '#ff5d73' : '#5fe0ff',
@@ -1211,6 +1288,29 @@ function drawCore() {
   ctx.beginPath(); ctx.arc(0, 0, r * 3.2, 0, 7); ctx.fill();
   ctx.globalCompositeOperation = 'source-over';
 
+  // Schildmodus: ein Ring, dessen Dichte am Puffer hängt
+  const modus = game.activeMode();
+  if (modus && modus.absorb) {
+    const laden = clamp(game.energy / game.energyMax, 0, 1);
+    ctx.strokeStyle = '#8fa6ff';
+    ctx.globalAlpha = .18 + laden * .3 + game.shieldFlash;
+    ctx.lineWidth = 2 + game.shieldFlash * 6;
+    ctx.beginPath(); ctx.arc(0, 0, r * 1.28, 0, 7); ctx.stroke();
+    ctx.globalAlpha = .1 + laden * .12;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(0, 0, r * 1.42, 0, 7); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  // Anlauf: ein Bogen, der sich schließt
+  if (game.modeTimer > 0) {
+    const f = 1 - game.modeTimer / game.modeSwitchTime();
+    ctx.strokeStyle = CORE_MODES[game.coreModeNext].color;
+    ctx.globalAlpha = .8;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(0, 0, r * 1.28, -Math.PI / 2, -Math.PI / 2 + f * 6.283); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
   ctx.rotate(t * .35);
   ctx.strokeStyle = 'rgba(95,224,255,.75)';
   ctx.lineWidth = 2;
@@ -1262,6 +1362,7 @@ function drawBuilding(b) {
   if (b.type === 'wall')        drawWall(b, s, hpF);
   else if (b.type === 'pylon')  drawPylon(b, s, body);
   else if (b.type === 'reactor') drawReactor(b, s, body);
+  else if (b.type === 'akku')   drawAkku(b, s, body);
   else                          drawTurret(b, s, body);
 
   if (hpF < .72) drawSchaden(b, s, hpF);
@@ -1470,6 +1571,35 @@ function drawReactor(b, s, body) {
   ctx.beginPath(); ctx.arc(0, 0, s * .14, 0, 7); ctx.fill();
 }
 
+/* Akku: eine Zelle, deren Füllstand am Puffer hängt. Ist die Spitzenlast
+   scharf, sitzt ein Punkt auf dem Pol — nach dem Auslösen ist er weg. */
+function drawAkku(b, s, body) {
+  const w = s * 1.28, h = s * 1.7;
+  ctx.fillStyle = body;
+  ctx.strokeStyle = b.def.color;
+  ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.rect(-w / 2, -h / 2, w, h); ctx.fill(); ctx.stroke();
+  // Pol
+  ctx.fillStyle = b.def.color;
+  ctx.fillRect(-s * .26, -h / 2 - s * .22, s * .52, s * .22);
+
+  const voll = b.supplied ? clamp(game.energy / game.energyMax, 0, 1) : 0;
+  const fh = (h - 4) * voll;
+  ctx.fillStyle = 'rgba(201,160,255,' + (.35 + .3 * voll).toFixed(2) + ')';
+  ctx.fillRect(-w / 2 + 2, h / 2 - 2 - fh, w - 4, fh);
+  // Füllstandsstriche
+  ctx.strokeStyle = 'rgba(10,16,28,.6)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 3; i++) {
+    const y = -h / 2 + (h / 3) * i;
+    ctx.beginPath(); ctx.moveTo(-w / 2 + 2, y); ctx.lineTo(w / 2 - 2, y); ctx.stroke();
+  }
+  if (b.level >= UPGRADE.maxLevel && b.reserve) {
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(0, -h / 2 - s * .34, s * .16, 0, 7); ctx.fill();
+  }
+}
+
 /* Barriere: Blockwerk mit Nieten, das bei Schaden reißt */
 function drawWall(b, s, hpF) {
   ctx.fillStyle = b.flash > 0 ? '#fff' : 'rgba(42,50,64,.98)';
@@ -1593,6 +1723,39 @@ function buildPowers() {
   }
 }
 
+function buildModes() {
+  const box = el('modes');
+  box.innerHTML = '<span class="mhead">Kernmodus <b>K</b></span>';
+  CORE_MODES.forEach((m, i) => {
+    const d = document.createElement('button');
+    d.className = 'mode';
+    d.dataset.i = i;
+    d.title = m.desc + '  (K wechselt weiter, ' +
+              (Math.round(CORE_SWITCH.time * 10) / 10) + ' s Anlauf)';
+    d.innerHTML = `<span class="mk">${m.short}</span>
+                   <span class="mn">${m.name}</span><span class="mc">${m.hint}</span>
+                   <i class="mcd"></i>`;
+    d.onclick = () => game.setMode(i);
+    box.appendChild(d);
+  });
+}
+
+function updateModes() {
+  const laeuft = game.modeTimer > 0;
+  for (const d of el('modes').querySelectorAll('.mode')) {
+    const i = +d.dataset.i;
+    const zielt = laeuft && i === game.coreModeNext;
+    d.classList.toggle('on', !laeuft && i === game.coreMode);
+    d.classList.toggle('warm', zielt);
+    d.querySelector('.mcd').style.width =
+      zielt ? ((1 - game.modeTimer / game.modeSwitchTime()) * 100) + '%' : '0';
+    const txt = zielt ? 'Anlauf ' + (Math.ceil(game.modeTimer * 10) / 10).toFixed(1) + ' s'
+                      : CORE_MODES[i].hint;
+    const line = d.querySelector('.mc');
+    if (line.textContent !== txt) line.textContent = txt;
+  }
+}
+
 function updatePowers() {
   for (const d of el('powers').children) {
     const p = POWERS[d.dataset.id];
@@ -1647,6 +1810,12 @@ function updateInspector() {
   if (b.def.turret && b.supplied && b.flow < 0.995)
     rows.push(['Netzdrossel', '−' + Math.round((1 - b.flow) * 100) + ' %']);
   if (b.def.regen) rows.push(['Ertrag', '+' + b.def.regen * b.level + '/s']);
+  if (b.def.capacity) {
+    rows.push(['Speicher', '+' + Math.round(game.capOf(b))]);
+    rows.push(['Trägt mit', '+' + akkuFlow(b) + '/s']);
+    if (b.level >= UPGRADE.maxLevel)
+      rows.push(['Spitzenlast', b.reserve ? 'geladen' : 'verbraucht']);
+  }
   if (b.def.supply) rows.push(['Netzradius', b.def.supply + ' Z']);
   // Am Pylon hängt die eigene Leitung, an allem anderen die des Knotens davor
   if (b.type === 'pylon' && b.supplied && b.node)
@@ -1780,6 +1949,7 @@ function updateHud() {
       : game.overloadedNodes + ' Leitungen überlastet — Türme dahinter feuern langsamer';
 
   updatePowers();
+  updateModes();
 
   const prev = el('preview');
   if (build && !game.draft && game.plannedWave) {
@@ -1845,6 +2015,7 @@ addEventListener('keydown', ev => {
   else if (k === 'r') { if (game.selected) game.repair(game.selected); else game.repairAll(); }
   else if (k === 'o' && game.selected) game.toggleOverload(game.selected);
   else if (k === 'l' && game.selected && game.selected.def.turret) game.cyclePriority(game.selected);
+  else if (k === 'k') game.cycleMode();
 });
 
 function togglePause() {
@@ -1902,6 +2073,7 @@ el('ovBtn').onclick = () => location.reload();
 /* =========================== LOOP ============================= */
 buildShop();
 buildPowers();
+buildModes();
 game.recomputeSupply();
 game.planNext();
 showOverlay('CORE DEFENSE',

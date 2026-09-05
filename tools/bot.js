@@ -8,12 +8,15 @@
      node tools/bot.js 1 40 log                eine Partie mit Verlaufsprotokoll
 
    Schalter: noflow (Leitungen ohne Grenze), nomod (keine Sturmwellen),
-             nopower (keine Kernbefehle), log (Verlauf ausgeben).
+             nopower (keine Kernbefehle), noakku (keine Akkus bauen),
+             nomode (Kernmodus nie wechseln), log (Verlauf ausgeben).
 
    Der Bot spielt bewusst schlicht: Er hält jede Himmelsrichtung mit
    Türmen besetzt, baut Reaktoren, bevor der Verbrauch die Erzeugung zu
-   weit übersteigt, entlastet überlastete Äste, baut aus, wenn sonst
-   nichts ansteht, und nimmt eine zufällige Karte.
+   weit übersteigt, stellt einen Akku dazu, sobald der Puffer keine
+   Feuerpause mehr überbrückt, entlastet überlastete Äste, schaltet vor
+   Bosswellen auf den Schildmodus, baut aus, wenn sonst nichts ansteht,
+   und nimmt eine zufällige Karte.
 
    WICHTIG für die Auswertung: Er nutzt weder Lastprioritäten noch
    Überladung und stellt Reaktoren nicht planvoll an die richtige
@@ -29,6 +32,8 @@ const PRUEFSTAND = path.resolve(__dirname, 'harness.js');
 
 // Reaktor bauen, sobald der Dauerverbrauch das Doppelte der Erzeugung übersteigt
 const NACHSCHUB_VERHAELTNIS = 2.0;
+// So viele Sekunden Dauerfeuer soll der Puffer tragen — sonst kommt ein Akku dazu
+const PUFFER_SEKUNDEN = 3.5;
 
 function frischeRunde() {
   delete require.cache[PRUEFSTAND];
@@ -69,6 +74,13 @@ function lauf(maxWelle, opt = {}) {
         const p = plaetze.find(q => frei(q.x, q.y) && versorgt(q.x, q.y));
         if (p) { g.build('reactor', p.x, p.y); continue; }
       }
+      // 1b. Speicher, sobald der Puffer keine Feuerpause mehr überbrückt.
+      //     Reaktoren liefern seit der Trennung keinen Speicher mehr.
+      if (!opt.ohneAkkus && g.energyMax < bedarf() * PUFFER_SEKUNDEN &&
+          g.matter >= kosten('akku')) {
+        const p = plaetze.find(q => frei(q.x, q.y) && versorgt(q.x, q.y));
+        if (p) { g.build('akku', p.x, p.y); continue; }
+      }
       // 2. Überlastete Äste mit einem Reaktor direkt am Knoten entlasten
       const voll = g.sources.filter(s => s.ratio > 1 && s.node);
       if (voll.length && g.matter >= kosten('reactor')) {
@@ -108,6 +120,14 @@ function lauf(maxWelle, opt = {}) {
     g.repairAll();
   }
 
+  /* Kernmodus: vor einer Bosswelle das Schild, sonst Einspeisung. Der
+     Anlauf ist in der Bauphase billig — genau dort wechselt der Bot. */
+  function modus() {
+    if (opt.ohneModi || g.modeTimer > 0) return;
+    const ziel = h.bossFor(g.wave + 1) ? 2 : 0;
+    if (g.coreMode !== ziel) g.setMode(ziel);
+  }
+
   function befehle() {
     if (opt.ohnePowers) return;
     const nah = g.enemies.filter(e =>
@@ -140,7 +160,7 @@ function lauf(maxWelle, opt = {}) {
     if (opt.log && g.wave !== letzteWelle) { letzteWelle = g.wave; protokoll(t); }
     if (g.draft) { karteNehmen(); continue; }
     if (g.phase === 'build') {
-      if (t % 15 === 0) bauen();
+      if (t % 15 === 0) { bauen(); modus(); }
       if (g.buildTimer < 1) { bauen(); g.startWave(); }
     } else if (t % 10 === 0) befehle();
   }
@@ -156,6 +176,8 @@ if (require.main === module) {
     ohnePowers: schalter.includes('nopower'),
     ohneLast: schalter.includes('noflow'),
     ohneMods: schalter.includes('nomod'),
+    ohneAkkus: schalter.includes('noakku'),
+    ohneModi: schalter.includes('nomode'),
     log: schalter.includes('log')
   };
 

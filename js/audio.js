@@ -482,6 +482,36 @@ const SFX = (() => {
       noise({ dur: 0.3, freq: 2200, freqTo: 6000, gain: 0.035, filter: 'bandpass',
               q: 2, shape: 0.8, attack: 0.03, send: 0.3 });
     },
+    /* ---------------- Kernmodi ----------------
+       Umschalten klingt wie ein Relais, das abfällt; das Fertigmelden
+       wie eines, das wieder einrastet. Dazwischen liegt der Anlauf. */
+    modeSwitch() {
+      nah();
+      tone({ type: 'square', freq: 340, to: 150, dur: 0.14, gain: 0.05 });
+      noise({ dur: 0.18, freq: 1800, freqTo: 400, gain: 0.05, filter: 'bandpass',
+              q: 1.2, shape: 1.4, delay: 0.05, send: 0.25 });
+    },
+    modeReady() {
+      nah();
+      tone({ type: 'triangle', freq: 262, dur: 0.16, gain: 0.07, send: 0.25 });
+      tone({ type: 'triangle', freq: 392, dur: 0.22, gain: 0.06, delay: 0.09, send: 0.35 });
+    },
+    // Spitzenlast: ein Akku wirft seine Ladung nach
+    reserve() {
+      nah();
+      tone({ type: 'sawtooth', freq: 90, to: 300, dur: 0.32, gain: 0.08,
+             filter: 'lowpass', filterFreq: 1400, attack: 0.02, send: 0.4 });
+      tone({ type: 'sine', freq: 520, to: 880, dur: 0.26, gain: 0.05, delay: 0.06, send: 0.35 });
+    },
+    // Der Kernschild fängt einen Treffer ab
+    shieldHit() {
+      nah();
+      if (!gate('shield', 0.14)) return;
+      tone({ type: 'sine', freq: 620, to: 300, dur: 0.16, gain: 0.06, send: 0.3 });
+      noise({ dur: 0.12, freq: 3000, freqTo: 900, gain: 0.05, filter: 'bandpass',
+              q: 2.2, shape: 1.6, send: 0.25 });
+    },
+
     // Ankündigung einer Sturmwelle: tiefer, unruhiger Zweiklang
     storm() {
       nah();

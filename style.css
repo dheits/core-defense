@@ -184,10 +184,11 @@ button.danger:hover{background:rgba(190,50,70,.5);border-color:var(--red)}
 .bb-state.guarded{color:#8fa6ff}
 
 /* ---- Kernbefehle ---- */
-#powers{                           /* unter Vorschau und Warnzeilen */
+#leftcol{                          /* unter Vorschau und Warnzeilen */
   position:absolute;left:12px;top:134px;width:158px;
-  display:flex;flex-direction:column;gap:6px;
+  display:flex;flex-direction:column;gap:11px;
 }
+#powers{display:flex;flex-direction:column;gap:6px}
 .power{
   position:relative;overflow:hidden;text-align:left;padding:7px 9px;
   display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;
@@ -211,6 +212,34 @@ button.danger:hover{background:rgba(190,50,70,.5);border-color:var(--red)}
 .power.active .pn{color:#fff}
 
 /* ---- Sturmwelle ---- */
+/* ---- Kernmodi ---- */
+#modes{display:flex;flex-direction:column;gap:4px}
+#modes .mhead{
+  font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+  padding-left:2px;margin-bottom:1px;
+}
+#modes .mhead b{
+  color:var(--dim);border:1px solid var(--line);border-radius:3px;
+  padding:0 3px;margin-left:4px;font-weight:600;
+}
+.mode{
+  position:relative;overflow:hidden;text-align:left;padding:5px 8px;
+  display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;
+  gap:0 7px;line-height:1.25;opacity:.62;
+}
+.mode .mk{
+  grid-row:1/3;align-self:center;width:26px;height:17px;line-height:16px;text-align:center;
+  border:1px solid var(--line);border-radius:4px;font-size:8px;letter-spacing:.06em;color:var(--dim);
+}
+.mode .mn{font-size:11px;letter-spacing:.05em}
+.mode .mc{font-size:9px;color:var(--dim);letter-spacing:.02em;white-space:pre-line}
+.mode.on{opacity:1;border-color:rgba(95,224,255,.55);background:rgba(30,60,86,.6)}
+.mode.on .mk{color:#9beeff;border-color:rgba(95,224,255,.5)}
+.mode.warm{opacity:.85}
+.mode .mcd{                        /* Anlauf läuft von links nach rechts voll */
+  position:absolute;left:0;bottom:0;height:2px;background:#ffd166;width:0;
+}
+
 #modBadge{
   position:absolute;top:76px;left:50%;transform:translateX(-50%);
   padding:6px 18px;border:1px solid rgba(150,120,255,.6);border-radius:4px;

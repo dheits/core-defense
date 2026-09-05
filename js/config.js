@@ -27,6 +27,12 @@ const SELL_REFUND = 0.6;
 /* ---------------------------------------------------------------
    Gebäude. "supply" = eigener Versorgungsradius (nur Kern/Pylon),
    "needsPower" = muss im Netz hängen um zu arbeiten.
+
+   Nachschub und Speicher sind getrennt: Der Reaktor liefert Energie pro
+   Sekunde und entlastet dabei den Ast, an dem er steht. Der Akku liefert
+   nichts, er fasst nur — dafür trägt seine Leitung mehr. Damit wird
+   "viele kurze Feuerstöße" gegen "langes Dauerfeuer" zu einer echten
+   Bauentscheidung statt zu einer Nebenwirkung.
 ---------------------------------------------------------------- */
 const BUILDINGS = {
   pylon: {
@@ -35,30 +41,35 @@ const BUILDINGS = {
     desc: 'Trägt das Energienetz weiter nach außen.'
   },
   reactor: {
-    name: 'Reaktor', key: '2', cost: 55, hp: 90, color: '#ffd166',
-    regen: 5, capacity: 45, needsPower: true,
-    desc: '+5 Energie/s, +45 Speicher.'
+    name: 'Reaktor', key: '2', cost: 50, hp: 90, color: '#ffd166',
+    regen: 6, needsPower: true,
+    desc: '+6 Energie/s und entlastet den eigenen Netzast.'
+  },
+  akku: {
+    name: 'Akku', key: '3', cost: 30, hp: 85, color: '#c9a0ff',
+    capacity: 52, needsPower: true,
+    desc: '+52 Speicher, trägt seinen Knoten mit.'
   },
   blaster: {
-    name: 'Blaster', key: '3', cost: 30, hp: 80, color: '#8affc1',
+    name: 'Blaster', key: '4', cost: 30, hp: 80, color: '#8affc1',
     needsPower: true, turret: true,
     range: 3.7, cooldown: 0.28, damage: 7, energy: 1.2, projSpeed: 620,
     desc: 'Schnelles Dauerfeuer, günstig.'
   },
   cannon: {
-    name: 'Kanone', key: '4', cost: 65, hp: 110, color: '#ff9f5a',
+    name: 'Kanone', key: '5', cost: 65, hp: 110, color: '#ff9f5a',
     needsPower: true, turret: true,
     range: 5.2, cooldown: 1.15, damage: 34, splash: 1.3, energy: 7, projSpeed: 340,
     desc: 'Langsam, hoher Flächenschaden.'
   },
   frost: {
-    name: 'Frostturm', key: '5', cost: 45, hp: 80, color: '#7fb4ff',
+    name: 'Frostturm', key: '6', cost: 45, hp: 80, color: '#7fb4ff',
     needsPower: true, turret: true, hitscan: true,
     range: 3.3, cooldown: 0.9, damage: 4, energy: 2.5, slow: 0.5, slowTime: 1.8,
     desc: 'Bremst Gegner um 50 %.'
   },
   wall: {
-    name: 'Barriere', key: '6', cost: 10, hp: 260, color: '#8892a6',
+    name: 'Barriere', key: '7', cost: 10, hp: 260, color: '#8892a6',
     needsPower: false,
     desc: 'Lenkt Bodentruppen um, braucht keinen Strom.'
   }
@@ -88,6 +99,8 @@ const SPECIALS = {
              boost: 1.15 },
   reactor: { name: 'Materiekonverter', desc: 'Erzeugt zusätzlich 0,6 Materie je Sekunde',
              matter: 0.6 },
+  akku:    { name: 'Spitzenlast',      desc: 'Fällt der Puffer unter 15 %, speist der Akku einmal je Welle seinen ganzen Speicher ein',
+             at: 0.15 },
   wall:    { name: 'Reaktivpanzerung', desc: 'Reißt beim Bersten die Angreifer mit',
              blast: 70, blastRange: 1.8 }
 };
@@ -217,11 +230,42 @@ const FLOW = {
   core: 58,          // Energie/s, die der Kern selbst nach außen abgibt
   pylon: 15,         // Grundlast eines Pylons ...
   perLevel: 6,       // ... plus je Ausbaustufe (Stufe 5 = 39)
+  akku: 4,           // ... und je Akku-Stufe am selben Knoten
   warn: 0.85         // ab hier färbt sich die Leitung
 };
 function flowCap(b) {
   return FLOW.pylon + FLOW.perLevel * (b.level - 1);
 }
+// Ein Akku puffert dort, wo er hängt — die Leitung davor trägt entsprechend mehr
+function akkuFlow(b) { return FLOW.akku * b.level; }
+
+/* ---------------------------------------------------------------
+   Kernmodi. Der Kern hat eine feste Leistung und verteilt sie — mehr
+   Nachschub, mehr Speicher oder ein Schild, das Kernschaden aus dem
+   Puffer bezahlt. Es gibt keine neutrale Stellung: Jeder Modus ist ein
+   Tausch, und das Umschalten kostet ein paar Sekunden Anlauf, in denen
+   gar kein Modus wirkt und der Nachschub einbricht. Wer wechselt, tut
+   es also besser in der Bauphase.
+
+   regen/cap sind Faktoren auf die Grundwerte von CORE. Werte unter 1
+   sind Nachteile — nur die halbiert die Karte "Zwitterkern".
+---------------------------------------------------------------- */
+const CORE_MODES = [
+  { id: 'einspeisung', name: 'Einspeisung', short: 'EIN', color: '#ffd166',
+    regen: 1.25, cap: 0.85, hint: '+25 % Nachschub\n−15 % Speicher',
+    desc: '+25 % Regeneration, dafür 15 % weniger Speicher' },
+  { id: 'speicher',    name: 'Speicher',    short: 'SPE', color: '#9beeff',
+    regen: 0.85, cap: 1.40, hint: '+40 % Speicher\n−15 % Nachschub',
+    desc: '+40 % Speicher, dafür 15 % weniger Regeneration' },
+  { id: 'schild',      name: 'Schild',      short: 'SCH', color: '#8fa6ff',
+    regen: 0.90, cap: 0.90, absorb: 0.6, perDamage: 2.2,
+    hint: '60 % Kernschaden\naus dem Puffer',
+    desc: '60 % des Kernschadens zahlt der Puffer — 2,2 Energie je Schadenspunkt, dafür 10 % weniger Nachschub und Speicher' }
+];
+const CORE_SWITCH = {
+  time: 3.5,         // Sekunden Anlauf beim Umschalten
+  regen: 0.6         // solange läuft der Kern gedrosselt
+};
 
 /* ---------------------------------------------------------------
    Kernbefehle: drei Fähigkeiten, die aus dem Puffer bezahlt werden.
@@ -310,7 +354,9 @@ const BASE_BUFFS = {
   slowBonus: 0, slowTime: 0,
   // Energie und Netz
   regen: 0, capacity: 0, netRadius: 0, regenMul: 1,
-  flow: 1, reactorFeed: 1,
+  flow: 1, reactorFeed: 1, akkuCap: 1,
+  // Kernmodi
+  modeSwitch: 1, modePenalty: 1,
   // Kernbefehle und Sturmwellen
   powerCd: 1, powerDrain: 1, modImmune: [],
   waveStartFull: false, freeOverloadAt: 0, unpoweredRate: 0,
@@ -445,6 +491,13 @@ const CARDS = [
   { id:'schwungrad',   name:'Schwungrad',       desc:'Kernbefehle ziehen 35 % weniger aus dem Puffer',
     apply:b => b.powerDrain *= 0.65 },
 
+  /* --- Akkus und Kernmodi --- */
+  { id:'zellenstapel', name:'Zellenstapel',    desc:'Akkus fassen 45 % mehr',
+    apply:b => b.akkuCap *= 1.45 },
+  { id:'schnellschaltung',name:'Schnellschaltung', max:2,
+    desc:'Der Kern schaltet doppelt so schnell um',
+    apply:b => b.modeSwitch *= 0.5 },
+
   /* --- Selten und einmalig --- */
   { id:'notreserve',   name:'Notreserve', max:1, weight:0.8,
     desc:'Kern +150 Struktur, sofort instandgesetzt',
@@ -473,6 +526,9 @@ const CARDS = [
   { id:'abschirmung',  name:'Abschirmung', max:1, weight:0.5,
     desc:'Störnebel und EMP-Front wirken nicht mehr gegen dich',
     apply:b => b.modImmune = b.modImmune.concat(['nebel', 'emp']) },
+  { id:'zwitterkern',  name:'Zwitterkern', max:1, weight:0.5,
+    desc:'Der Kernmodus verliert die Hälfte seines Nachteils',
+    apply:b => b.modePenalty *= 0.5 },
   { id:'automatik',    name:'Automatikschaltung', max:1, weight:0.35,
     desc:'Über 85 % Puffer feuern alle Türme überladen, ohne Aufpreis',
     apply:b => b.freeOverloadAt = 0.85 }

@@ -337,6 +337,156 @@ beschreibe('Stufe 5: Zwillingssalve', () => {
   stimmt('auf zwei verschiedene Ziele', getroffen[0] !== getroffen[1]);
 });
 
+/* -------------------- Getrennte Akkus -------------------- */
+beschreibe('Akku und Reaktor sind getrennt', () => {
+  const h = neu(), g = h.game;
+  const cap0 = g.energyMax, reg0 = g.regen;
+  const capMul = g.modeMul('cap'), regMul = g.modeMul('regen');
+
+  stimmt('der Reaktor hat keinen Speicher mehr', !h.BUILDINGS.reactor.capacity);
+  stimmt('der Akku erzeugt nichts', !h.BUILDINGS.akku.regen);
+
+  const r = h.bau('reactor', 18, 12);
+  g.recomputeSupply();
+  gleich('Reaktor hebt nur die Regeneration',
+         g.regen, Math.round((h.CORE.regen + h.BUILDINGS.reactor.regen) * regMul * 10) / 10, 1e-9);
+  gleich('Reaktor lässt den Speicher unberührt', g.energyMax, cap0);
+  g.sell(r);
+
+  const a = h.bau('akku', 18, 12);
+  g.recomputeSupply();
+  gleich('Akku hebt nur den Speicher', g.energyMax,
+         Math.round((h.CORE.energy + h.BUILDINGS.akku.capacity) * capMul));
+  gleich('Akku lässt die Regeneration unberührt', g.regen, reg0);
+
+  // Ausbaustufen zählen linear
+  for (let i = 1; i < h.UPGRADE.maxLevel; i++) g.upgrade(a);
+  g.recomputeSupply();
+  gleich('Speicher eines Akkus auf Stufe 5', g.capOf(a),
+         h.BUILDINGS.akku.capacity * h.UPGRADE.maxLevel);
+});
+
+beschreibe('Akku trägt seinen Knoten mit', () => {
+  const h = neu(), g = h.game;
+  const pylon = h.bau('pylon', 25, 12);
+  g.recomputeSupply();
+  gleich('Kapazität ohne Akku', pylon.node.cap, h.FLOW.pylon);
+
+  const a = h.bau('akku', 26, 11);
+  g.recomputeSupply();
+  stimmt('der Akku hängt am Pylon', a.node === pylon.node);
+  gleich('Kapazität mit Akku', pylon.node.cap, h.FLOW.pylon + h.akkuFlow(a));
+
+  g.upgrade(a); g.upgrade(a);
+  g.recomputeSupply();
+  gleich('Akku auf Stufe 3 trägt dreifach', pylon.node.cap, h.FLOW.pylon + h.FLOW.akku * 3);
+});
+
+beschreibe('Spitzenlast: der ausgebaute Akku speist einmal je Welle nach', () => {
+  const h = neu(), g = h.game;
+  const a = h.bau('akku', 18, 12);
+  for (let i = 1; i < h.UPGRADE.maxLevel; i++) g.upgrade(a);
+  g.recomputeSupply();
+  g.phase = 'combat'; g.regen = 0;
+  g.spawnQueue = [{ at: 1e9 }];                 // Welle darf nicht enden
+
+  g.energy = g.energyMax * 0.5;
+  g.update(1 / 60);
+  gleich('über der Schwelle bleibt sie geladen', a.reserve, true);
+
+  g.energy = g.energyMax * (h.SPECIALS.akku.at - 0.02);
+  const vorher = g.energy;
+  g.update(1 / 60);
+  gleich('unter der Schwelle löst sie aus', a.reserve, false);
+  gleich('eingespeist wird der ganze Speicher', g.energy - vorher, g.capOf(a), 1e-6);
+
+  g.energy = 0;
+  g.update(1 / 60);
+  gleich('ein zweites Mal in derselben Welle nicht', g.energy, 0, 1e-9);
+  g.phase = 'build'; g.startWave();
+  gleich('mit der nächsten Welle wieder scharf', a.reserve, true);
+});
+
+beschreibe('Zellenstapel wirkt nur auf Akkus', () => {
+  const h = neu(), g = h.game;
+  const a = h.bau('akku', 18, 12);
+  const vorher = g.capOf(a);
+  h.CARDS.find(c => c.id === 'zellenstapel').apply(g.buffs, g);
+  g.recomputeSupply();
+  gleich('Akku fasst 45 % mehr', g.capOf(a), vorher * 1.45, 1e-9);
+});
+
+/* ---------------------- Kernmodi ------------------------- */
+beschreibe('Kernmodi verteilen die Leistung', () => {
+  const h = neu(), g = h.game;
+  h.CORE_MODES.forEach((m, i) => {
+    g.coreMode = i; g.modeTimer = 0;
+    g.recomputeSupply();
+    gleich(m.name + ': Regeneration', g.regen, Math.round(h.CORE.regen * m.regen * 10) / 10, 1e-9);
+    gleich(m.name + ': Speicher', g.energyMax, Math.round(h.CORE.energy * m.cap));
+  });
+});
+
+beschreibe('Kernmodus: der Anlauf kostet', () => {
+  const h = neu(), g = h.game;
+  gleich('Startmodus', g.coreMode, 0);
+  g.setMode(1);
+  gleich('Anlaufzeit', g.modeTimer, h.CORE_SWITCH.time, 1e-9);
+  gleich('während des Anlaufs wirkt kein Modus beim Speicher',
+         g.energyMax, h.CORE.energy);
+  gleich('und der Nachschub ist gedrosselt',
+         g.regen, Math.round(h.CORE.regen * h.CORE_SWITCH.regen * 10) / 10, 1e-9);
+  stimmt('der Modus ist noch nicht gewechselt', g.coreMode === 0);
+  stimmt('während des Anlaufs zählt kein aktiver Modus', g.activeMode() === null);
+
+  g.phase = 'build'; g.spawnQueue = [];
+  for (let i = 0; i < 60 * 4; i++) g.update(1 / 60);
+  gleich('nach dem Anlauf steht der neue Modus', g.coreMode, 1);
+  gleich('und seine Werte gelten', g.energyMax,
+         Math.round(h.CORE.energy * h.CORE_MODES[1].cap));
+
+  // Schnellschaltung halbiert die Anlaufzeit
+  h.CARDS.find(c => c.id === 'schnellschaltung').apply(g.buffs, g);
+  g.setMode(2);
+  gleich('Schnellschaltung halbiert den Anlauf', g.modeTimer, h.CORE_SWITCH.time / 2, 1e-9);
+});
+
+beschreibe('Zwitterkern mildert nur den Nachteil', () => {
+  const h = neu(), g = h.game;
+  const m = h.CORE_MODES[0];
+  h.CARDS.find(c => c.id === 'zwitterkern').apply(g.buffs, g);
+  g.recomputeSupply();
+  gleich('der Vorteil bleibt voll', g.modeMul('regen'), m.regen, 1e-9);
+  gleich('der Nachteil nur halb', g.modeMul('cap'), 1 - (1 - m.cap) / 2, 1e-9);
+});
+
+beschreibe('Schildmodus bezahlt Kernschaden aus dem Puffer', () => {
+  const h = neu(), g = h.game;
+  const schild = h.CORE_MODES.findIndex(m => m.absorb);
+  const m = h.CORE_MODES[schild];
+  g.coreMode = schild; g.modeTimer = 0;
+  g.recomputeSupply();
+  g.energy = g.energyMax;
+
+  const hp0 = g.coreHp, e0 = g.energy;
+  g.damageCore(20, null);
+  gleich('Kern nimmt nur den Rest', hp0 - g.coreHp, 20 * (1 - m.absorb), 1e-9);
+  gleich('der Puffer zahlt den Rest', e0 - g.energy, 20 * m.absorb * m.perDamage, 1e-9);
+
+  // Leerer Puffer schützt nicht mehr
+  g.energy = 0;
+  const hp1 = g.coreHp;
+  g.damageCore(20, null);
+  gleich('ohne Energie kein Schild', hp1 - g.coreHp, 20, 1e-9);
+
+  // Ein anderer Modus schirmt gar nicht ab
+  g.coreMode = 0; g.energy = g.energyMax;
+  const hp2 = g.coreHp, e2 = g.energy;
+  g.damageCore(20, null);
+  gleich('Einspeisung schirmt nicht ab', hp2 - g.coreHp, 20, 1e-9);
+  gleich('und kostet keine Energie', e2 - g.energy, 0, 1e-9);
+});
+
 /* ---------------------- Balance-Anker ----------------------
    Alle Prüfungen oben leiten ihren Erwartungswert aus config.js ab.
    Das ist Absicht: Sie prüfen die Verdrahtung — ob eine Konstante
@@ -356,13 +506,19 @@ beschreibe('Balance-Anker (bei gewollter Abstimmung hier nachziehen)', () => {
 
   gleich('Startmaterie', h.game.matter, 170);
   gleich('Kernstruktur', g.coreHpMax, 600);
-  gleich('Pufferkapazität', g.energyMax, 130);
-  gleich('Regeneration', g.regen, 9);
+  gleich('Pufferkapazität', g.energyMax, 111);   // 130 im Modus Einspeisung
+  gleich('Regeneration', g.regen, 11.3);         // 9 im Modus Einspeisung
 
   gleich('Leitungslast des Kerns', h.FLOW.core, 58);
   gleich('Leitungslast eines Pylons', h.FLOW.pylon, 15);
   gleich('Leitungslast eines Pylons auf Stufe 5',
          h.FLOW.pylon + h.FLOW.perLevel * (h.UPGRADE.maxLevel - 1), 39);
+  gleich('Leitungslast je Akku-Stufe', h.FLOW.akku, 4);
+
+  gleich('Reaktor: Ertrag', h.BUILDINGS.reactor.regen, 6);
+  gleich('Akku: Speicher', h.BUILDINGS.akku.capacity, 52);
+  gleich('Kernmodi', h.CORE_MODES.length, 3);
+  gleich('Anlauf beim Umschalten', h.CORE_SWITCH.time, 3.5);
 
   gleich('Dauerlast Blaster', last('blaster'), 4.2857, 1e-4);
   gleich('Dauerlast Kanone', last('cannon'), 6.087, 1e-3);
@@ -373,9 +529,9 @@ beschreibe('Balance-Anker (bei gewollter Abstimmung hier nachziehen)', () => {
   gleich('Reparaturanteil', h.REPAIR_SHARE, 0.35);
   gleich('Erstattung beim Abbau', h.SELL_REFUND, 0.6);
 
-  gleich('Entladung: Pufferkosten', g.powerCost(h.POWERS.discharge), 71.5, 1e-9);
+  gleich('Entladung: Pufferkosten', g.powerCost(h.POWERS.discharge), 61.05, 1e-9);
   gleich('Entladung: Schaden im Zentrum',
-         g.powerCost(h.POWERS.discharge) * h.POWERS.discharge.perEnergy, 207.35, 1e-6);
+         g.powerCost(h.POWERS.discharge) * h.POWERS.discharge.perEnergy, 177.045, 1e-6);
   gleich('Netzstoß: Schadensfaktor', h.POWERS.surge.damage, 2);
   gleich('Netzstoß: Verbrauchsfaktor', h.POWERS.surge.cost, 0.55);
   gleich('Netzstoß: Laufzeit', h.POWERS.surge.time, 6);
@@ -388,7 +544,7 @@ beschreibe('Balance-Anker (bei gewollter Abstimmung hier nachziehen)', () => {
   gleich('Wellenbudget Welle 20', h.waveBudget(20), 238.4, 1e-2);
   gleich('Wellenbudget Welle 30', h.waveBudget(30), 516.8, 1e-2);
 
-  gleich('Karten im Pool', h.CARDS.length, 54);
+  gleich('Karten im Pool', h.CARDS.length, 57);
   gleich('Gegnertypen', Object.keys(h.ENEMIES).length, 13);
   gleich('Sturmwellen', h.MODIFIERS.length, 7);
   gleich('Bosse', h.BOSSES.length, 3);

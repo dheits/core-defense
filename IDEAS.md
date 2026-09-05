@@ -37,13 +37,20 @@ alles hinter sich. Damit wird die *Form* des Netzes zur Entscheidung — und Rea
 werden ortsgebunden wertvoll, weil sie genau den Ast entlasten, an dem sie stehen.
 *Mittel: `recomputeSupply()` von Flag auf Fluss umgestellt, plus Anzeige.*
 
-**Kernmodi** — der Kern verteilt seine Leistung: mehr Regeneration, mehr Speicher oder
-ein Schild, das Schaden absorbiert. Ein Umschalten kostet ein paar Sekunden Anlauf.
-*Klein bis mittel, rein in `game.js`.*
+**Kernmodi** ✅ *umgesetzt* — der Kern verteilt seine feste Leistung auf drei Stellungen:
+Einspeisung (+25 % Regeneration, −15 % Speicher), Speicher (+40 % / −15 %) und Schild
+(60 % des Kernschadens zahlt der Puffer, 2,2 Energie je Punkt). Keine davon ist neutral,
+und das Umschalten mit `K` kostet 3,5 Sekunden Anlauf, in denen gar kein Modus wirkt und
+der Nachschub auf 60 % fällt — ein Wechsel gehört damit in die Bauphase.
 
-**Akkus getrennt von Reaktoren** — Reaktoren geben Nachschub, Akkus nur Puffer.
-Dann ist „viele kurze Feuerstöße" gegen „langes Dauerfeuer" eine echte Bauentscheidung.
-*Sehr klein: ein weiterer Eintrag in `BUILDINGS`.*
+**Akkus getrennt von Reaktoren** ✅ *umgesetzt* — der Reaktor liefert 6 Energie/s je Stufe
+und entlastet seinen Ast, der Akku fasst 52 je Stufe und hebt die Kapazität seines Knotens
+um 4/s. Keiner tut beides mehr. Damit ist „viele kurze Feuerstöße" gegen „langes
+Dauerfeuer" eine Bauentscheidung geworden — und weil Kernbefehle einen *Anteil* des
+Puffers kosten, macht ein großer Speicher die Entladung stärker. Auf Stufe 5 wirft der
+Akku als **Spitzenlast** einmal je Welle seinen ganzen Inhalt nach, wenn der Puffer unter
+15 % fällt. In der Messung ist der Unterschied deutlich: derselbe Bot ohne Akkubau kommt
+auf Median 11 statt 16.
 
 ---
 
@@ -87,7 +94,7 @@ Genau hier hört das Spiel gerade auf. Endlose Wellen ohne Fortschritt zwischen 
 Partien sind der Punkt, an dem die Recherche am deutlichsten war: Rogue Tower und
 Infinitode 2 leben von dem, was zwischen den Runden passiert.
 
-**Karten zwischen den Wellen.** ✅ *umgesetzt* (54 Karten, vier zur Wahl). Nach jeder abgewehrten Welle drei Optionen zur Auswahl:
+**Karten zwischen den Wellen.** ✅ *umgesetzt* (57 Karten, vier zur Wahl). Nach jeder abgewehrten Welle drei Optionen zur Auswahl:
 +15 % Reichweite netzweit, Pylone kosten die Hälfte, Reaktoren geben Schaden statt
 Energie. Das erzeugt bei jeder Partie einen anderen Aufbau — die günstigste Art,
 Wiederspielwert einzubauen. *Mittel, und mit Abstand der beste Aufwand-Nutzen-Schnitt.*
@@ -179,9 +186,12 @@ Klangbett, die Puffer-Drone, Entfernungsdämpfung, Ducking und größenabhängig
 Zum Messen liegt seither ein Prüfstand samt simuliertem Spieler in `tools/` — siehe
 Abschnitt „Balance messen" in der README, besonders die drei Fallstricke beim Auswerten.
 
-Bleibt aus der Liste: Kernmodi, getrennte Akkus, Bestenliste, Tagesseed, Bilanz nach der
-Welle, Speicherstand, das erzeugte Gelände, das Druckgedächtnis der Gegner und die
-Bedienkomfort-Punkte.
+Danach kamen die **Kernmodi** und die **getrennten Akkus** dazu, mit drei weiteren Karten
+— Zellenstapel, Schnellschaltung und dem seltenen Zwitterkern — sowie einem Prüfblock im
+Selbsttest, der Anlauf, Schild und Akku-Entlastung nachrechnet.
+
+Bleibt aus der Liste: Bestenliste, Tagesseed, Bilanz nach der Welle, Speicherstand, das
+erzeugte Gelände, das Druckgedächtnis der Gegner und die Bedienkomfort-Punkte.
 
 ## Wenn ich drei Dinge auswählen müsste (ursprüngliche Empfehlung)
 

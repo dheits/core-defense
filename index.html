@@ -178,7 +178,10 @@
       <div id="modBadge" hidden></div>
       <div id="netWarn" hidden></div>
 
-      <div id="powers"></div>
+      <div id="leftcol">
+        <div id="powers"></div>
+        <div id="modes"></div>
+      </div>
 
       <div id="bossbar" hidden>
         <div class="bb-head"><b id="bossName">-</b><span id="bossHint"></span></div>
@@ -264,14 +267,16 @@
         <rect x="20" y="46" width="160" height="18" class="l-tank"/>
         <rect x="20" y="46" width="96" height="18" class="l-tank-fill"/>
         <path d="M20 82 H116" class="l-dim-line"/>
-        <text x="20" y="38" class="l-svg-label">Puffer 130</text>
-        <text x="20" y="100" class="l-svg-label l-svg-label-warn">Schuss zieht ab · +9/s zurück</text>
+        <text x="20" y="38" class="l-svg-label">Puffer &#8212; Akkus</text>
+        <text x="20" y="100" class="l-svg-label l-svg-label-warn">Schuss zieht ab · Reaktoren füllen nach</text>
       </svg>
       <h3>Jeder Schuss kostet Strom</h3>
       <p>
         Türme feuern aus demselben Puffer, der auch den Kern speist. Ein Blaster nimmt 1,2,
-        die Kanone 7 pro Schuss. Baust du zu viele Rohre und zu wenig Reaktoren, versiegt
-        mitten in der Welle das Feuer — ein eigener Warnton sagt dir, wann es soweit ist.
+        die Kanone 7 pro Schuss. Nachschub und Speicher sind dabei getrennt: Der Reaktor
+        liefert Energie pro Sekunde, der Akku fasst sie nur. Viele Reaktoren tragen langes
+        Dauerfeuer, viele Akkus einen kurzen, harten Stoß — und der leere Puffer meldet sich
+        mit einem eigenen Warnton.
       </p>
     </article>
 
@@ -333,11 +338,12 @@
       </thead>
       <tbody>
         <tr><td>1</td><td><span class="l-key">1</span> Pylon</td><td>20</td><td>70</td><td>Radius 4,2 Z</td><td>Verlängert das Netz nach außen.</td></tr>
-        <tr><td>2</td><td><span class="l-key">2</span> Reaktor</td><td>55</td><td>90</td><td>+5/s, +45 Speicher</td><td>Hält das Feuer am Laufen.</td></tr>
-        <tr><td>3</td><td><span class="l-key">3</span> Blaster</td><td>30</td><td>80</td><td>7 Schaden, 3,6/s</td><td>Grundlast gegen alles Schnelle.</td></tr>
-        <tr><td>4</td><td><span class="l-key">4</span> Kanone</td><td>65</td><td>110</td><td>34 Schaden, Fläche</td><td>Räumt Pulks, frisst 7 Energie je Schuss.</td></tr>
-        <tr><td>5</td><td><span class="l-key">5</span> Frostturm</td><td>45</td><td>80</td><td>&minus;50 % Tempo</td><td>Kauft den anderen Türmen Zeit.</td></tr>
-        <tr><td>6</td><td><span class="l-key">6</span> Barriere</td><td>10</td><td>260</td><td>ohne Strom</td><td>Lenkt Bodentruppen in dein Feuer.</td></tr>
+        <tr><td>2</td><td><span class="l-key">2</span> Reaktor</td><td>50</td><td>90</td><td>+6/s Nachschub</td><td>Liefert Energie und entlastet seinen Ast.</td></tr>
+        <tr><td>3</td><td><span class="l-key">3</span> Akku</td><td>30</td><td>85</td><td>+52 Speicher, +4/s Leitung</td><td>Fängt Feuerstöße auf, erzeugt nichts.</td></tr>
+        <tr><td>4</td><td><span class="l-key">4</span> Blaster</td><td>30</td><td>80</td><td>7 Schaden, 3,6/s</td><td>Grundlast gegen alles Schnelle.</td></tr>
+        <tr><td>5</td><td><span class="l-key">5</span> Kanone</td><td>65</td><td>110</td><td>34 Schaden, Fläche</td><td>Räumt Pulks, frisst 7 Energie je Schuss.</td></tr>
+        <tr><td>6</td><td><span class="l-key">6</span> Frostturm</td><td>45</td><td>80</td><td>&minus;50 % Tempo</td><td>Kauft den anderen Türmen Zeit.</td></tr>
+        <tr><td>7</td><td><span class="l-key">7</span> Barriere</td><td>10</td><td>260</td><td>ohne Strom</td><td>Lenkt Bodentruppen in dein Feuer.</td></tr>
       </tbody>
     </table>
   </div>
@@ -377,7 +383,7 @@
       <span class="l-mark">Nach jeder gehaltenen Welle</span>
       <h3>Vier Karten zur Wahl</h3>
       <p>
-        Aus 54 Karten werden vier gezogen; die gewählte gilt für den Rest der Partie.
+        Aus 57 Karten werden vier gezogen; die gewählte gilt für den Rest der Partie.
         Jede lässt sich höchstens viermal nehmen, manche nur einmal, seltene erscheinen
         seltener — und nach einem Boss ist eine seltene Karte sicher dabei. Deshalb steht
         am Ende jeder Partie ein anderer Aufbau.
@@ -435,6 +441,29 @@
       </tbody>
     </table>
   </div>
+  <div class="l-sec-head l-sec-head-sub"><h3>Kernmodi</h3></div>
+  <p class="l-run-lead">
+    Der Kern hat eine feste Leistung und verteilt sie. Keine der drei Stellungen ist neutral,
+    jede gibt etwas und nimmt etwas — und das Umschalten
+    (<span class="l-key">K</span>) kostet 3,5 Sekunden Anlauf, in denen gar kein Modus wirkt
+    und der Nachschub auf 60 % fällt. Wer wechseln will, tut es in der Bauphase.
+  </p>
+  <div class="l-table-wrap">
+    <table class="l-table">
+      <thead>
+        <tr><th>Modus</th><th>Vorteil</th><th>Preis</th><th>Wofür</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Einspeisung</td><td>+25 % Nachschub</td><td>&minus;15 % Speicher</td>
+            <td>Der Standard: langes, gleichmäßiges Feuer.</td></tr>
+        <tr><td>Speicher</td><td>+40 % Speicher</td><td>&minus;15 % Nachschub</td>
+            <td>Kurze, harte Stöße — und stärkere Kernbefehle, denn die kosten einen Anteil des Puffers.</td></tr>
+        <tr><td>Schild</td><td>60 % des Kernschadens zahlt der Puffer</td><td>je Schadenspunkt 2,2 Energie, dazu &minus;10 % auf beides</td>
+            <td>Wenn die Deckung reißt oder ein Boss kommt.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
   <p class="l-parts-note">
     Dazu zwei Schalter an jedem Turm: <b>Überladung</b> (<span class="l-key">O</span>) gibt
     doppelten Schaden für den dreifachen Energiehunger, die <b>Lastpriorität</b>
@@ -448,13 +477,14 @@
 <section id="bedienung" class="l-controls l-reveal">
   <div class="l-sec-head"><h2>Bedienung</h2></div>
   <dl class="l-keys">
-    <div><dt><kbd>1</kbd>&ndash;<kbd>6</kbd></dt><dd>Bauteil wählen</dd></div>
+    <div><dt><kbd>1</kbd>&ndash;<kbd>7</kbd></dt><dd>Bauteil wählen</dd></div>
     <div><dt>Linksklick</dt><dd>bauen, auswählen</dd></div>
     <div><dt>Rechtsklick</dt><dd>abbrechen oder abbauen</dd></div>
     <div><dt><kbd>U</kbd> / <kbd>S</kbd></dt><dd>ausbauen / abbauen</dd></div>
     <div><dt><kbd>R</kbd></dt><dd>reparieren</dd></div>
     <div><dt><kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd></dt><dd>Kernbefehle</dd></div>
     <div><dt><kbd>O</kbd> / <kbd>L</kbd></dt><dd>Überladung / Lastpriorität</dd></div>
+    <div><dt><kbd>K</kbd></dt><dd>Kernmodus wechseln</dd></div>
     <div><dt><kbd>Leertaste</kbd></dt><dd>Welle sofort starten</dd></div>
     <div><dt><kbd>P</kbd></dt><dd>Pause</dd></div>
     <div><dt><kbd>M</kbd></dt><dd>Ton an und aus</dd></div>

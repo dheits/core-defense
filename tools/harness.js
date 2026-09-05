@@ -80,8 +80,9 @@ module.exports = (0, eval)(quelle + `
 ;({
   game, CARDS, BUILDINGS, ENEMIES, MODIFIERS, POWERS, POWER_LIST, BOSSES,
   CORE, GRID, FLOW, UPGRADE, SPECIALS, PRIORITY, OVERLOAD,
+  CORE_MODES, CORE_SWITCH,
   REPAIR_SHARE, MOD_FROM_WAVE, MOD_BONUS, SELL_REFUND,
-  flowCap, upgradeSteps, waveHpScale, waveBudget, bossFor,
+  flowCap, akkuFlow, upgradeSteps, waveHpScale, waveBudget, bossFor,
   // Sturmwellen für Vergleichsmessungen abschaltbar machen
   setModChance: w => { MOD_CHANCE = w; }
 })`);
