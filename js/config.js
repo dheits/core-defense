@@ -144,7 +144,16 @@ const ENEMIES = {
              shieldAura: 42, auraRange: 3.2, armor: 3 },
 
   /* ---- Bosse ---- */
-  titan:   { name: 'Titan',   hp: 1100, speed: 24, dmg: 70, radius: 23, bounty: 140, color: '#ff4d4d', budget: 30,
+  /* Der Titan eröffnet die Rotation bei Welle 10 und war die Wand, an der
+     die meisten Läufe endeten. Gemessen an 80 Läufen: In Welle 10 stammte
+     100 % des Kernschadens von ihm selbst, die Begleitwelle richtete nichts
+     aus. Die gescheiterten Läufe hatten ihn noch bei 27 % — ihnen fehlte
+     Feuerkraft, nicht Deckung —, und bei 70 Schaden je Schlag war der
+     angeschlagene Kern nach sechs Sekunden Kontakt weg. Beides ist hier
+     gesenkt: weniger Trefferpunkte als Latte, weniger Schaden als
+     Zeitfenster zum Reagieren. Die Panzerung bleibt — sie ist die Lehre,
+     dass Kanonen dazugehören. */
+  titan:   { name: 'Titan',   hp: 880, speed: 24, dmg: 55, radius: 23, bounty: 140, color: '#ff4d4d', budget: 30,
              boss: true, armor: 10, regen: 9 },
   moloch:  { name: 'Moloch',  hp: 900, speed: 21, dmg: 95, radius: 28, bounty: 260, color: '#ff7a3d', budget: 34,
              boss: true, armor: 14 },
@@ -258,10 +267,18 @@ const CORE_MODES = [
     regen: 0.85, cap: 1.40, hint: '+40 % Speicher\n−15 % Nachschub',
     desc: '+40 % Speicher, dafür 15 % weniger Regeneration' },
   { id: 'schild',      name: 'Schild',      short: 'SCH', color: '#8fa6ff',
-    regen: 0.90, cap: 0.90, absorb: 0.6, perDamage: 2.2,
+    regen: 0.90, cap: 0.90, absorb: 0.6, perDamage: 2.2, floor: 0.35,
     hint: '60 % Kernschaden\naus dem Puffer',
-    desc: '60 % des Kernschadens zahlt der Puffer — 2,2 Energie je Schadenspunkt, dafür 10 % weniger Nachschub und Speicher' }
+    desc: '60 % des Kernschadens zahlt der Puffer — 2,2 Energie je Schadenspunkt, aber nie unter 35 % Ladung, dafür 10 % weniger Nachschub und Speicher' }
 ];
+/* Die Untergrenze im Schildmodus ist keine Feinabstimmung, sondern der
+   Grund, dass der Modus überhaupt taugt: Ohne sie zahlt der Puffer den
+   Schaden bis zur Leere, danach feuert kein Turm mehr, der Kern nimmt
+   wieder vollen Schaden — und der Schild hat den Zusammenbruch selbst
+   ausgelöst, den er verhindern sollte. Gemessen an einem Bot, der vor
+   Bosswellen auf Schild schaltete: 15 von 60 Läufen endeten an Welle 10
+   statt 1 von 60. Mit der Grenze bleibt der Schild eine Reserve und
+   nimmt den Türmen nie den Strom. */
 const CORE_SWITCH = {
   time: 3.5,         // Sekunden Anlauf beim Umschalten
   regen: 0.6         // solange läuft der Kern gedrosselt

@@ -165,6 +165,11 @@ Spalte.
 | **Speicher** | +40 % Speicher | −15 % Regeneration |
 | **Schild** | 60 % des Kernschadens zahlt der Puffer, 2,2 Energie je Schadenspunkt | −10 % auf Regeneration und Speicher |
 
+Der Schild greift nur, solange der Puffer über **35 %** steht, und zieht ihn nie darunter.
+Diese Grenze ist keine Feinabstimmung, sondern der Grund, dass der Modus taugt: Ohne sie
+zahlt der Puffer bis zur Leere, danach feuert kein Turm mehr, der Kern nimmt wieder vollen
+Schaden — und der Schild hat den Zusammenbruch ausgelöst, den er verhindern sollte.
+
 Das Umschalten kostet **3,5 Sekunden Anlauf**. In dieser Zeit wirkt *gar kein* Modus und
 der Nachschub fällt auf 60 % — ein Wechsel mitten im Gefecht ist deshalb teuer, in der
 Bauphase fast umsonst. Der Kern zeigt den Anlauf als Bogen, der sich schließt.
@@ -439,16 +444,17 @@ Drei Dinge sind beim Auswerten wichtig, sonst führt die Zahl in die Irre:
   Überladung und stellt Reaktoren nicht planvoll an überlastete Äste. Gerade bei der
   Leitungslast — einer Planungsaufgabe — unterschätzt er einen Menschen deutlich.
 
-Stand der Messung (Bot in dieser Fassung, Limit Welle 40):
+Stand der Messung (Bot in dieser Fassung, je 200 Läufe, Limit Welle 40):
 
-| Konfiguration | Läufe | Median | Schnitt | am Limit |
+| Konfiguration | Median | Schnitt | am Limit | Ende bei Welle 10 |
 |---|---|---|---|---|
-| mit allem | 200 | 12 | 16,7 | 13 |
-| ohne Akkubau (`noakku`) | 200 | 10 | 13,8 | 7 |
+| heutiger Stand | 19 | 19,7 | 23 | 9 |
+| ohne Akkubau (`noakku`) | 10 | 13,8 | 7 | — |
 
-Die Trennung von Nachschub und Speicher kostet den Bot also rund zwei Wellen im Median,
-knapp drei im Schnitt, und halb so viele Läufe kommen bis ans Limit. Spürbar, aber kein
-Erdrutsch — und der Bot stellt Akkus nicht an überlastete Äste, wo sie am meisten bringen.
+Die Trennung von Nachschub und Speicher kostet den Bot rund zwei Wellen im Median (gemessen
+vor der Welle-10-Abstimmung: 12 gegen 10) und halb so viele Läufe am Limit. Spürbar, aber
+kein Erdrutsch — und der Bot stellt Akkus nicht an überlastete Äste, wo sie am meisten
+bringen.
 
 **Wie wenig eine einzelne Messung trägt**, zeigt die Wiederholung: Dieselbe Konfiguration
 ergab in drei Durchgängen zu je 60 Läufen die Mediane 16, 14 und 11. Unterschiede unter
@@ -458,9 +464,22 @@ Beim Kernmodus ist deshalb weiter offen, was er bringt: Zwischen fester Einspeis
 der Regel „vor dem Boss auf Schild" war kein Unterschied zu sehen, der die Streuung
 überstanden hätte.
 
-Auffällig in beiden Verteilungen ist eine Spitze bei **Welle 10**: Dort steht der erste
-Boss, und an ihm endet gut jeder vierte Lauf. Wer an der Schwierigkeitskurve dreht, dreht
-zuerst dort.
+### Die Wand bei Welle 10
+
+Bis vor Kurzem endete dort gut jeder vierte Lauf (57 von 200). Die Ursache lag zur Hälfte
+woanders als vermutet — die Untersuchung steht in `IDEAS.md` unter „Gefunden und behandelt".
+Die Kurzfassung in Zahlen:
+
+| Stand | Median | am Limit | Ende bei Welle 10 |
+|---|---|---|---|
+| vorher | 12 | 13 | 57 |
+| nur mit der Schild-Untergrenze | 18 | 14 | 29 |
+| dazu Titan 880 TP statt 1100, 55 Schaden statt 70 | 19 | 23 | 9 |
+
+Die Verteilung ist um Welle 10 herum jetzt glatt. Der erste sichtbare Prüfstein ist damit
+**Welle 20** — der Moloch, an dem 18 von 200 Läufen enden. Das Spiel ist insgesamt eine
+Spur leichter geworden; ein Teil davon war allerdings kein Schwierigkeitsgrad, sondern
+eine Falle im Schildmodus.
 
 ### Selbsttest
 

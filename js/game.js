@@ -561,13 +561,19 @@ const game = {
     // Schildmodus: Der Puffer nimmt einen Teil des Treffers auf — solange
     // Energie da ist. Was der Puffer schluckt, fehlt danach den Türmen.
     const m = this.activeMode();
-    if (m && m.absorb && this.energy > 0) {
-      const gefangen = Math.min(dmg * m.absorb, this.energy / m.perDamage);
-      if (gefangen > 0.01) {
-        this.energy -= gefangen * m.perDamage;
-        dmg -= gefangen;
-        this.shieldFlash = 0.4;
-        SFX.shieldHit();
+    if (m && m.absorb) {
+      // Nur die Ladung über der Untergrenze steht dem Schild zur Verfügung.
+      // Was darunter liegt, gehört den Türmen — sonst schießt sich der
+      // Schildmodus selbst ins Knie (siehe Kommentar bei CORE_MODES).
+      const frei = this.energy - this.energyMax * (m.floor || 0);
+      if (frei > 0) {
+        const gefangen = Math.min(dmg * m.absorb, frei / m.perDamage);
+        if (gefangen > 0.01) {
+          this.energy -= gefangen * m.perDamage;
+          dmg -= gefangen;
+          this.shieldFlash = 0.4;
+          SFX.shieldHit();
+        }
       }
     }
     this.coreHp -= dmg;
@@ -1444,7 +1450,10 @@ function drawCore() {
   // Schildmodus: ein Ring, dessen Dichte am Puffer hängt
   const modus = game.activeMode();
   if (modus && modus.absorb) {
-    const laden = clamp(game.energy / game.energyMax, 0, 1);
+    // Unter der Untergrenze fängt der Schild nichts mehr — dann verblasst er
+    const rest = clamp((game.energy / game.energyMax - (modus.floor || 0)) /
+                       Math.max(0.01, 1 - (modus.floor || 0)), 0, 1);
+    const laden = rest;
     ctx.strokeStyle = '#8fa6ff';
     ctx.globalAlpha = .18 + laden * .3 + game.shieldFlash;
     ctx.lineWidth = 2 + game.shieldFlash * 6;

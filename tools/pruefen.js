@@ -469,6 +469,32 @@ beschreibe('Zwitterkern mildert nur den Nachteil', () => {
   gleich('der Nachteil nur halb', g.modeMul('cap'), 1 - (1 - m.cap) / 2, 1e-9);
 });
 
+beschreibe('Der Schild nimmt den Türmen nie den Strom', () => {
+  /* Ohne Untergrenze zahlt der Puffer bis zur Leere, danach feuert nichts
+     mehr und der Kern nimmt wieder vollen Schaden — der Schild löst den
+     Zusammenbruch aus, den er verhindern soll. Gemessen: 15 von 60 Läufen
+     endeten so an Welle 10 statt 1 von 60. */
+  const h = neu(), g = h.game;
+  const schild = h.CORE_MODES.findIndex(m => m.absorb);
+  const m = h.CORE_MODES[schild];
+  g.coreMode = schild; g.modeTimer = 0;
+  g.recomputeSupply();
+  g.coreHpMax = 1e6; g.coreHp = 1e6;
+  const grenze = g.energyMax * m.floor;
+
+  g.energy = grenze;
+  const hp0 = g.coreHp;
+  g.damageCore(30, null);
+  gleich('auf der Grenze fängt er nichts mehr ab', hp0 - g.coreHp, 30, 1e-9);
+  gleich('und rührt den Puffer nicht an', g.energy, grenze, 1e-9);
+
+  g.energy = g.energyMax;
+  g.damageCore(2000, null);                   // ein Schlag, der alles verschlänge
+  stimmt('auch ein sehr harter Treffer lässt die Grenze stehen',
+         g.energy >= grenze - 1e-9);
+  stimmt('was er nicht zahlen kann, kommt am Kern an', g.coreHp < hp0 - 30);
+});
+
 beschreibe('Schildmodus bezahlt Kernschaden aus dem Puffer', () => {
   const h = neu(), g = h.game;
   const schild = h.CORE_MODES.findIndex(m => m.absorb);
@@ -637,6 +663,12 @@ beschreibe('Balance-Anker (bei gewollter Abstimmung hier nachziehen)', () => {
   gleich('Leitungslast eines Pylons auf Stufe 5',
          h.FLOW.pylon + h.FLOW.perLevel * (h.UPGRADE.maxLevel - 1), 39);
   gleich('Leitungslast je Akku-Stufe', h.FLOW.akku, 4);
+
+  gleich('Titan: Trefferpunkte', h.ENEMIES.titan.hp, 880);
+  gleich('Titan: Schaden je Schlag', h.ENEMIES.titan.dmg, 55);
+  gleich('Titan: Panzerung', h.ENEMIES.titan.armor, 10);
+  gleich('Schild: Untergrenze im Puffer',
+         h.CORE_MODES.find(m => m.absorb).floor, 0.35);
 
   gleich('Reaktor: Ertrag', h.BUILDINGS.reactor.regen, 6);
   gleich('Akku: Speicher', h.BUILDINGS.akku.capacity, 52);

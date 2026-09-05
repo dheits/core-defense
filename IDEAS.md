@@ -167,6 +167,38 @@ Punkt — alle Turmreichweiten, sodass die Deckungslücke sichtbar wird. Die Lü
 bleibt: Rundumdeckung ist die Aufgabe des Spiels. Bleibt offen, falls es doch zu hart
 wirkt: Variante 1, eine schwache Nahverteidigung des Kerns ab Werk.
 
+## Gefunden und behandelt: die Wand bei Welle 10
+
+In der Verteilung von 200 Bot-Läufen fiel eine Spitze auf: 57 Läufe — gut jeder vierte —
+endeten genau bei Welle 10, dem ersten Boss. Die Nachbarwellen lagen bei zwei bis sechs.
+
+Die erste Vermutung war der Titan selbst, und sie war zur Hälfte falsch. Derselbe Bot
+ohne Moduswechsel endete nur 19-mal bei Welle 10, mit Moduswechsel 57-mal. Der Grund lag
+im **Schildmodus**: Er zahlte 2,2 Energie je Schadenspunkt aus dem Puffer, ohne Untergrenze.
+Ein Titan-Schlag über 70 kostete damit 92 Energie, der Puffer war nach zwei Treffern leer,
+danach feuerte kein Turm mehr — und der Kern nahm wieder vollen Schaden. Der Schild löste
+den Zusammenbruch aus, den er verhindern sollte. Eine kontrollierte Gegenprobe über je 60
+Läufe: mit Moduswechsel 15 Tode bei Welle 10, ohne 1.
+
+Behoben mit einer **Untergrenze von 35 %**: Der Schild greift nur oberhalb und zieht den
+Puffer nie darunter. Damit fiel die Spitze von 57 auf 29 von 200.
+
+Die zweite Hälfte war dann doch der Titan, aber anders als gedacht. Eine Aufschlüsselung
+des Kernschadens in Welle 10 über 80 Läufe zeigte: **100 % kam vom Titan selbst**, die
+Begleitwelle richtete nichts aus. Die gescheiterten Läufe hatten ihn noch bei 27 % — ihnen
+fehlte Feuerkraft, nicht Deckung — und bei 70 Schaden je Schlag war der angeschlagene Kern
+nach sechs Sekunden Kontakt weg, ohne Zeit zu reagieren. Gesenkt wurden deshalb
+Trefferpunkte (1100 → 880, die Latte) und Schaden (70 → 55, das Zeitfenster). Die
+Panzerung blieb: Sie ist die Lehre, dass Kanonen dazugehören.
+
+Ergebnis: 9 von 200 Läufen enden bei Welle 10, die Verteilung ist dort glatt. Der erste
+sichtbare Prüfstein ist jetzt Welle 20.
+
+Nebenbei widerlegt: Der naheliegende Verdacht, die Selbstheilung des Titan (9/s) entscheide
+die Kämpfe, ließ sich nicht halten. Mit 4/s starben genauso viele Läufe bei Welle 10
+(30 gegen 29 von 200) — nur das Spätspiel wurde leichter. Die Änderung wurde
+zurückgenommen.
+
 ## Erledigt
 
 Karten zwischen den Wellen (48 Stück, vier zur Wahl, mit turmspezifischen Karten,
