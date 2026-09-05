@@ -22,6 +22,7 @@
     <a href="#spielen">Spielen</a>
     <a href="#aufbau">Aufbau</a>
     <a href="#bauteile">Bauteile</a>
+    <a href="#verlauf">Verlauf</a>
     <a href="#bedienung">Bedienung</a>
   </nav>
 </header>
@@ -362,6 +363,85 @@
     <li><span class="l-load-when">Welle 11, 13, 15</span><h3>Splitter, Zapfer, Wächter</h3><p>Aus einem werden drei; einer saugt am Puffer; einer legt Schilde über seine Nachbarn.</p></li>
     <li class="l-load-boss"><span class="l-load-when">alle 10 Wellen</span><h3>Titan · Moloch · Nexus</h3><p>Im Wechsel, jeder mit eigener Regel: gepanzert und selbstheilend, unverwundbar hinter Wächtern, oder am Puffer zapfend. Dafür sparst du.</p></li>
   </ul>
+</section>
+
+<!-- ============ Verlauf einer Partie ============ -->
+<section id="verlauf" class="l-run l-reveal">
+  <div class="l-sec-head">
+    <h2>Was jede Partie anders macht</h2>
+    <span class="l-sec-note">Karten &middot; Sturmwellen &middot; Kernbefehle</span>
+  </div>
+
+  <div class="l-run-grid">
+    <article class="l-run-block">
+      <span class="l-mark">Nach jeder gehaltenen Welle</span>
+      <h3>Vier Karten zur Wahl</h3>
+      <p>
+        Aus 54 Karten werden vier gezogen; die gewählte gilt für den Rest der Partie.
+        Jede lässt sich höchstens viermal nehmen, manche nur einmal, seltene erscheinen
+        seltener — und nach einem Boss ist eine seltene Karte sicher dabei. Deshalb steht
+        am Ende jeder Partie ein anderer Aufbau.
+      </p>
+      <ul class="l-chips">
+        <li>Grundwerte</li><li>je Turmart</li><li>Antworten auf Gegner</li>
+        <li>Zielkonflikte</li><li>Regeländerungen</li>
+      </ul>
+      <div class="l-cards-demo" aria-hidden="true">
+        <div class="l-demo-card"><b>Zündschnur</b><span>+38 % Schaden, aber 18 % weniger Struktur</span></div>
+        <div class="l-demo-card"><b>Kernstoß</b><span>Der Kern verletzt und stößt zurück, was ihn angreift</span></div>
+        <div class="l-demo-card"><b>Hochspannung</b><span>Alle Leitungen tragen 35 % mehr Last</span></div>
+      </div>
+    </article>
+
+    <article class="l-run-block">
+      <span class="l-mark">Ab Welle 5, nie auf Bosswellen</span>
+      <h3>Sturmwellen</h3>
+      <p>
+        Etwa jede dritte Welle bringt eine Eigenschaft mit. Sie steht in der Vorschau,
+        bevor du startest, und wer sie hält, bekommt <b>50 % mehr Prämie</b>. Jede zielt
+        auf eine Einseitigkeit: <i>Kältefest</i> trifft den reinen Frost-Aufbau,
+        <i>Störnebel</i> den auf Reichweite gebauten, <i>EMP-Front</i> den ohne Reserve.
+      </p>
+      <dl class="l-storms">
+        <div><dt>Störnebel</dt><dd>Türme sehen 25 % kürzer</dd></div>
+        <div><dt>EMP-Front</dt><dd>Der Puffer lädt kaum noch nach</dd></div>
+        <div><dt>Magnetsturm</dt><dd>Geschosse 40 % langsamer, Strahlen nicht</dd></div>
+        <div><dt>Schwarm</dt><dd>Weit mehr Gegner, dafür dünnhäutig</dd></div>
+        <div><dt>Kältefest</dt><dd>Gegner lassen sich nicht bremsen</dd></div>
+        <div><dt>Panzerkonvoi</dt><dd>Jeder Gegner trägt 4 Panzerung mehr</dd></div>
+        <div><dt>Hetzjagd</dt><dd>Gegner laufen 30 % schneller</dd></div>
+      </dl>
+    </article>
+  </div>
+
+  <div class="l-sec-head l-sec-head-sub"><h3>Kernbefehle</h3></div>
+  <p class="l-run-lead">
+    Drei Fähigkeiten mit Abklingzeit, nur im Gefecht — bezahlt aus demselben Puffer,
+    aus dem die Türme schießen. Jeder Einsatz ist damit ein Tausch: jetzt viel Wirkung,
+    danach ein paar Sekunden dünnes Feuer.
+  </p>
+  <div class="l-table-wrap">
+    <table class="l-table">
+      <thead>
+        <tr><th>Taste</th><th>Befehl</th><th>Puffer</th><th>Bereit nach</th><th>Wirkung</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="l-key">Q</span></td><td>Entladung</td><td>55 %</td><td>26 s</td>
+            <td>Druckwelle im Umkreis von 5,6 Zellen — der Schaden wächst mit der Ladung.</td></tr>
+        <tr><td><span class="l-key">W</span></td><td>Netzstoß</td><td>40 %</td><td>34 s</td>
+            <td>6 s doppelter Schaden bei 55 % Verbrauch. Danach ist der Puffer leer.</td></tr>
+        <tr><td><span class="l-key">E</span></td><td>Notpuls</td><td>45 %</td><td>40 s</td>
+            <td>Setzt jeden versorgten Bau um ein Drittel instand, ohne Materie.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="l-parts-note">
+    Dazu zwei Schalter an jedem Turm: <b>Überladung</b> (<span class="l-key">O</span>) gibt
+    doppelten Schaden für den dreifachen Energiehunger, die <b>Lastpriorität</b>
+    (<span class="l-key">L</span>) legt fest, wer bei knappem Puffer noch feuern darf —
+    <i>Vorrang</i> immer, <i>Normal</i> ab 20 %, <i>Sparlast</i> erst ab 55 % Ladung.
+    So verstummt im Engpass die ruhige Seite und nicht die, die halten muss.
+  </p>
 </section>
 
 <!-- ============ Bedienung ============ -->
