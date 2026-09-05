@@ -359,6 +359,30 @@ Drei Dinge sind beim Auswerten wichtig, sonst führt die Zahl in die Irre:
   Überladung und stellt Reaktoren nicht planvoll an überlastete Äste. Gerade bei der
   Leitungslast — einer Planungsaufgabe — unterschätzt er einen Menschen deutlich.
 
+### Selbsttest
+
+Neben der Messung liegt eine Prüfdatei, die das nachrechnet, was sich nicht ansehen lässt:
+
+```bash
+node tools/pruefen.js
+```
+
+Sie läuft in einer Zehntelsekunde und deckt Leitungslast, die drei Kernbefehle, alle
+sieben Sturmwellen, Reparatur und Abbau sowie die Sonderfähigkeiten der fünften Stufe ab.
+Die Prüfungen sind in zwei Sorten aufgeteilt, und der Unterschied ist wichtig:
+
+- **Verdrahtung.** Der Erwartungswert wird aus `js/config.js` abgeleitet. Diese Prüfungen
+  fragen, ob eine Konstante überhaupt an der richtigen Stelle wirkt — sie schlagen bei
+  einer bewussten Abstimmung *nicht* Alarm. Hängt jemand die Drosselung aus dem
+  Feuerpfad aus oder rechnet der Netzstoß den Verbrauch nicht mehr, fallen sie um.
+- **Balance-Anker.** Ein Block am Ende mit fest eingetragenen Zahlen, der den heutigen
+  Stand festhält. Er fängt die versehentlich verschobene Zahl, die der Verdrahtungsteil
+  bauartbedingt nicht sehen kann. Schlägt er fehl, ist beides eine gültige Antwort: das
+  Versehen zurücknehmen — oder den Wert dort nachziehen, wenn die Änderung gewollt war.
+
+Beides ist gegengeprüft: Vier verstellte Werte in `config.js` haben fünf Anker umgeworfen,
+zwei ausgehängte Stellen im Feuerpfad zwei Verdrahtungsprüfungen.
+
 Die Schalter `noflow`, `nomod` und `nopower` schalten Leitungslast, Sturmwellen und
 Kernbefehle ab. So lässt sich messen, was ein einzelnes System zur Schwierigkeit
 beiträgt. Der Prüfstand selbst (`tools/harness.js`) ist auch für schnelle Einzelfragen
@@ -383,6 +407,7 @@ console.log(h.game.sources[1].ratio);      // Auslastung dieser Leitung
 - `js/landing.js` — Einblendungen, Vollbild, Skalierung des Spielblocks
 - `tools/harness.js` — lädt das Spiel ohne Browser in node
 - `tools/bot.js` — simulierter Spieler für Balance-Messungen
+- `tools/pruefen.js` — Selbsttest der Mechaniken (`node tools/pruefen.js`)
 
 Balance-Änderungen brauchen fast immer nur `js/config.js`.
 

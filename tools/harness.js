@@ -78,8 +78,10 @@ const quelle = ['js/config.js', 'js/entities.js', 'js/audio.js', 'js/game.js']
    Ausdruck am Ende — anders käme man an die const-Bindungen nicht heran. */
 module.exports = (0, eval)(quelle + `
 ;({
-  game, CARDS, BUILDINGS, ENEMIES, MODIFIERS, POWERS, POWER_LIST,
-  CORE, GRID, FLOW, UPGRADE, SPECIALS, PRIORITY, flowCap,
+  game, CARDS, BUILDINGS, ENEMIES, MODIFIERS, POWERS, POWER_LIST, BOSSES,
+  CORE, GRID, FLOW, UPGRADE, SPECIALS, PRIORITY, OVERLOAD,
+  REPAIR_SHARE, MOD_FROM_WAVE, MOD_BONUS, SELL_REFUND,
+  flowCap, upgradeSteps, waveHpScale, waveBudget, bossFor,
   // Sturmwellen für Vergleichsmessungen abschaltbar machen
   setModChance: w => { MOD_CHANCE = w; }
 })`);
