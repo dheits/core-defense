@@ -49,6 +49,11 @@ erscheinen entsprechend ihrem Gewicht seltener. Beides hält Partien auseinander
 
 ## Steuerung
 
+Alles Anwählbare sitzt in einer einzeiligen **Taskleiste** am unteren Rand: links die
+Bauteile, dann die Kernbefehle, rechts die Kernmodi. Sie ist 41 Pixel hoch, damit das
+Spielfeld frei bleibt — die Erklärungen stehen im Tooltip, die Werte eines gebauten
+Turms im Inspektor rechts.
+
 | Eingabe | Wirkung |
 |---|---|
 | `1`–`7` / Klick auf Karte | Gebäude wählen |
@@ -156,8 +161,8 @@ Reserve geladen ist. Die Karte *Zellenstapel* gibt Akkus 45 % mehr Speicher.
 ## Kernmodi
 
 Der Kern hat eine feste Leistung und verteilt sie. Keine der drei Stellungen ist neutral,
-jede gibt etwas und nimmt etwas — gewechselt wird mit `K` oder per Klick in der linken
-Spalte.
+jede gibt etwas und nimmt etwas — gewechselt wird mit `K` oder per Klick in der Taskleiste
+am unteren Rand.
 
 | Modus | Vorteil | Preis |
 |---|---|---|

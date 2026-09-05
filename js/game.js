@@ -1853,17 +1853,22 @@ function drawSpawnWarnings() {
 const el = id => document.getElementById(id);
 const shopEl = el('shop');
 
+/* Die Taskleiste ist einzeilig, deshalb steht auf den Flächen nur das
+   Nötigste: Taste, Farbe, Name, Preis. Die Beschreibung hängt im
+   title-Text, die Werte stehen im Inspektor, sobald etwas gebaut ist. */
 function buildShop() {
   shopEl.innerHTML = '';
   for (const [type, def] of Object.entries(BUILDINGS)) {
     const d = document.createElement('div');
     d.className = 'card';
     d.dataset.type = type;
+    d.title = def.name + ' — ' + def.desc + '  (Taste ' + def.key + ')';
+    // Die Namensfarbe ersetzt den früheren Farbpunkt und spart die Breite,
+    // an der die einzeilige Leiste sonst zerbricht.
     d.innerHTML =
-      `<div class="n"><span class="dot" style="background:${def.color}"></span>${def.name}
-         <span class="k">${def.key}</span></div>
-       <div class="c">${def.cost} Materie</div>
-       <div class="d">${def.desc}</div>`;
+      `<span class="k">${def.key}</span>
+       <span class="n" style="color:${def.color}">${def.name}</span>
+       <span class="c">${def.cost}</span>`;
     d.onclick = () => selectTool(type);
     shopEl.appendChild(d);
   }
@@ -1876,10 +1881,12 @@ function buildPowers() {
     const d = document.createElement('button');
     d.className = 'power';
     d.dataset.id = p.id;
-    d.title = p.desc + '  (' + p.key.toUpperCase() + ')';
+    d.title = 'Kernbefehl ' + p.name + ' — ' + p.desc +
+              '  (Taste ' + p.key.toUpperCase() + ', die Zahl ist der Puffer-Anteil in Energie)';
     d.innerHTML = `<span class="pk">${p.key.toUpperCase()}</span>
                    <span class="pn">${p.name}</span><span class="pc"></span>
                    <i class="pcd"></i>`;
+    d.dataset.name = p.name;
     d.onclick = () => game.usePower(p.id);
     box.appendChild(d);
   }
@@ -1887,34 +1894,41 @@ function buildPowers() {
 
 function buildModes() {
   const box = el('modes');
-  box.innerHTML = '<span class="mhead">Kernmodus <b>K</b></span>';
+  box.innerHTML = '';
   CORE_MODES.forEach((m, i) => {
     const d = document.createElement('button');
     d.className = 'mode';
     d.dataset.i = i;
-    d.title = m.desc + '  (K wechselt weiter, ' +
+    d.title = 'Kernmodus ' + m.name + ' — ' + m.desc +
+              '  (Taste K wechselt weiter, ' +
               (Math.round(CORE_SWITCH.time * 10) / 10) + ' s Anlauf)';
     d.innerHTML = `<span class="mk">${m.short}</span>
-                   <span class="mn">${m.name}</span><span class="mc">${m.hint}</span>
+                   <span class="mn"></span><span class="mh"></span>
                    <i class="mcd"></i>`;
     d.onclick = () => game.setMode(i);
     box.appendChild(d);
   });
 }
 
+/* Nur der laufende Modus zeigt Namen und Preis — die anderen bleiben
+   Kürzel. So bleibt die Leiste schmal, ohne die Wahl zu verstecken. */
 function updateModes() {
   const laeuft = game.modeTimer > 0;
-  for (const d of el('modes').querySelectorAll('.mode')) {
-    const i = +d.dataset.i;
+  for (const d of el('modes').children) {
+    const i = +d.dataset.i, m = CORE_MODES[i];
     const zielt = laeuft && i === game.coreModeNext;
-    d.classList.toggle('on', !laeuft && i === game.coreMode);
+    const an = !laeuft && i === game.coreMode;
+    d.classList.toggle('on', an);
     d.classList.toggle('warm', zielt);
     d.querySelector('.mcd').style.width =
       zielt ? ((1 - game.modeTimer / game.modeSwitchTime()) * 100) + '%' : '0';
-    const txt = zielt ? 'Anlauf ' + (Math.ceil(game.modeTimer * 10) / 10).toFixed(1) + ' s'
-                      : CORE_MODES[i].hint;
-    const line = d.querySelector('.mc');
-    if (line.textContent !== txt) line.textContent = txt;
+    const name = an || zielt ? m.name : '';
+    // Was der Modus kostet und bringt, steht im title — in der Leiste
+    // stünde es nur im Weg. Sichtbar bleibt der Anlauf, der drängt.
+    const hinweis = zielt ? (Math.ceil(game.modeTimer * 10) / 10).toFixed(1) + ' s' : '';
+    const nEl = d.querySelector('.mn'), hEl = d.querySelector('.mh');
+    if (nEl.textContent !== name) nEl.textContent = name;
+    if (hEl.textContent !== hinweis) hEl.textContent = hinweis;
   }
 }
 
@@ -1929,7 +1943,9 @@ function updatePowers() {
     d.classList.toggle('poor', bereit && !reicht);
     d.classList.toggle('active', p.id === 'surge' && game.surge > 0);
     d.classList.toggle('cooling', rest > 0);
-    const txt = rest > 0 ? Math.ceil(rest) + ' s' : kosten + ' Energie';
+    // In der schmalen Leiste steht nur die Abklingzeit; was der Befehl aus
+    // dem Puffer nimmt, sagt der title — der Puffer selbst steht oben.
+    const txt = rest > 0 ? Math.ceil(rest) + ' s' : '';
     const line = d.querySelector('.pc');
     if (line.textContent !== txt) line.textContent = txt;
     // Der Schleier läuft von links nach rechts weg
@@ -1949,7 +1965,7 @@ function updateShopAffordability() {
     const cost = game.costOf(c.dataset.type);
     c.classList.toggle('poor', game.matter < cost);
     const line = c.querySelector('.c');
-    const txt = cost + ' Materie';
+    const txt = String(cost);
     if (line.textContent !== txt) line.textContent = txt;
   }
 }

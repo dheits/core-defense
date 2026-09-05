@@ -52,23 +52,71 @@ button.danger:hover{background:rgba(190,50,70,.5);border-color:var(--red)}
 #nextWave{margin-left:auto}
 #nextWave.hot{background:rgba(255,150,40,.28);border-color:var(--gold);color:#ffe6a8}
 
-/* ---- Shop ---- */
-#shop{
-  position:absolute;left:0;right:0;bottom:0;display:flex;gap:8px;justify-content:center;
-  padding:10px 12px 12px;background:linear-gradient(0deg,rgba(5,8,15,.94),rgba(5,8,15,0));
+/* ---- Taskleiste ----
+   Alles Anwählbare sitzt in einer schmalen Leiste am unteren Rand:
+   Bauteile, Kernbefehle, Kernmodi. Sie ist bewusst einzeilig — jede
+   Zeile mehr verdeckt Spielfeld, und genau darum ging es. Die
+   Erklärungen stehen im title-Text und im Inspektor. */
+#taskbar{
+  position:absolute;left:0;right:0;bottom:0;z-index:5;
+  display:flex;flex-wrap:wrap;gap:4px 7px;align-items:stretch;justify-content:center;
+  padding:6px 8px 7px;
+  background:linear-gradient(0deg,rgba(5,8,15,.96) 62%,rgba(5,8,15,0));
 }
-.card{
-  width:112px;padding:8px;border-radius:7px;text-align:left;
-  background:var(--panel);border:1px solid var(--line);cursor:pointer;transition:.14s;
+.tb-group{display:flex;gap:3px;align-items:stretch;flex:0 0 auto}
+.tb-sep{width:1px;margin:3px 2px;background:var(--line);flex:0 0 auto}
+
+/* gemeinsame Grundform aller drei Sorten */
+.card,.power,.mode{
+  position:relative;overflow:hidden;cursor:pointer;transition:.14s;
+  display:flex;align-items:center;gap:5px;
+  height:28px;padding:0 7px;border-radius:5px;line-height:1;
+  background:var(--panel);border:1px solid var(--line);
+  font:inherit;font-size:11.5px;color:var(--text);white-space:nowrap;
 }
-.card:hover{border-color:var(--cyan);transform:translateY(-2px)}
-.card.active{border-color:var(--cyan);background:rgba(40,90,140,.55);box-shadow:0 0 16px rgba(95,224,255,.25)}
+.card:hover,.power:hover,.mode:hover{border-color:var(--cyan)}
+.card:hover .n{color:#fff}
+.card .k,.power .pk,.mode .mk{
+  flex:0 0 auto;min-width:15px;height:15px;line-height:14px;text-align:center;padding:0 3px;
+  border:1px solid var(--line);border-radius:3px;font-size:9px;color:var(--dim);
+}
+
+/* ---- Bauteile ---- */
+.card .n{font-weight:600;font-size:11.5px}      /* Farbe kommt vom Bauteil */
+.card .c{color:var(--gold);font-size:11px;font-variant-numeric:tabular-nums}
+.card.active{border-color:var(--cyan);background:rgba(40,90,140,.6);box-shadow:0 0 14px rgba(95,224,255,.28)}
+.card.active .k{color:var(--cyan);border-color:rgba(95,224,255,.5)}
 .card.poor{opacity:.42}
-.card .n{display:flex;align-items:center;gap:5px;font-weight:600;color:#fff;font-size:12.5px}
-.card .dot{width:9px;height:9px;border-radius:3px}
-.card .c{font-size:11px;color:var(--gold);margin-top:3px}
-.card .d{font-size:10.5px;color:var(--dim);margin-top:4px;line-height:1.3;min-height:27px}
-.card .k{float:right;font-size:10px;color:var(--dim);border:1px solid var(--line);border-radius:3px;padding:0 4px}
+
+/* ---- Kernbefehle ---- */
+.power .pn{letter-spacing:.02em}
+.power .pc{color:var(--dim);font-size:10.5px;font-variant-numeric:tabular-nums}
+.power .pc:empty{display:none}
+.power .pcd{                       /* Abklingzeit als Balken am unteren Rand */
+  position:absolute;left:0;bottom:0;height:2px;width:0;
+  background:var(--cyan);opacity:.75;pointer-events:none;
+}
+.power.cooling{opacity:.5}
+.power.ready{border-color:rgba(95,224,255,.5)}
+.power.ready .pk{color:var(--cyan);border-color:rgba(95,224,255,.5)}
+.power.poor .pn{color:var(--dim)}
+.power.active{background:rgba(60,150,220,.32);border-color:var(--cyan)}
+.power.active .pn{color:#fff}
+
+/* ---- Kernmodi ----
+   Nur der laufende Modus trägt seinen Namen und seinen Preis; die
+   anderen stehen als Kürzel daneben. Sonst frisst die Leiste Breite
+   für Text, den man beim Spielen nicht liest. */
+.mode{opacity:.6;padding:0 7px}
+.mode .mk{letter-spacing:.06em;font-size:8.5px;min-width:26px}
+.mode .mn{letter-spacing:.04em;font-size:11px}
+.mode .mh{color:var(--dim);font-size:10px}
+.mode.on{opacity:1;border-color:rgba(95,224,255,.55);background:rgba(30,60,86,.6)}
+.mode.on .mk{color:#9beeff;border-color:rgba(95,224,255,.5)}
+.mode.warm{opacity:.9;border-color:rgba(255,209,102,.5)}
+.mode .mcd{                        /* Anlauf läuft von links nach rechts voll */
+  position:absolute;left:0;bottom:0;height:2px;background:#ffd166;width:0;
+}
 
 /* ---- Inspector ---- */
 #inspector{
@@ -198,63 +246,7 @@ button.danger:hover{background:rgba(190,50,70,.5);border-color:var(--red)}
   color:#ffb46b;min-height:12px}
 .bb-state.guarded{color:#8fa6ff}
 
-/* ---- Kernbefehle ---- */
-#leftcol{                          /* unter Vorschau und Warnzeilen */
-  position:absolute;left:12px;top:134px;width:158px;
-  display:flex;flex-direction:column;gap:11px;
-}
-#powers{display:flex;flex-direction:column;gap:6px}
-.power{
-  position:relative;overflow:hidden;text-align:left;padding:7px 9px;
-  display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;
-  gap:1px 7px;line-height:1.25;
-}
-.power .pk{
-  grid-row:1/3;align-self:center;width:19px;height:19px;line-height:18px;text-align:center;
-  border:1px solid var(--line);border-radius:4px;font-size:10px;color:var(--dim);
-}
-.power .pn{font-size:11.5px;color:var(--text);letter-spacing:.02em}
-.power .pc{font-size:10px;color:var(--dim);font-variant-numeric:tabular-nums}
-.power .pcd{                       /* Abklingzeit als Balken am unteren Rand */
-  position:absolute;left:0;bottom:0;height:2px;width:0;
-  background:var(--cyan);opacity:.75;pointer-events:none;
-}
-.power.cooling{opacity:.5}
-.power.ready{border-color:rgba(95,224,255,.5)}
-.power.ready .pk{color:var(--cyan);border-color:rgba(95,224,255,.5)}
-.power.poor .pn{color:var(--dim)}
-.power.active{background:rgba(60,150,220,.32);border-color:var(--cyan)}
-.power.active .pn{color:#fff}
-
 /* ---- Sturmwelle ---- */
-/* ---- Kernmodi ---- */
-#modes{display:flex;flex-direction:column;gap:4px}
-#modes .mhead{
-  font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
-  padding-left:2px;margin-bottom:1px;
-}
-#modes .mhead b{
-  color:var(--dim);border:1px solid var(--line);border-radius:3px;
-  padding:0 3px;margin-left:4px;font-weight:600;
-}
-.mode{
-  position:relative;overflow:hidden;text-align:left;padding:5px 8px;
-  display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;
-  gap:0 7px;line-height:1.25;opacity:.62;
-}
-.mode .mk{
-  grid-row:1/3;align-self:center;width:26px;height:17px;line-height:16px;text-align:center;
-  border:1px solid var(--line);border-radius:4px;font-size:8px;letter-spacing:.06em;color:var(--dim);
-}
-.mode .mn{font-size:11px;letter-spacing:.05em}
-.mode .mc{font-size:9px;color:var(--dim);letter-spacing:.02em;white-space:pre-line}
-.mode.on{opacity:1;border-color:rgba(95,224,255,.55);background:rgba(30,60,86,.6)}
-.mode.on .mk{color:#9beeff;border-color:rgba(95,224,255,.5)}
-.mode.warm{opacity:.85}
-.mode .mcd{                        /* Anlauf läuft von links nach rechts voll */
-  position:absolute;left:0;bottom:0;height:2px;background:#ffd166;width:0;
-}
-
 #modBadge{
   position:absolute;top:76px;left:50%;transform:translateX(-50%);
   padding:6px 18px;border:1px solid rgba(150,120,255,.6);border-radius:4px;
