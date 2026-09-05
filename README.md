@@ -397,6 +397,33 @@ Ab Welle 8 entspricht die Stärkekurve wieder dem ursprünglichen Verlauf. Boden
 seitlich aus, solange eine Lücke existiert — steht keine offen, schlagen sie sie ein.
 Wellen sind endlos, Budget und HP skalieren quadratisch mit der Wellennummer.
 
+## Bilanz nach der Welle
+
+Zwischen Wellenende und Kartenwahl steht, was die Welle gekostet und gebracht hat —
+im selben Fenster, in dem man ohnehin einen Moment innehält:
+
+| Zahl | Was sie lehrt |
+|---|---|
+| **Gegner** | wie groß die Welle wirklich war |
+| **Energie verschossen** | was das eigene Feuer kostet — die Gegenrechnung zur Regeneration |
+| **für Kernbefehle** | wie viel Puffer die drei Fähigkeiten genommen haben |
+| **Materie** | Beute plus Prämie |
+| **Kernschaden** | wo die Deckung nicht reichte |
+| **Energie als Schild** | was der Schildmodus aufgefangen hat |
+| **Bauten verloren** | ob die Front hält |
+| **Puffer leer** | Sekunden, in denen ein Turm feuern wollte und nicht konnte |
+| **Netzdrossel** | mittlere Drosselung durch die Leitungslast |
+| **bester Turm** | welcher Bau den Schaden tatsächlich gemacht hat |
+
+Angezeigt wird nur, was passiert ist: Wer keinen Bau verlor, liest dazu auch keine Null.
+Die ersten vier Zahlen stehen immer, der Rest erscheint, wenn er etwas zu sagen hat.
+
+Zwei Feinheiten, die die Zahlen ehrlich halten. Beim *besten Turm* zählt nur Schaden, der
+wirklich ankam — der Überschuss des tödlichen Treffers würde eine Kanone sonst
+überzeichnen. Und *Puffer leer* zählt nur Türme auf **Vorrang** und **Normal**: Ein Turm
+auf Sparlast schweigt bei niedrigem Puffer absichtlich, das ist keine Not, sondern die
+eingestellte Ordnung.
+
 ## Spielstand und Bestenliste
 
 Beides liegt im `localStorage` des Browsers — keine Datei, kein Server, und beides

@@ -71,11 +71,14 @@ class Particle {
 
 /* ------------------------ Projektile -------------------------- */
 class Projectile {
-  constructor(x, y, target, def, damage, kind) {
+  // quelle ist der Turm, der geschossen hat — nur für die Bilanz nach der
+  // Welle ("bester Turm"), das Geschoss selbst braucht ihn nicht.
+  constructor(x, y, target, def, damage, kind, quelle) {
     this.kind = kind || 'proj';
     this.x = x; this.y = y;
     this.target = target;
     this.def = def;
+    this.quelle = quelle || null;
     this.damage = damage;
     this.speed = def.projSpeed;
     this.dead = false;
@@ -92,7 +95,7 @@ class Projectile {
     if (this.trail.length > 5) this.trail.shift();
     if (d <= step + t.radius) {
       this.x = t.x; this.y = t.y;
-      game.dealDamage(t, this.damage, this.def, this.kind, this.burn);
+      game.dealDamage(t, this.damage, this.def, this.kind, this.burn, this.quelle);
       this.dead = true;
       return;
     }

@@ -522,6 +522,68 @@ beschreibe('Schildmodus bezahlt Kernschaden aus dem Puffer', () => {
   gleich('und kostet keine Energie', e2 - g.energy, 0, 1e-9);
 });
 
+/* ------------------ Bilanz nach der Welle ----------------- */
+beschreibe('Die Bilanz zählt, was in der Welle passiert ist', () => {
+  const h = neu(), g = h.game;
+  const blaster = h.bau('blaster', 24, 12);   // beide im Versorgungsradius des Kerns
+  const kanone = h.bau('cannon', 25, 12);
+  g.recomputeSupply();
+  g.phase = 'combat'; g.energyMax = 1e6; g.energy = 1e6; g.regen = 0;
+  g.spawnQueue = [{ at: 1e9 }];                 // Welle darf nicht enden
+  g.stats = { energie: 0, befehle: 0, schild: 0, kernSchaden: 0,
+              gegner: 0, materie: 0, verluste: 0, leer: 0, drossel: 0, zeit: 0 };
+  blaster.schaden = 0; kanone.schaden = 0;
+  g.enemies = [ziel(h, h.GRID.cell * 26.5, h.GRID.cell * 12.5)];
+  stimmt('beide hängen am Netz', blaster.supplied && kanone.supplied);
+  for (let i = 0; i < 60 * 3; i++) g.update(1 / 60);
+
+  stimmt('verschossene Energie wird gezählt', g.stats.energie > 0);
+  stimmt('der Blaster bekommt seinen Schaden zugeschrieben', blaster.schaden > 0);
+  stimmt('die Kanone auch', kanone.schaden > 0);
+  stimmt('die Kanone schlägt härter als der Blaster', kanone.schaden > blaster.schaden);
+
+  g.damageCore(50, null);
+  gleich('Kernschaden landet in der Bilanz', g.stats.kernSchaden, 50, 1e-9);
+
+  const b = g.bilanzZiehen(40);
+  gleich('bester Turm ist die Kanone', b.bester.name, h.BUILDINGS.cannon.name);
+  gleich('die Prämie steht bei der Materie', b.materie, Math.round(g.stats.materie) + 40);
+  gleich('die Welle steht dabei', b.welle, g.wave);
+});
+
+beschreibe('Die Bilanz misst leeren Puffer und Drosselung', () => {
+  const h = neu(), g = h.game;
+  h.bau('pylon', 25, 12);
+  const t = [h.bau('blaster', 28, 12), h.bau('blaster', 28, 11),
+             h.bau('blaster', 28, 13), h.bau('blaster', 29, 12)];
+  g.recomputeSupply();
+  stimmt('die Leitung ist überlastet', t[0].flow < 1);
+  g.phase = 'combat'; g.energyMax = 1e6; g.energy = 1e6; g.regen = 0;
+  g.spawnQueue = [{ at: 1e9 }];
+  g.stats = { energie: 0, befehle: 0, schild: 0, kernSchaden: 0,
+              gegner: 0, materie: 0, verluste: 0, leer: 0, drossel: 0, zeit: 0 };
+  g.enemies = [ziel(h, h.GRID.cell * 30.5, h.GRID.cell * 12.5)];
+  for (let i = 0; i < 60; i++) g.update(1 / 60);
+  const d = g.stats.drossel / g.stats.zeit;
+  gleich('die mittlere Drosselung entspricht dem Fluss', d, 1 - t[0].flow, 0.02);
+
+  // Jetzt der leere Puffer: ein Turm will feuern und kann nicht
+  g.energy = 0; g.regen = 0;
+  const vorher = g.stats.leer;
+  for (let i = 0; i < 60; i++) g.update(1 / 60);
+  stimmt('leerer Puffer wird als Zeit gezählt', g.stats.leer > vorher + 0.5);
+});
+
+beschreibe('Der Wellenstart setzt das Zählwerk zurück', () => {
+  const h = neu(), g = h.game;
+  const t = h.bau('blaster', 26, 12);
+  g.stats.energie = 999; g.stats.gegner = 7; t.schaden = 500;
+  g.startWave();
+  gleich('Energie zurückgesetzt', g.stats.energie, 0);
+  gleich('Gegner zurückgesetzt', g.stats.gegner, 0);
+  gleich('Schaden am Turm zurückgesetzt', t.schaden, 0);
+});
+
 /* --------------------- Spielstand ------------------------ */
 beschreibe('Spielstand überlebt das Neuladen', () => {
   const h = neu(), g = h.game;

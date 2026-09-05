@@ -86,8 +86,23 @@ function loesche(key) {
   try { localStorage.removeItem(key); } catch (e) { /* egal */ }
 }
 
+/* Was eine Welle gekostet und gebracht hat. Wird beim Wellenstart auf
+   null gesetzt und beim Wellenende als Bilanz eingefroren. */
+function frischeStats() {
+  return {
+    energie: 0,      // von Türmen verschossen
+    befehle: 0,      // von Kernbefehlen aus dem Puffer genommen
+    schild: 0,       // vom Schildmodus für Kernschaden bezahlt
+    kernSchaden: 0,  // was am Kern ankam
+    gegner: 0, materie: 0, verluste: 0,
+    leer: 0,         // Sekunden, in denen ein Turm mangels Energie nicht schoss
+    drossel: 0, zeit: 0   // für den Schnitt der Netzdrossel
+  };
+}
+
 const game = {
   time: 0, speed: 1, paused: false, over: false,
+  stats: frischeStats(), bilanz: null,
   matter: START_MATTER,
   energy: CORE.energy, energyMax: CORE.energy, regen: CORE.regen,
   coreHp: CORE.hp, coreHpMax: CORE.hp,
@@ -426,13 +441,13 @@ const game = {
   },
 
   /* ----------------------- Schaden -------------------------- */
-  dealDamage(enemy, dmg, def, kind, burn) {
+  dealDamage(enemy, dmg, def, kind, burn, quelle) {
     if (def && def.splash) {
       const r = def.splash * this.buffs.splash * GRID.cell;
       for (const e of this.enemies) {
         const d = dist(e.x, e.y, enemy.x, enemy.y);
         if (d > r) continue;
-        this.hurt(e, dmg * (1 - 0.5 * d / r), 'proj');
+        this.hurt(e, dmg * (1 - 0.5 * d / r), 'proj', quelle);
         if (burn) { e.burnDps = burn; e.burnUntil = this.time + SPECIALS.cannon.burnTime; }
       }
       for (let i = 0; i < 16; i++)
@@ -441,7 +456,7 @@ const game = {
       this.blitz(enemy.x, enemy.y, r * 1.5, '#ffb066', .3);
       brandfleck(enemy.x, enemy.y, r * .8, .1);
     } else {
-      this.hurt(enemy, dmg, kind);
+      this.hurt(enemy, dmg, kind, quelle);
       // Kettenblitz: der Treffer springt auf das nächste Ziel über
       if (this.buffs.chain && kind === 'proj') {
         let best = null, bd = 2.2 * GRID.cell;
@@ -451,7 +466,7 @@ const game = {
           if (d < bd) { bd = d; best = o; }
         }
         if (best) {
-          this.hurt(best, dmg * this.buffs.chain, 'chain');
+          this.hurt(best, dmg * this.buffs.chain, 'chain', quelle);
           this.beams.push({ x1: enemy.x, y1: enemy.y, x2: best.x, y2: best.y, life: .1, color: '#8affc1' });
         }
       }
@@ -464,7 +479,7 @@ const game = {
   /* kind: 'beam' (Frost) bricht Schilde, alles andere prallt halb ab.
      Panzerung wird von jedem einzelnen Treffer abgezogen — deshalb
      zählt hier Einzelschaden mehr als Feuerrate. */
-  hurt(e, dmg, kind) {
+  hurt(e, dmg, kind, quelle) {
     if (e.dead) return;
     if (e.flying) dmg *= this.buffs.vsAir;
     if (e.shield > 0) {
@@ -485,12 +500,16 @@ const game = {
     if (e.def.boss && e.guarded) dmg *= GUARD_REDUCTION;
     const armor = Math.max(0, e.armor - this.buffs.pierce);
     if (armor) dmg = Math.max(dmg * 0.15, dmg - armor);   // nie ganz wirkungslos
+    // Für die Bilanz zählt nur, was wirklich ankam — Überschuss beim
+    // tödlichen Treffer würde den besten Turm sonst überzeichnen.
+    if (quelle) quelle.schaden = (quelle.schaden || 0) + Math.min(dmg, Math.max(0, e.hp));
     e.hp -= dmg;
     e.hitFlash = 0.06;
     if (this.buffs.hitSlow && !this.modv('noSlow', false))
       e.applySlow(1 - this.buffs.hitSlow, 0.8, this.time);
     if (e.hp <= 0) {
       e.dead = true;
+      this.stats.gegner++;
       // Sprengbolzen: der Abschuss reißt Umstehende mit (nur eine Stufe tief)
       if (this.buffs.deathSpark && kind !== 'spark') {
         const r = 1.4 * GRID.cell;
@@ -502,6 +521,7 @@ const game = {
       this.blitz(e.x, e.y, GRID.cell * (e.def.boss ? 6 : 1.3), e.def.color, e.def.boss ? .9 : .22);
       brandfleck(e.x, e.y, e.radius * (e.def.boss ? 4.5 : 1.5), e.def.boss ? .3 : .055);
       this.matter += e.def.bounty * this.buffs.bounty;
+      this.stats.materie += e.def.bounty * this.buffs.bounty;
       const n = e.def.boss ? 40 : 12;
       for (let i = 0; i < n; i++)
         this.particles.push(new Particle(e.x, e.y, e.def.color,
@@ -550,6 +570,7 @@ const game = {
         SFX.buildingLost(panOf(b.px), farOf(b.px, b.py));
       }
       this.buildings.delete(key(b.x, b.y));
+      this.stats.verluste++;
       this.turretsDirty = true;
       if (this.selected === b) this.select(null);
       this.recomputeSupply();
@@ -570,6 +591,7 @@ const game = {
         const gefangen = Math.min(dmg * m.absorb, frei / m.perDamage);
         if (gefangen > 0.01) {
           this.energy -= gefangen * m.perDamage;
+          this.stats.schild += gefangen * m.perDamage;
           dmg -= gefangen;
           this.shieldFlash = 0.4;
           SFX.shieldHit();
@@ -577,6 +599,7 @@ const game = {
       }
     }
     this.coreHp -= dmg;
+    this.stats.kernSchaden += dmg;
     SFX.coreHit();
     if (this.time - this.alarm.last > 2) this.alarm.since = this.time;   // neue Serie
     this.alarm.last = this.time;
@@ -684,7 +707,11 @@ const game = {
     this.mod = this.plannedWave.mod || null;
     this.plannedWave = null;
     if (this.buffs.waveStartFull) this.energy = this.energyMax;
-    for (const b of this.buildings.values()) if (b.type === 'akku') b.reserve = true;
+    for (const b of this.buildings.values()) {
+      if (b.type === 'akku') b.reserve = true;
+      b.schaden = 0;                            // Schadensbeitrag dieser Welle
+    }
+    this.stats = frischeStats();
     const sturm = this.modActive();
     SFX.waveStart();
     if (sturm) SFX.storm();
@@ -797,6 +824,7 @@ const game = {
         this.matter += praemie + this.buffs.matterPerWave;
         if (this.buffs.coreRepair)
           this.coreHp = Math.min(this.coreHpMax, this.coreHp + this.buffs.coreRepair);
+        this.bilanz = this.bilanzZiehen(praemie);
         SFX.waveClear();
         toast('Welle ' + this.wave + ' abgewehrt  +' + praemie + ' Materie');
         this.planNext();
@@ -865,13 +893,22 @@ const game = {
        unteren Stufen fassen den Puffer erst über ihrer Schwelle an. */
     const frac = this.energy / this.energyMax;
     const autoOverload = this.buffs.freeOverloadAt && frac >= this.buffs.freeOverloadAt;
+    let knapp = false;                          // wollte ein Turm feuern und konnte nicht?
+    let flussSumme = 0, flussZahl = 0;
     for (const b of this.turrets()) {
       // Was die Leitung nicht trägt, kommt hier als langsamere Feuerrate an
       const rateMul = b.supplied ? (b.flow === undefined ? 1 : b.flow) : this.buffs.unpoweredRate;
+      if (b.supplied) { flussSumme += rateMul; flussZahl++; }
       if (!rateMul) continue;                     // ohne Netz und ohne Inselbetrieb: still
       b.cd -= dt * rateMul;
       if (b.cd > 0) continue;
-      if (frac < PRIORITY[b.prio].threshold) { b.pulse = 0; continue; }
+      if (frac < PRIORITY[b.prio].threshold) {
+        // Vorrang und Normal schweigen nur, wenn der Puffer wirklich leer
+        // ist — bei Sparlast ist es die eingestellte Absicht, keine Not.
+        if (b.prio < 2) knapp = true;
+        b.pulse = 0;
+        continue;
+      }
       let cost = this.energyOf(b);
       let dmg = this.stat(b, 'damage');
       if (autoOverload) {                         // Überladung geschenkt, solange der Puffer voll ist
@@ -884,8 +921,9 @@ const game = {
       }
       const target = this.findTarget(b);
       if (!target) { b.scan += dt * 0.5; b.aim = b.scan; continue; }
-      if (this.energy < cost) { b.pulse = 0; SFX.lowPower(); continue; }
+      if (this.energy < cost) { b.pulse = 0; knapp = true; SFX.lowPower(); continue; }
       this.energy -= cost;
+      this.stats.energie += cost;
       b.cd = this.cooldownOf(b);
       b.pulse = 1;
       b.aim = Math.atan2(target.y - b.py, target.x - b.px);
@@ -895,7 +933,7 @@ const game = {
       else SFX.blaster(pan, weit);
       const voll = b.level >= UPGRADE.maxLevel;
       if (b.def.hitscan) {
-        this.hurt(target, dmg, 'beam');
+        this.hurt(target, dmg, 'beam', b);
         if (b.def.slow && !this.modv('noSlow', false))
           target.applySlow(Math.max(0.1, b.def.slow - this.buffs.slowBonus),
                            b.def.slowTime + this.buffs.slowTime, this.time);
@@ -915,6 +953,13 @@ const game = {
         }
       }
     }
+    if (this.phase === 'combat') {
+      if (knapp) this.stats.leer += dt;
+      if (flussZahl) {
+        this.stats.drossel += (1 - flussSumme / flussZahl) * dt;
+        this.stats.zeit += dt;
+      }
+    }
     for (const b of this.buildings.values()) if (b.pulse > 0) b.pulse -= dt * 4;
 
     for (const p of this.projectiles) p.update(dt, this);
@@ -926,7 +971,7 @@ const game = {
 
   // Ein Geschoss auf den Weg bringen — der Magnetsturm bremst es hier ab
   shoot(b, target, dmg) {
-    const p = new Projectile(b.px, b.py, target, b.def, dmg, 'proj');
+    const p = new Projectile(b.px, b.py, target, b.def, dmg, 'proj', b);
     p.speed *= this.modv('projSpeed', 1);
     this.projectiles.push(p);
     return p;
@@ -962,6 +1007,31 @@ const game = {
   modActive() {
     if (!this.mod) return null;
     return this.buffs.modImmune.indexOf(this.mod.id) >= 0 ? null : this.mod;
+  },
+
+  /* ------------------- Bilanz nach der Welle -----------------
+     Sie soll dem Spieler sein eigenes System erklären, nicht ihn mit
+     Zahlen bewerfen: Nur was in dieser Welle tatsächlich passiert ist,
+     steht drin. Wer keinen Kernschaden nahm, liest auch keine Null. */
+  bilanzZiehen(praemie) {
+    let bester = null;
+    for (const b of this.buildings.values())
+      if (b.def.turret && b.schaden > 0 && (!bester || b.schaden > bester.schaden)) bester = b;
+    const s = this.stats;
+    return {
+      welle: this.wave,
+      gegner: s.gegner,
+      energie: Math.round(s.energie),
+      befehle: Math.round(s.befehle),
+      schild: Math.round(s.schild),
+      kernSchaden: Math.round(s.kernSchaden),
+      verluste: s.verluste,
+      materie: Math.round(s.materie) + (praemie || 0),
+      leer: Math.round(s.leer * 10) / 10,
+      drossel: s.zeit > 0 ? s.drossel / s.zeit : 0,
+      bester: bester ? { name: bester.def.name, level: bester.level,
+                         schaden: Math.round(bester.schaden) } : null
+    };
   },
 
   /* ------------------- Spielstand ----------------------------
@@ -1121,6 +1191,7 @@ const game = {
       SFX.deny(); return toast('Alles unbeschädigt');
     }
     this.energy -= kosten;
+    this.stats.befehle += kosten;
     this.cooldowns[id] = this.powerCd(p);
 
     if (id === 'discharge') {
@@ -2031,9 +2102,34 @@ function updateInspector() {
   }
 }
 
+/* Bilanz der eben gehaltenen Welle. Aufgenommen wird nur, was passiert
+   ist: Wer keinen Bau verlor, liest dazu auch keine Null. */
+function bilanzHtml(b) {
+  if (!b) return '';
+  const teile = [];
+  const zeig = (wert, text, art) =>
+    teile.push('<div' + (art ? ' class="' + art + '"' : '') +
+               '><b>' + wert + '</b><span>' + text + '</span></div>');
+
+  zeig(b.gegner, 'Gegner');
+  zeig(b.energie, 'Energie verschossen');
+  if (b.befehle) zeig(b.befehle, 'für Kernbefehle');
+  zeig('+' + b.materie, 'Materie', 'gut');
+  if (b.kernSchaden) zeig(b.kernSchaden, 'Kernschaden', 'schlecht');
+  if (b.schild) zeig(b.schild, 'Energie als Schild');
+  if (b.verluste) zeig(b.verluste, b.verluste === 1 ? 'Bau verloren' : 'Bauten verloren', 'schlecht');
+  if (b.leer >= 0.3)
+    zeig((Math.round(b.leer * 10) / 10).toFixed(1).replace('.', ',') + ' s', 'Puffer leer', 'schlecht');
+  if (b.drossel > 0.02) zeig(Math.round(b.drossel * 100) + ' %', 'Netzdrossel', 'schlecht');
+  if (b.bester)
+    zeig(b.bester.schaden, 'Schaden · ' + b.bester.name + ' Stufe ' + b.bester.level);
+  return teile.join('');
+}
+
 /* ---------------- Kartenwahl ---------------- */
 function showDraft(cards) {
   el('draftWave').textContent = game.wave;
+  el('draftStats').innerHTML = bilanzHtml(game.bilanz);
   const box = el('draftCards');
   box.innerHTML = '';
   cards.forEach((c, i) => {

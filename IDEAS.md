@@ -121,8 +121,10 @@ In der Bauphase steht dran, was kommt: „Welle 7 — 12 Crawler,
 4 Brutes, aus Nordost und Süd". Die Richtungspfeile gibt es schon, die Zusammensetzung
 fehlt. *Sehr klein, `spawnQueue` ist bereits vorausberechnet.*
 
-**Bilanz nach der Welle.** Verschossene Energie, Kern-Schaden, bester Turm.
-Lehrt Spieler ihr eigenes System. *Klein.*
+**Bilanz nach der Welle.** ✅ *umgesetzt* — zwischen Wellenende und Kartenwahl stehen
+Gegner, verschossene Energie, Materie, Kernschaden, verlorene Bauten, Sekunden mit leerem
+Puffer, die mittlere Netzdrossel und der Turm, der den Schaden tatsächlich gemacht hat.
+Angezeigt wird nur, was passiert ist — wer keinen Bau verlor, liest dazu auch keine Null.
 
 **Schadenszahlen und Reichweitenkreis beim Überfahren**, nicht erst nach Auswahl.
 *Sehr klein.*
@@ -228,8 +230,8 @@ Selbsttest, der Anlauf, Schild und Akku-Entlastung nachrechnet.
 Zuletzt kamen Speicherstand und Bestenliste dazu: Eine unterbrochene Partie wird beim
 Öffnen zum Fortsetzen angeboten, eine beendete landet in einer Liste der acht besten Läufe.
 
-Bleibt aus der Liste: Tagesseed, Bilanz nach der Welle, das erzeugte Gelände, das
-Druckgedächtnis der Gegner und die Bedienkomfort-Punkte.
+Bleibt aus der Liste: Tagesseed, das erzeugte Gelände, das Druckgedächtnis der Gegner und
+die Bedienkomfort-Punkte.
 
 ## Wenn ich drei Dinge auswählen müsste (ursprüngliche Empfehlung)
 
