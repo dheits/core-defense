@@ -44,7 +44,9 @@ function mkEl(id) {
   const kinder = [];
   return {
     id, textContent: '', innerHTML: '', hidden: false, disabled: false, title: '',
-    style: {}, dataset: {}, children: kinder,
+    // style muss setProperty können — das Spiel setzt darüber CSS-Variablen
+    style: { setProperty(k, v) { this[k] = v; }, getPropertyValue(k) { return this[k] || ''; } },
+    dataset: {}, children: kinder,
     classList: { add: () => {}, remove: () => {}, toggle: () => {} },
     appendChild(c) { kinder.push(c); },
     querySelector: () => mkEl('q'),

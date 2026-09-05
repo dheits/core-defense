@@ -1863,11 +1863,13 @@ function buildShop() {
     d.className = 'card';
     d.dataset.type = type;
     d.title = def.name + ' — ' + def.desc + '  (Taste ' + def.key + ')';
-    // Die Namensfarbe ersetzt den früheren Farbpunkt und spart die Breite,
-    // an der die einzeilige Leiste sonst zerbricht.
+    // Die Bauteilfarbe sitzt als schmaler Balken am linken Rand der Fläche.
+    // Er kostet drei Pixel Breite statt der vierzehn eines Farbpunkts und
+    // ist besser zu lesen als eingefärbte Schrift.
+    d.style.setProperty('--farbe', def.color);
     d.innerHTML =
       `<span class="k">${def.key}</span>
-       <span class="n" style="color:${def.color}">${def.name}</span>
+       <span class="n">${def.name}</span>
        <span class="c">${def.cost}</span>`;
     d.onclick = () => selectTool(type);
     shopEl.appendChild(d);

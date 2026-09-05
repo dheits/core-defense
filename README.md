@@ -52,7 +52,8 @@ erscheinen entsprechend ihrem Gewicht seltener. Beides hält Partien auseinander
 Alles Anwählbare sitzt in einer einzeiligen **Taskleiste** am unteren Rand: links die
 Bauteile, dann die Kernbefehle, rechts die Kernmodi. Sie ist 41 Pixel hoch, damit das
 Spielfeld frei bleibt — die Erklärungen stehen im Tooltip, die Werte eines gebauten
-Turms im Inspektor rechts.
+Turms im Inspektor rechts. Ein schmaler Farbbalken am linken Rand jeder Fläche trägt die
+Farbe, in der das Bauteil auch auf dem Feld gezeichnet wird.
 
 | Eingabe | Wirkung |
 |---|---|
