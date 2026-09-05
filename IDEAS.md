@@ -87,7 +87,7 @@ Genau hier hört das Spiel gerade auf. Endlose Wellen ohne Fortschritt zwischen 
 Partien sind der Punkt, an dem die Recherche am deutlichsten war: Rogue Tower und
 Infinitode 2 leben von dem, was zwischen den Runden passiert.
 
-**Karten zwischen den Wellen.** ✅ *umgesetzt* (48 Karten, vier zur Wahl). Nach jeder abgewehrten Welle drei Optionen zur Auswahl:
+**Karten zwischen den Wellen.** ✅ *umgesetzt* (54 Karten, vier zur Wahl). Nach jeder abgewehrten Welle drei Optionen zur Auswahl:
 +15 % Reichweite netzweit, Pylone kosten die Hälfte, Reaktoren geben Schaden statt
 Energie. Das erzeugt bei jeder Partie einen anderen Aufbau — die günstigste Art,
 Wiederspielwert einzubauen. *Mittel, und mit Abstand der beste Aufwand-Nutzen-Schnitt.*
