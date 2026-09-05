@@ -439,13 +439,28 @@ Drei Dinge sind beim Auswerten wichtig, sonst führt die Zahl in die Irre:
   Überladung und stellt Reaktoren nicht planvoll an überlastete Äste. Gerade bei der
   Leitungslast — einer Planungsaufgabe — unterschätzt er einen Menschen deutlich.
 
-Stand der letzten Messung (je 60 Läufe, dieselbe Bot-Version, Limit Welle 40): mit allem
-Median 16; ohne Akkus Median 11 — die Trennung von Nachschub und Speicher macht den
-Puffer also zu etwas, das man kaufen muss. Beim Kernmodus liegt der Bot mit fester
-Einspeisung bei Median 17 statt 16, sein „vor dem Boss auf Schild" bringt ihm nichts:
-Er schaltet früh und zahlt den Nachteil über die ganze Bauphase. Der Unterschied liegt
-im Rauschen — der Modus ist eine Entscheidung für Menschen, keine, die eine feste Regel
-gewinnt.
+Stand der Messung (Bot in dieser Fassung, Limit Welle 40):
+
+| Konfiguration | Läufe | Median | Schnitt | am Limit |
+|---|---|---|---|---|
+| mit allem | 200 | 12 | 16,7 | 13 |
+| ohne Akkubau (`noakku`) | 200 | 10 | 13,8 | 7 |
+
+Die Trennung von Nachschub und Speicher kostet den Bot also rund zwei Wellen im Median,
+knapp drei im Schnitt, und halb so viele Läufe kommen bis ans Limit. Spürbar, aber kein
+Erdrutsch — und der Bot stellt Akkus nicht an überlastete Äste, wo sie am meisten bringen.
+
+**Wie wenig eine einzelne Messung trägt**, zeigt die Wiederholung: Dieselbe Konfiguration
+ergab in drei Durchgängen zu je 60 Läufen die Mediane 16, 14 und 11. Unterschiede unter
+etwa fünf Wellen sind bei 60 Läufen also gar nichts — eine frühere Notiz hier behauptete
+aus genau so einem Durchgang „11 statt 16" und lag damit um mehr als das Doppelte daneben.
+Beim Kernmodus ist deshalb weiter offen, was er bringt: Zwischen fester Einspeisung und
+der Regel „vor dem Boss auf Schild" war kein Unterschied zu sehen, der die Streuung
+überstanden hätte.
+
+Auffällig in beiden Verteilungen ist eine Spitze bei **Welle 10**: Dort steht der erste
+Boss, und an ihm endet gut jeder vierte Lauf. Wer an der Schwierigkeitskurve dreht, dreht
+zuerst dort.
 
 ### Selbsttest
 

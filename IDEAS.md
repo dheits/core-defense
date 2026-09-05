@@ -49,8 +49,8 @@ um 4/s. Keiner tut beides mehr. Damit ist „viele kurze Feuerstöße" gegen „
 Dauerfeuer" eine Bauentscheidung geworden — und weil Kernbefehle einen *Anteil* des
 Puffers kosten, macht ein großer Speicher die Entladung stärker. Auf Stufe 5 wirft der
 Akku als **Spitzenlast** einmal je Welle seinen ganzen Inhalt nach, wenn der Puffer unter
-15 % fällt. In der Messung ist der Unterschied deutlich: derselbe Bot ohne Akkubau kommt
-auf Median 11 statt 16.
+15 % fällt. In der Messung über je 200 Läufe kostet der Verzicht auf Akkus den Bot rund
+zwei Wellen im Median (12 gegen 10) und halb so viele Läufe, die bis zum Limit kommen.
 
 ---
 
