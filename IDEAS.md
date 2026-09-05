@@ -99,9 +99,10 @@ Infinitode 2 leben von dem, was zwischen den Runden passiert.
 Energie. Das erzeugt bei jeder Partie einen anderen Aufbau — die günstigste Art,
 Wiederspielwert einzubauen. *Mittel, und mit Abstand der beste Aufwand-Nutzen-Schnitt.*
 
-**Bestenliste im `localStorage`.** Höchste Welle, Datum, benutzte Bauteile. Zwei
-Dutzend Zeilen, und plötzlich hat das Ende einer Partie eine Bedeutung.
-*Sehr klein.*
+**Bestenliste im `localStorage`.** ✅ *umgesetzt* — die acht besten Läufe mit Welle, Datum
+und den drei häufigsten Bauteilen, sichtbar auf der Startanzeige und nach dem Kernverlust.
+Gewertet wird die höchste je begonnene Welle, damit ein Neuladen keine verlorene Welle
+schönrechnet.
 
 **Tagesseed.** Alle spielen dieselbe Wellenfolge, weil der Zufallsgenerator vom Datum
 abhängt. Braucht nur einen seedbaren PRNG statt `Math.random()` — und macht das Teilen
@@ -126,8 +127,10 @@ Lehrt Spieler ihr eigenes System. *Klein.*
 **Schadenszahlen und Reichweitenkreis beim Überfahren**, nicht erst nach Auswahl.
 *Sehr klein.*
 
-**Speicherstand.** Eine laufende Partie beim Verlassen der Seite sichern. Bei einem
-Endlosspiel im Browser fast Pflicht. *Klein: Zustand ist bereits reine Daten.*
+**Speicherstand.** ✅ *umgesetzt* — gesichert wird in der Bauphase, beim nächsten Öffnen
+fragt die Startanzeige, ob fortgesetzt werden soll. Bewusst nicht mitgeschrieben werden
+Gegner und Geschosse: Wer mitten im Gefecht schließt, setzt bei derselben Welle wieder an.
+Das ist der Grund für die Wertung nach der höchsten begonnenen Welle.
 
 ---
 
@@ -190,8 +193,11 @@ Danach kamen die **Kernmodi** und die **getrennten Akkus** dazu, mit drei weiter
 — Zellenstapel, Schnellschaltung und dem seltenen Zwitterkern — sowie einem Prüfblock im
 Selbsttest, der Anlauf, Schild und Akku-Entlastung nachrechnet.
 
-Bleibt aus der Liste: Bestenliste, Tagesseed, Bilanz nach der Welle, Speicherstand, das
-erzeugte Gelände, das Druckgedächtnis der Gegner und die Bedienkomfort-Punkte.
+Zuletzt kamen Speicherstand und Bestenliste dazu: Eine unterbrochene Partie wird beim
+Öffnen zum Fortsetzen angeboten, eine beendete landet in einer Liste der acht besten Läufe.
+
+Bleibt aus der Liste: Tagesseed, Bilanz nach der Welle, das erzeugte Gelände, das
+Druckgedächtnis der Gegner und die Bedienkomfort-Punkte.
 
 ## Wenn ich drei Dinge auswählen müsste (ursprüngliche Empfehlung)
 

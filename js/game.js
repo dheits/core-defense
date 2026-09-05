@@ -61,12 +61,40 @@ function licht(x, y, r, hex, alpha) {
   ctx.drawImage(lichtBild(hex), x - r, y - r, r * 2, r * 2);
 }
 
+/* ---------------------------------------------------------------
+   Zwei Dinge überleben das Schließen der Seite: der laufende
+   Spielstand und die Bestenliste. Beides liegt im localStorage —
+   und beides muss ohne ihn funktionieren. In privaten Fenstern und
+   bei manchen file://-Einstellungen wirft schon der Zugriff, deshalb
+   geht jeder Zugriff durch diese drei Funktionen.
+---------------------------------------------------------------- */
+const SAVE_KEY = 'cd_save', BEST_KEY = 'cd_best';
+const SAVE_VERSION = 1;          // ändert sich das Format, wird Altes verworfen
+const BEST_MAX = 8;              // so viele Einträge hält die Bestenliste
+
+function lese(key) {
+  try {
+    const roh = localStorage.getItem(key);
+    return roh ? JSON.parse(roh) : null;
+  } catch (e) { return null; }
+}
+function schreibe(key, wert) {
+  try { localStorage.setItem(key, JSON.stringify(wert)); return true; }
+  catch (e) { return false; }
+}
+function loesche(key) {
+  try { localStorage.removeItem(key); } catch (e) { /* egal */ }
+}
+
 const game = {
   time: 0, speed: 1, paused: false, over: false,
   matter: START_MATTER,
   energy: CORE.energy, energyMax: CORE.energy, regen: CORE.regen,
   coreHp: CORE.hp, coreHpMax: CORE.hp,
   wave: 0, phase: 'build', buildTimer: FIRST_BUILD_TIME,
+  // höchste je erreichte Welle dieser Partie — zählt für die Bestenliste,
+  // damit ein Neuladen eine verlorene Welle nicht schönrechnet
+  bestWave: 0,
   buildings: new Map(),
   enemies: [], projectiles: [], particles: [], beams: [],
   spawnQueue: [], incoming: [],
@@ -191,12 +219,9 @@ const game = {
     }
   },
 
-  build(type, x, y) {
+  // Ein Bauwerk anlegen, ohne zu bezahlen — auch der Spielstand baut hierüber
+  makeBuilding(type, x, y) {
     const def = BUILDINGS[type];
-    const cost = this.costOf(type);
-    if (!this.free(x, y)) { SFX.deny(); return toast('Platz belegt'); }
-    if (this.matter < cost) { SFX.deny(); return toast('Zu wenig Materie'); }
-    this.matter -= cost;
     const b = {
       type, def, x, y, level: 1,
       hp: 0, maxHp: 0,
@@ -208,10 +233,21 @@ const game = {
     b.maxHp = this.structureOf(b); b.hp = b.maxHp;
     this.buildings.set(key(x, y), b);
     this.turretsDirty = true;
+    return b;
+  },
+
+  build(type, x, y) {
+    const def = BUILDINGS[type];
+    const cost = this.costOf(type);
+    if (!this.free(x, y)) { SFX.deny(); return toast('Platz belegt'); }
+    if (this.matter < cost) { SFX.deny(); return toast('Zu wenig Materie'); }
+    this.matter -= cost;
+    const b = this.makeBuilding(type, x, y);
     this.recomputeSupply();
     SFX.build();
     for (let i = 0; i < 10; i++)
       this.particles.push(new Particle(b.px, b.py, def.color, { speed: rand(40, 120), life: .4 }));
+    this.merken();
   },
 
   sell(b) {
@@ -221,6 +257,7 @@ const game = {
     this.turretsDirty = true;
     if (this.selected === b) this.select(null);
     this.recomputeSupply();
+    this.merken();
   },
 
   upgrade(b) {
@@ -235,6 +272,7 @@ const game = {
     this.recomputeSupply();
     for (let i = 0; i < 14; i++)
       this.particles.push(new Particle(b.px, b.py, '#ffd166', { speed: rand(50, 160), life: .5 }));
+    this.merken();
   },
 
   select(b) {
@@ -552,7 +590,12 @@ const game = {
       this.coreHp = 0;
       this.over = true;
       SFX.gameOver();
-      showOverlay('KERN VERLOREN', `Du hast ${this.wave} Wellen überstanden.`);
+      loesche(SAVE_KEY);                       // die Partie ist zu Ende, nicht unterbrochen
+      const erg = this.eintragen();
+      showOverlay('KERN VERLOREN',
+        'Du hast ' + erg.eintrag.wave + ' Wellen überstanden.' +
+        (erg.platz === 0 ? ' Das ist dein bester Lauf.' : ''),
+        bestenlisteHtml(erg.liste, erg.eintrag));
     }
   },
 
@@ -625,6 +668,7 @@ const game = {
     if (!this.plannedWave) this.planNext();
     if (this.buildTimer > 0) this.matter += Math.round(this.buildTimer * 2);
     this.wave++;
+    this.bestWave = Math.max(this.bestWave, this.wave);
     this.phase = 'combat';
     // Rollen (Boss, Wächter) müssen mitwandern, nicht nur Typ und Zeit
     this.spawnQueue = this.plannedWave.queue
@@ -680,6 +724,7 @@ const game = {
     this.recalcStructure();
     SFX.upgrade();
     toast(c.name);
+    this.merken();
   },
 
   spawn(s) {
@@ -750,6 +795,7 @@ const game = {
         toast('Welle ' + this.wave + ' abgewehrt  +' + praemie + ' Materie');
         this.planNext();
         this.openDraft();
+        this.merken();
       }
     }
 
@@ -910,6 +956,113 @@ const game = {
   modActive() {
     if (!this.mod) return null;
     return this.buffs.modImmune.indexOf(this.mod.id) >= 0 ? null : this.mod;
+  },
+
+  /* ------------------- Spielstand ----------------------------
+     Gesichert wird nur in der Bauphase. Das ist keine Sparmaßnahme,
+     sondern eine Entscheidung: Gegner, Geschosse und Sturmzustand
+     mitzuschreiben wäre viel Zustand für wenig Gewinn, und wer mitten
+     im Gefecht die Seite schließt, setzt bei derselben Welle wieder an.
+     Damit das kein Ausweg wird, zählt für die Bestenliste bestWave —
+     die höchste je begonnene Welle, nicht die zuletzt gespielte. */
+  merken() {
+    if (this.over || this.phase !== 'build') return false;
+    const plan = this.plannedWave;
+    return schreibe(SAVE_KEY, {
+      v: SAVE_VERSION,
+      // Wer während der Kartenwahl schließt, soll die Karte nicht verlieren.
+      // Gesichert wird nur, DASS eine ansteht — die Auswahl wird neu gezogen.
+      draft: !!this.draft,
+      wave: this.wave, bestWave: this.bestWave,
+      matter: Math.round(this.matter), energy: Math.round(this.energy),
+      coreHp: Math.round(this.coreHp), coreHpMax: this.coreHpMax,
+      buildTimer: Math.round(this.buildTimer * 10) / 10,
+      coreMode: this.coreMode,
+      buffs: this.buffs,
+      karten: [...this.takenCards],
+      bauten: [...this.buildings.values()].map(b => ({
+        t: b.type, x: b.x, y: b.y, l: b.level, hp: Math.round(b.hp),
+        p: b.prio, o: b.overload ? 1 : 0
+      })),
+      plan: plan ? { queue: plan.queue, angles: plan.angles,
+                     mod: plan.mod ? plan.mod.id : null } : null
+    });
+  },
+
+  // Gibt es einen Stand? Dann heißt der erste Knopf „Fortsetzen".
+  gespeicherteRunde() {
+    const s = lese(SAVE_KEY);
+    return s && s.v === SAVE_VERSION && Array.isArray(s.bauten) ? s : null;
+  },
+
+  laden(s) {
+    if (!s || s.v !== SAVE_VERSION || !Array.isArray(s.bauten)) return false;
+    try {
+      // Reihenfolge zählt: Die Karten bestimmen Struktur und Kosten,
+      // also müssen die Boni vor den Bauten stehen.
+      this.buffs = Object.assign(freshBuffs(), s.buffs || {});
+      this.takenCards = new Map(s.karten || []);
+      this.coreHpMax = s.coreHpMax || CORE.hp;
+      this.coreHp = clamp(s.coreHp, 1, this.coreHpMax);
+      this.matter = Math.max(0, s.matter || 0);
+      this.wave = Math.max(0, s.wave | 0);
+      this.bestWave = Math.max(this.wave, s.bestWave | 0);
+      this.coreMode = CORE_MODES[s.coreMode] ? s.coreMode : 0;
+      this.coreModeNext = this.coreMode;
+      this.modeTimer = 0;
+      this.phase = 'build';
+      this.buildTimer = s.buildTimer > 0 ? s.buildTimer : BUILD_TIME;
+
+      this.buildings.clear();
+      for (const d of s.bauten) {
+        if (!BUILDINGS[d.t] || !this.free(d.x, d.y)) continue;
+        const b = this.makeBuilding(d.t, d.x, d.y);
+        b.level = clamp(d.l | 0, 1, UPGRADE.maxLevel);
+        b.maxHp = this.structureOf(b);
+        b.hp = clamp(d.hp, 1, b.maxHp);
+        b.prio = PRIORITY[d.p] ? d.p : 1;
+        b.overload = !!d.o;
+      }
+      this.recomputeSupply();
+      this.energy = clamp(s.energy, 0, this.energyMax);
+
+      // Die angekündigte Welle soll dieselbe bleiben, sonst hätte die
+      // Vorschau vor dem Schließen etwas anderes versprochen.
+      if (s.plan && Array.isArray(s.plan.queue) && s.plan.queue.length) {
+        this.plannedWave = {
+          queue: s.plan.queue, angles: s.plan.angles || [],
+          mod: MODIFIERS.find(m => m.id === s.plan.mod) || null
+        };
+        this.incoming = this.plannedWave.angles;
+      } else this.planNext();
+      if (s.draft) this.openDraft();
+      return true;
+    } catch (e) { return false; }
+  },
+
+  /* ------------------- Bestenliste --------------------------- */
+  bestenliste() {
+    const l = lese(BEST_KEY);
+    return Array.isArray(l) ? l.filter(e => e && typeof e.wave === 'number') : [];
+  },
+
+  // Am Ende einer Partie: eintragen, sortieren, kürzen. Zurück kommt
+  // die Liste und der Platz des eigenen Laufs (−1, wenn er nicht reicht).
+  eintragen() {
+    const teile = {};
+    for (const b of this.buildings.values()) teile[b.type] = (teile[b.type] || 0) + 1;
+    const eintrag = {
+      wave: Math.max(this.wave, this.bestWave),
+      datum: Date.now(),
+      teile,
+      karten: [...this.takenCards.values()].reduce((a, b) => a + b, 0)
+    };
+    const liste = this.bestenliste();
+    liste.push(eintrag);
+    liste.sort((a, b) => b.wave - a.wave || a.datum - b.datum);
+    liste.length = Math.min(liste.length, BEST_MAX);
+    schreibe(BEST_KEY, liste);
+    return { eintrag, liste, platz: liste.indexOf(eintrag) };
   },
 
   /* ------------------- Kernmodi ------------------------------
@@ -1878,10 +2031,44 @@ function toast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 1400);
 }
 
-function showOverlay(title, text) {
+function showOverlay(title, text, html) {
   el('ovTitle').textContent = title;
   el('ovText').textContent = text;
+  const liste = el('ovList');
+  liste.hidden = !html;
+  liste.innerHTML = html || '';
   el('overlay').hidden = false;
+}
+
+/* Bestenliste als Tabelle. „Benutzte Bauteile" sind die drei häufigsten —
+   mehr sagt in einer Zeile nichts mehr, weniger sagt nichts über den Aufbau. */
+const TEIL_NAMEN = {
+  pylon:   ['Pylon', 'Pylone'],
+  reactor: ['Reaktor', 'Reaktoren'],
+  akku:    ['Akku', 'Akkus'],
+  blaster: ['Blaster', 'Blaster'],
+  cannon:  ['Kanone', 'Kanonen'],
+  frost:   ['Frostturm', 'Frosttürme'],
+  wall:    ['Barriere', 'Barrieren']
+};
+function teilName(typ, n) {
+  const w = TEIL_NAMEN[typ];
+  return w ? w[n === 1 ? 0 : 1] : typ;
+}
+function bestenlisteHtml(liste, markiert) {
+  if (!liste || !liste.length) return '';
+  const zeilen = liste.map((e, i) => {
+    const teile = e.teile || {};
+    const top = Object.keys(teile).sort((a, b) => teile[b] - teile[a]).slice(0, 3)
+      .map(t => teile[t] + ' ' + teilName(t, teile[t])).join(', ');
+    const d = new Date(e.datum || 0);
+    const datum = String(d.getDate()).padStart(2, '0') + '.' +
+                  String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear();
+    return '<tr' + (e === markiert ? ' class="neu"' : '') + '>' +
+           '<td>' + (i + 1) + '</td><td>Welle ' + e.wave + '</td>' +
+           '<td>' + datum + '</td><td>' + top + '</td></tr>';
+  }).join('');
+  return '<table><tbody>' + zeilen + '</tbody></table>';
 }
 
 function updateHud() {
@@ -2074,18 +2261,50 @@ el('ovBtn').onclick = () => location.reload();
 buildShop();
 buildPowers();
 buildModes();
-game.recomputeSupply();
-game.planNext();
-showOverlay('CORE DEFENSE',
-  'Der Kern in der Mitte versorgt deine Türme mit Energie. Angriffe kommen aus allen Richtungen. ' +
-  'Baue Pylone, um das Netz nach außen zu tragen, und Reaktoren, damit dir mitten in der Welle nicht ' +
-  'der Strom ausgeht. Nach jeder Welle wählst du eine Karte, die für den Rest der Partie gilt.');
-el('ovBtn').textContent = 'Starten';
+
+/* Beim Öffnen der Seite: Gibt es eine unterbrochene Partie, wird sie
+   angeboten statt stillschweigend überschrieben. Der zweite Knopf
+   verwirft sie ausdrücklich — von selbst passiert das nie. */
+let standVerworfen = false;
+const stand = game.gespeicherteRunde();
+const fortsetzen = !!(stand && game.laden(stand));
+if (!fortsetzen) {
+  game.recomputeSupply();
+  game.planNext();
+}
+if (fortsetzen) {
+  showOverlay('PARTIE GEFUNDEN',
+    'Du warst nach Welle ' + game.wave + ' stehengeblieben — ' + game.buildings.size +
+    ' Bauten, ' + Math.round(game.matter) + ' Materie. Die angekündigte Welle ' +
+    (game.wave + 1) + ' wartet unverändert.',
+    bestenlisteHtml(game.bestenliste()));
+  el('ovBtn').textContent = 'Fortsetzen';
+  el('ovBtn2').hidden = false;
+  el('ovBtn2').onclick = () => {
+    standVerworfen = true;
+    loesche(SAVE_KEY);
+    location.reload();
+  };
+} else {
+  showOverlay('CORE DEFENSE',
+    'Der Kern in der Mitte versorgt deine Türme mit Energie. Angriffe kommen aus allen Richtungen. ' +
+    'Baue Pylone, um das Netz nach außen zu tragen, und Reaktoren, damit dir mitten in der Welle nicht ' +
+    'der Strom ausgeht. Nach jeder Welle wählst du eine Karte, die für den Rest der Partie gilt.',
+    bestenlisteHtml(game.bestenliste()));
+  el('ovBtn').textContent = 'Starten';
+}
 el('ovBtn').onclick = () => {
   el('overlay').hidden = true;
+  el('ovBtn2').hidden = true;
   el('ovBtn').textContent = 'Neu starten';
   el('ovBtn').onclick = () => location.reload();
 };
+
+/* Beim Verlassen der Seite sichern. Nach „Neu anfangen" nicht — sonst
+   stünde der eben gelöschte Stand beim Neuladen wieder da. */
+const beimGehen = () => { if (!standVerworfen) game.merken(); };
+addEventListener('beforeunload', beimGehen);
+addEventListener('pagehide', beimGehen);
 
 let last = performance.now();
 function frame(now) {

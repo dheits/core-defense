@@ -386,6 +386,30 @@ Ab Welle 8 entspricht die Stärkekurve wieder dem ursprünglichen Verlauf. Boden
 seitlich aus, solange eine Lücke existiert — steht keine offen, schlagen sie sie ein.
 Wellen sind endlos, Budget und HP skalieren quadratisch mit der Wellennummer.
 
+## Spielstand und Bestenliste
+
+Beides liegt im `localStorage` des Browsers — keine Datei, kein Server, und beides
+funktioniert auch, wenn der Speicher gesperrt ist: Jeder Zugriff ist gekapselt, im
+schlimmsten Fall fehlen Fortsetzen und Liste, das Spiel läuft weiter.
+
+**Spielstand.** Gesichert wird in der Bauphase — beim Wellenende, nach jeder Karte, nach
+jedem Bau und beim Verlassen der Seite. Beim nächsten Öffnen fragt die Startanzeige, ob
+fortgesetzt werden soll; *Neu anfangen* verwirft den Stand ausdrücklich, von selbst
+passiert das nie. Mitgeschrieben werden Bauten samt Stufe, Struktur, Lastpriorität und
+Überladung, Materie, Puffer, Kern, alle genommenen Karten, der Kernmodus und die bereits
+angekündigte nächste Welle — die Vorschau hält also, was sie vor dem Schließen versprach.
+
+Gegner, Geschosse und der laufende Sturm werden *nicht* gesichert. Das ist eine
+Entscheidung, keine Sparmaßnahme: Wer mitten im Gefecht die Seite schließt, setzt bei
+derselben Welle wieder an. Damit das kein Ausweg aus einer verlorenen Welle wird, zählt
+für die Bestenliste `bestWave` — die höchste je *begonnene* Welle. Ein Neuladen kann eine
+Wertung dadurch nie senken, nur das Weiterkommen kann sie heben.
+
+**Bestenliste.** Die acht besten Läufe mit Welle, Datum und den drei häufigsten Bauteilen
+am Ende. Sie steht auf der Startanzeige und nach dem Kernverlust, dort mit dem eigenen
+Lauf hervorgehoben. Ein Lauf wird eingetragen, wenn der Kern fällt — und derselbe Moment
+löscht den Spielstand, weil die Partie zu Ende ist und nicht unterbrochen.
+
 ## Balance messen
 
 Im Ordner `tools/` liegt ein Prüfstand, der das ganze Spiel ohne Browser in node lädt,
@@ -433,7 +457,9 @@ node tools/pruefen.js
 
 Sie läuft in einer Zehntelsekunde und deckt Leitungslast, die drei Kernbefehle, alle
 sieben Sturmwellen, die getrennten Akkus, die drei Kernmodi samt Anlauf und Schild,
-Reparatur und Abbau sowie die Sonderfähigkeiten der fünften Stufe ab.
+Spielstand und Bestenliste, Reparatur und Abbau sowie die Sonderfähigkeiten der fünften
+Stufe ab. Der Prüfstand hat dafür einen flüchtigen `localStorage`, der ein erneutes Laden
+des Spiels im selben Prozess übersteht — nur so lässt sich Sichern gegen Laden prüfen.
 Die Prüfungen sind in zwei Sorten aufgeteilt, und der Unterschied ist wichtig:
 
 - **Verdrahtung.** Der Erwartungswert wird aus `js/config.js` abgeleitet. Diese Prüfungen

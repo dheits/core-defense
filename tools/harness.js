@@ -61,7 +61,19 @@ global.document = {
   createElement: () => mkEl('neu')
 };
 global.window = global;
-global.localStorage = { getItem: () => null, setItem: () => {} };
+/* Ein echter, aber flüchtiger localStorage: Der Spielstand und die
+   Bestenliste sollen sich prüfen lassen, ohne eine Datei anzufassen.
+   Er überlebt bewusst ein erneutes Laden des Spiels im selben Prozess —
+   genau darum geht es beim Spielstand. */
+// Am globalen Objekt, damit er ein erneutes Laden des Prüfstands überlebt —
+// sonst ließe sich Speichern und Laden gar nicht gegeneinander prüfen.
+const speicher = global.__cdSpeicher || (global.__cdSpeicher = new Map());
+global.localStorage = {
+  getItem: k => (speicher.has(k) ? speicher.get(k) : null),
+  setItem: (k, v) => { speicher.set(k, String(v)); },
+  removeItem: k => { speicher.delete(k); },
+  clear: () => speicher.clear()
+};
 global.performance = { now: () => Date.now() };
 global.requestAnimationFrame = () => 0;
 global.addEventListener = () => {};
@@ -83,6 +95,8 @@ module.exports = (0, eval)(quelle + `
   CORE_MODES, CORE_SWITCH,
   REPAIR_SHARE, MOD_FROM_WAVE, MOD_BONUS, SELL_REFUND,
   flowCap, akkuFlow, upgradeSteps, waveHpScale, waveBudget, bossFor,
+  SAVE_KEY, BEST_KEY, SAVE_VERSION, BEST_MAX, bestenlisteHtml,
+  speicher: localStorage,
   // Sturmwellen für Vergleichsmessungen abschaltbar machen
   setModChance: w => { MOD_CHANCE = w; }
 })`);

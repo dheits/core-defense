@@ -37,6 +37,11 @@ const PUFFER_SEKUNDEN = 3.5;
 
 function frischeRunde() {
   delete require.cache[PRUEFSTAND];
+  /* Den Speicher leeren, bevor das Spiel neu geladen wird: Es sucht beim
+     Start nach einem Spielstand und würde sonst mit dem Aufbau des
+     vorigen Laufs weitermachen — jede Messung ab Lauf zwei wäre wertlos.
+     Festgehalten in tools/pruefen.js, „Ein alter Spielstand …". */
+  if (global.localStorage) global.localStorage.clear();
   return require(PRUEFSTAND);
 }
 

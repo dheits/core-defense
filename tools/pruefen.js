@@ -16,7 +16,16 @@
 const path = require('path');
 const PRUEFSTAND = path.resolve(__dirname, 'harness.js');
 
+/* Frischer Prüfstand. Der Speicher wird dabei geleert — ein Spielstand
+   aus einer vorherigen Prüfung würde sonst beim Start der nächsten
+   geladen und deren Aufbau überschreiben. */
 function frisch() {
+  delete require.cache[PRUEFSTAND];
+  if (global.localStorage) global.localStorage.clear();
+  return require(PRUEFSTAND);
+}
+// Dasselbe, aber mit erhaltenem Speicher — das ist ein Neuladen der Seite
+function weiter() {
   delete require.cache[PRUEFSTAND];
   return require(PRUEFSTAND);
 }
@@ -485,6 +494,120 @@ beschreibe('Schildmodus bezahlt Kernschaden aus dem Puffer', () => {
   g.damageCore(20, null);
   gleich('Einspeisung schirmt nicht ab', hp2 - g.coreHp, 20, 1e-9);
   gleich('und kostet keine Energie', e2 - g.energy, 0, 1e-9);
+});
+
+/* --------------------- Spielstand ------------------------ */
+beschreibe('Spielstand überlebt das Neuladen', () => {
+  const h = neu(), g = h.game;
+  const p = h.bau('pylon', 24, 12);
+  const t = h.bau('blaster', 26, 12);
+  h.bau('akku', 24, 11);
+  g.upgrade(p); g.upgrade(p);
+  t.prio = 2; t.overload = true; t.hp = Math.round(t.maxHp * 0.5);
+  h.CARDS.find(c => c.id === 'ladung').apply(g.buffs, g);
+  g.takenCards.set('ladung', 1);
+  g.wave = 6; g.bestWave = 6; g.matter = 123; g.coreHp = 321;
+  g.coreMode = 1;
+  g.recomputeSupply();
+  const geplant = g.plannedWave.queue.length;
+  const sturm = g.plannedWave.mod ? g.plannedWave.mod.id : null;
+  gleich('sichern gelingt', g.merken(), true);
+
+  const h2 = weiter(), g2 = h2.game;          // wie ein Neuladen der Seite
+  gleich('der Aufbau steht beim Öffnen schon', g2.buildings.size, 3);
+  gleich('Ausbaustufe des Pylons', g2.buildings.get('24,12').level, 3);
+  gleich('Lastpriorität des Turms', g2.buildings.get('26,12').prio, 2);
+  gleich('Überladung des Turms', g2.buildings.get('26,12').overload, true);
+  gleich('Schaden am Turm', g2.buildings.get('26,12').hp, Math.round(t.maxHp * 0.5));
+  gleich('genommene Karte wirkt weiter', g2.buffs.damage, 1.18, 1e-9);
+  gleich('sie steht auch im Kartenkonto', g2.takenCards.get('ladung'), 1);
+  gleich('Welle', g2.wave, 6);
+  gleich('Materie', g2.matter, 123);
+  gleich('Kernstruktur', g2.coreHp, 321);
+  gleich('Kernmodus', g2.coreMode, 1);
+  gleich('angekündigte Welle ist dieselbe', g2.plannedWave.queue.length, geplant);
+  gleich('auch ihr Sturm', g2.plannedWave.mod ? g2.plannedWave.mod.id : null, sturm);
+  gleich('das Netz ist neu gerechnet', g2.buildings.get('26,12').supplied, true);
+});
+
+beschreibe('Gesichert wird nur in der Bauphase', () => {
+  const h = neu(), g = h.game;
+  gleich('Bauphase: ja', g.merken(), true);
+  g.phase = 'combat';
+  gleich('im Gefecht: nein', g.merken(), false);
+  g.over = true;
+  gleich('nach dem Ende: nein', g.merken(), false);
+});
+
+beschreibe('Eine offene Kartenwahl geht nicht verloren', () => {
+  const h = neu(), g = h.game;
+  h.bau('blaster', 18, 12);
+  g.openDraft();
+  stimmt('eine Wahl steht an', Array.isArray(g.draft) && g.draft.length > 0);
+  gleich('auch dann wird gesichert', g.merken(), true);
+
+  const g2 = weiter().game;
+  stimmt('nach dem Neuladen steht wieder eine Wahl an',
+         Array.isArray(g2.draft) && g2.draft.length > 0);
+  gleich('und der Aufbau ist da', g2.buildings.size, 1);
+});
+
+beschreibe('Ein fremdes oder altes Format wird verworfen', () => {
+  const h = neu(), g = h.game;
+  h.speicher.setItem(h.SAVE_KEY, JSON.stringify({ v: h.SAVE_VERSION + 1, bauten: [] }));
+  stimmt('andere Fassung: nicht angeboten', g.gespeicherteRunde() === null);
+  h.speicher.setItem(h.SAVE_KEY, '{kein json');
+  stimmt('kaputter Text: nicht angeboten', g.gespeicherteRunde() === null);
+  gleich('und laden lehnt ab', g.laden({ v: h.SAVE_VERSION, bauten: 'nein' }), false);
+});
+
+beschreibe('Ein alter Spielstand startet die nächste Messung nicht', () => {
+  /* Das Spiel sucht beim Laden von selbst nach einem Stand. Für den Bot
+     ist das eine Falle: Ohne geleerten Speicher liefe Messlauf zwei mit
+     dem Aufbau von Lauf eins weiter. Beide Richtungen gehören geprüft. */
+  const h = neu(), g = h.game;
+  h.bau('blaster', 18, 12);
+  gleich('gesichert', g.merken(), true);
+  gleich('mit Speicher wird fortgesetzt', weiter().game.buildings.size, 1);
+  gleich('mit geleertem Speicher nicht', neu().game.buildings.size, 0);
+});
+
+/* --------------------- Bestenliste ----------------------- */
+beschreibe('Bestenliste sortiert, deckelt und zählt Bauteile', () => {
+  const h = neu(), g = h.game;
+  h.bau('blaster', 18, 12); h.bau('blaster', 18, 13); h.bau('cannon', 18, 14);
+  g.wave = 7; g.bestWave = 7;
+  const e1 = g.eintragen();
+  gleich('erster Lauf steht auf Platz 1', e1.platz, 0);
+  gleich('Bauteile gezählt', e1.eintrag.teile.blaster, 2);
+
+  g.wave = 3; g.bestWave = 3;
+  const e2 = g.eintragen();
+  gleich('der schwächere Lauf landet dahinter', e2.platz, 1);
+  gleich('vorn steht die höhere Welle', e2.liste[0].wave, 7);
+
+  for (let i = 0; i < h.BEST_MAX + 3; i++) { g.wave = 20 + i; g.bestWave = g.wave; g.eintragen(); }
+  const l = g.bestenliste();
+  gleich('die Liste bleibt gedeckelt', l.length, h.BEST_MAX);
+  stimmt('und bleibt absteigend sortiert', l.every((e, i) => i === 0 || l[i - 1].wave >= e.wave));
+});
+
+beschreibe('Gewertet wird die höchste begonnene Welle', () => {
+  const h = neu(), g = h.game;
+  g.startWave();
+  gleich('der Wellenstart merkt sich die Zahl', g.bestWave, 1);
+  g.wave = 0;                                  // wie nach einem Neuladen auf den alten Stand
+  gleich('gewertet wird trotzdem die höhere', g.eintragen().eintrag.wave, 1);
+});
+
+beschreibe('Am Ende ist der Stand weg und der Lauf in der Liste', () => {
+  const h = neu(), g = h.game;
+  h.bau('blaster', 18, 12);
+  gleich('vorher liegt ein Stand vor', g.merken(), true);
+  stimmt('und wird auch gefunden', !!g.gespeicherteRunde());
+  g.damageCore(1e9, null);
+  stimmt('nach dem Kernverlust ist er weg', g.gespeicherteRunde() === null);
+  gleich('dafür steht der Lauf in der Bestenliste', g.bestenliste().length, 1);
 });
 
 /* ---------------------- Balance-Anker ----------------------
