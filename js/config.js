@@ -70,8 +70,8 @@ const BUILDINGS = {
   },
   wall: {
     name: 'Barriere', key: '7', cost: 10, hp: 260, color: '#8892a6',
-    needsPower: false,
-    desc: 'Lenkt Bodentruppen um, braucht keinen Strom.'
+    needsPower: false, drag: true,        // lässt sich in einem Zug reihenweise setzen
+    desc: 'Lenkt Bodentruppen um, braucht keinen Strom. Mit gedrückter Maustaste in Reihen ziehbar.'
   }
 };
 

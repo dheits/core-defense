@@ -332,6 +332,9 @@ const SFX = (() => {
     /* ---------------- Bau-Interaktion ---------------- */
     build() {
       nah();
+      // Beim Ziehen fallen mehrere Bauten in ein Bild — ohne Sperre
+      // stapeln sich die Klänge zu einem Knall.
+      if (!gate('build', 0.045)) return;
       tone({ type: 'triangle', freq: 440, dur: 0.07, gain: 0.09, send: 0.1 });
       tone({ type: 'triangle', freq: 660, dur: 0.12, gain: 0.09, delay: 0.06, send: 0.15 });
       noise({ dur: 0.1, freq: 2600, freqTo: 800, gain: 0.035, filter: 'bandpass', q: 1.5 });

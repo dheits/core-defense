@@ -100,6 +100,23 @@ function frischeStats() {
   };
 }
 
+/* Alle Zellen zwischen zwei Punkten, den Startpunkt ausgenommen
+   (Bresenham). Beim Ziehen springt der Mauszeiger je Bild um mehrere
+   Zellen — ohne die Zwischenschritte bekäme die Reihe Lücken. */
+function rasterLinie(x0, y0, x1, y1) {
+  const zellen = [];
+  let dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+  let fehler = dx - dy, sicherung = 200;
+  while ((x0 !== x1 || y0 !== y1) && sicherung-- > 0) {
+    const e2 = 2 * fehler;
+    if (e2 > -dy) { fehler -= dy; x0 += sx; }
+    if (e2 < dx) { fehler += dx; y0 += sy; }
+    zellen.push({ x: x0, y: y0 });
+  }
+  return zellen;
+}
+
 const game = {
   time: 0, speed: 1, paused: false, over: false,
   stats: frischeStats(), bilanz: null,
@@ -120,6 +137,7 @@ const game = {
   alarm: { since: 0, last: -99, on: false, seen: false },
   boss: null, bossReward: false, pendingSpawns: [],
   hover: { x: -1, y: -1, inside: false },
+  ziehen: null,                     // läuft gerade ein Zug über mehrere Zellen?
   shake: 0,
   // Leitungslast, Kernbefehle, Sturmwelle, Kernmodus
   sources: [], overloadedNodes: 0,
@@ -263,6 +281,42 @@ const game = {
     for (let i = 0; i < 10; i++)
       this.particles.push(new Particle(b.px, b.py, def.color, { speed: rand(40, 120), life: .4 }));
     this.merken();
+  },
+
+  /* ---------------- Ziehen zum Bauen -------------------------
+     Nur Bauteile mit `drag` (heute die Barriere) — bei einer Kanone je
+     65 Materie wäre ein verrutschter Zug teuer. Was nicht geht, wird
+     still übersprungen: Beim Ziehen über eine Reihe wäre eine Absage je
+     belegter Zelle nur Lärm. */
+  ziehBau(type, x, y) {
+    if (!this.free(x, y)) return false;
+    if (this.matter < this.costOf(type)) return false;
+    this.build(type, x, y);
+    return true;
+  },
+  ziehStart(type, x, y) {
+    const def = BUILDINGS[type];
+    if (this.over || !def || !def.drag || !this.inBounds(x, y)) return 0;
+    this.ziehen = { type, x, y, gebaut: 0 };
+    if (this.ziehBau(type, x, y)) this.ziehen.gebaut++;
+    return this.ziehen.gebaut;
+  },
+  ziehWeiter(x, y) {
+    const z = this.ziehen;
+    if (!z || !this.inBounds(x, y) || (z.x === x && z.y === y)) return 0;
+    let n = 0;
+    for (const c of rasterLinie(z.x, z.y, x, y))
+      if (this.ziehBau(z.type, c.x, c.y)) n++;
+    z.x = x; z.y = y; z.gebaut += n;
+    return n;
+  },
+  // Erst am Ende sichern — sonst schriebe ein Zug über zwölf Zellen
+  // zwölf Spielstände.
+  ziehEnde() {
+    const z = this.ziehen;
+    this.ziehen = null;
+    if (z && z.gebaut) this.merken();
+    return z ? z.gebaut : 0;
   },
 
   sell(b) {
@@ -1042,7 +1096,7 @@ const game = {
      Damit das kein Ausweg wird, zählt für die Bestenliste bestWave —
      die höchste je begonnene Welle, nicht die zuletzt gespielte. */
   merken() {
-    if (this.over || this.phase !== 'build') return false;
+    if (this.over || this.phase !== 'build' || this.ziehen) return false;
     const plan = this.plannedWave;
     return schreibe(SAVE_KEY, {
       v: SAVE_VERSION,
@@ -2288,7 +2342,37 @@ canvas.addEventListener('mousemove', ev => {
 });
 canvas.addEventListener('mouseleave', () => game.hover.inside = false);
 
+/* Ziehen zum Bauen. Der Zug beginnt schon beim Drücken, deshalb muss
+   der darauf folgende Klick verschluckt werden — sonst käme auf dieselbe
+   Zelle sofort ein zweiter Bauversuch samt Absage. */
+let zugAktiv = false;
+
+canvas.addEventListener('pointerdown', ev => {
+  if (ev.button !== 0 || game.over || !game.tool) return;
+  const def = BUILDINGS[game.tool];
+  if (!def || !def.drag) return;
+  const c = mouseCell(ev);
+  if (!game.inBounds(c.x, c.y)) return;
+  zugAktiv = true;
+  game.ziehStart(game.tool, c.x, c.y);
+  // Zeiger einfangen, damit der Zug auch außerhalb des Feldes weiterläuft.
+  // Manche Zeiger lassen sich nicht einfangen — dann geht es eben ohne.
+  try { canvas.setPointerCapture(ev.pointerId); } catch (e) { /* egal */ }
+});
+
+canvas.addEventListener('pointermove', ev => {
+  if (!game.ziehen) return;
+  const c = mouseCell(ev);
+  game.ziehWeiter(c.x, c.y);
+});
+
+// Auch außerhalb des Feldes losgelassen soll der Zug sauber enden
+const zugEnde = () => { if (game.ziehen) game.ziehEnde(); };
+addEventListener('pointerup', zugEnde);
+addEventListener('pointercancel', zugEnde);
+
 canvas.addEventListener('click', ev => {
+  if (zugAktiv) { zugAktiv = false; return; }
   if (game.over) return;
   const c = mouseCell(ev);
   if (!game.inBounds(c.x, c.y)) return;

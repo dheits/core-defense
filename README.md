@@ -59,6 +59,7 @@ Farbe, in der das Bauteil auch auf dem Feld gezeichnet wird.
 |---|---|
 | `1`–`7` / Klick auf Karte | Gebäude wählen |
 | Linksklick | bauen bzw. bestehendes Gebäude auswählen |
+| Ziehen mit gedrückter Maustaste | Barrieren reihenweise setzen — Lücken beim schnellen Ziehen wachsen zu, Belegtes und Unbezahlbares wird still übersprungen |
 | Rechtsklick | Auswahl abbrechen / Gebäude abbauen (60 % des Bauwerts zurück) |
 | `U` / `S` | ausgewähltes Gebäude ausbauen / abbauen |
 | `R` | reparieren — ohne Auswahl: alles reparieren |
@@ -326,7 +327,7 @@ ab. Bei stumm geschaltetem Ton werden gar keine Audio-Nodes erzeugt.
 - **Blaster** (30) — schnelles, billiges Dauerfeuer
 - **Kanone** (65) — langsam, hoher Flächenschaden
 - **Frostturm** (45) — Sofortstrahl, bremst Gegner um 50 %
-- **Barriere** (10) — braucht keinen Strom, lenkt Bodentruppen um
+- **Barriere** (10) — braucht keinen Strom, lenkt Bodentruppen um, in Reihen ziehbar
 
 Jedes Gebäude hat **fünf Ausbaustufen**: je +42 % Schaden, +7 % Reichweite, +28 % Struktur.
 Der Ausbau kostet mit jeder Stufe mehr (Blaster: 39, 56, 72, 89 — zusammen 286 gegenüber

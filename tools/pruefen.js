@@ -522,6 +522,54 @@ beschreibe('Schildmodus bezahlt Kernschaden aus dem Puffer', () => {
   gleich('und kostet keine Energie', e2 - g.energy, 0, 1e-9);
 });
 
+/* ------------------ Ziehen zum Bauen ---------------------- */
+beschreibe('Ziehen setzt eine Reihe Barrieren', () => {
+  const h = neu(), g = h.game;
+  gleich('der Zug beginnt mit einer Barriere', g.ziehStart('wall', 10, 8), 1);
+  g.ziehWeiter(10, 9);
+  g.ziehWeiter(10, 12);                       // Sprung: die Lücke muss zuwachsen
+  gleich('auch die übersprungenen Zellen stehen', g.buildings.size, 5);
+  for (let y = 8; y <= 12; y++) stimmt('Zelle 10,' + y + ' bebaut', g.buildings.has('10,' + y));
+  gleich('am Ende meldet der Zug seine Bauten', g.ziehEnde(), 5);
+  stimmt('und ist beendet', g.ziehen === null);
+});
+
+beschreibe('Ziehen überspringt still, was nicht geht', () => {
+  const h = neu(), g = h.game;
+  h.bau('blaster', 10, 10);                   // steht im Weg
+  g.ziehStart('wall', 10, 8);
+  g.ziehWeiter(10, 12);
+  stimmt('der belegte Platz bleibt, wie er war', g.buildings.get('10,10').type === 'blaster');
+  gleich('die anderen vier Zellen stehen', 
+         [8, 9, 11, 12].filter(y => g.buildings.has('10,' + y)).length, 4);
+  g.ziehEnde();
+
+  // Nur ziehbare Bauteile
+  gleich('ein Turm lässt sich nicht ziehen', g.ziehStart('cannon', 14, 8), 0);
+  stimmt('und startet auch keinen Zug', g.ziehen === null);
+});
+
+beschreibe('Ziehen hört auf, wenn die Materie ausgeht', () => {
+  const h = neu(), g = h.game;
+  g.matter = 3 * g.costOf('wall') + 2;         // reicht für genau drei
+  g.ziehStart('wall', 10, 4);
+  g.ziehWeiter(10, 20);
+  gleich('nur drei Barrieren gebaut', g.buildings.size, 3);
+  stimmt('und die Materie reicht nicht mehr', g.matter < g.costOf('wall'));
+  g.ziehEnde();
+});
+
+beschreibe('Ein Zug schreibt nur einen Spielstand', () => {
+  const h = neu(), g = h.game;
+  h.speicher.clear();
+  g.ziehStart('wall', 10, 8);
+  g.ziehWeiter(10, 12);
+  stimmt('währenddessen liegt noch nichts vor', g.gespeicherteRunde() === null);
+  gleich('das Zugende sichert', g.ziehEnde(), 5);
+  const stand = g.gespeicherteRunde();
+  stimmt('und der Stand kennt alle fünf', stand && stand.bauten.length === 5);
+});
+
 /* ------------------ Bilanz nach der Welle ----------------- */
 beschreibe('Die Bilanz zählt, was in der Welle passiert ist', () => {
   const h = neu(), g = h.game;

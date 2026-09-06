@@ -138,7 +138,10 @@ Das ist der Grund für die Wertung nach der höchsten begonnenen Welle.
 
 ## 5 · Bedienung, die nach kurzer Zeit fehlt
 
-- Ziehen zum Bauen mehrerer Barrieren statt Einzelklicks
+- ~~Ziehen zum Bauen mehrerer Barrieren statt Einzelklicks~~ ✅ umgesetzt: mit gedrückter
+  Maustaste ziehen. Zwischenzellen werden mitgenommen, damit schnelles Ziehen keine Lücken
+  reißt; Belegtes und Unbezahlbares überspringt der Zug still. Nur Bauteile mit `drag` —
+  bei einer Kanone je 65 Materie wäre ein verrutschter Zug teuer.
 - ~~Reparieren (Materie gegen Struktur)~~ ✅ umgesetzt, Taste `R`
 - Zielpriorität je Turm: nächster, stärkster, schnellster
 - Turm auf leeres Feld verschieben, für halbe Kosten
