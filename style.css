@@ -176,6 +176,14 @@ button.danger:hover{background:rgba(190,50,70,.5);border-color:var(--red)}
 #ovList tr.neu td{color:var(--gold)}
 #ovList tr.neu td:nth-child(2){color:var(--gold)}
 
+/* ---- Tagesfeld ---- */
+#tagBadge{
+  position:absolute;top:56px;right:12px;
+  font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--gold);opacity:.75;pointer-events:none;
+  text-shadow:0 1px 6px rgba(0,0,0,.9);
+}
+
 /* ---- Wellenvorschau ---- */
 #preview{
   position:absolute;top:56px;left:12px;right:12px;

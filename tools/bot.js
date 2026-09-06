@@ -52,6 +52,9 @@ function frischeRunde() {
 
 function lauf(maxWelle, opt = {}) {
   const h = frischeRunde(), g = h.game, C = h.CORE, GRID = h.GRID;
+  // Der Bot drückt auf „Freies Feld" — ein Tagesfeld wäre in jedem Lauf
+  // dasselbe und damit als Messung wertlos.
+  g.beginnen('');
   if (opt.ohneLast) {                       // Leitungen praktisch grenzenlos
     h.FLOW.core = 1e6; h.FLOW.pylon = 1e6; h.FLOW.perLevel = 0;
     g.recomputeSupply();

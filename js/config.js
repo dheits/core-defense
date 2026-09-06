@@ -350,8 +350,8 @@ const MOD_BONUS = 0.5;        // halbe Prämie obendrauf für eine gehaltene Stu
 // Auf Bosswellen kein Modifikator — die sind für sich schon ein Ereignis.
 function modifierFor(w) {
   if (w < MOD_FROM_WAVE || bossFor(w)) return null;
-  if (Math.random() > MOD_CHANCE) return null;
-  return MODIFIERS[(Math.random() * MODIFIERS.length) | 0];
+  if (wuerfel() > MOD_CHANCE) return null;
+  return MODIFIERS[(wuerfel() * MODIFIERS.length) | 0];
 }
 
 /* ---------------------------------------------------------------

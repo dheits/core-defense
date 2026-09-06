@@ -60,7 +60,8 @@ const runde = z => typeof z === 'number' ? Math.round(z * 1e4) / 1e4 : String(z)
    Das Gelände selbst wird weiter unten mit festen Seeds geprüft. */
 function neu() {
   const h = frisch();
-  h.game.neuesGelaende(0);
+  h.game.beginnen('');          // wie ein Klick auf „Freies Feld"
+  h.game.neuesGelaende(0);      // …aber ohne Gelände, siehe oben
   h.game.matter = 1e6;
   h.bau = (typ, x, y) => { h.game.build(typ, x, y); return h.game.buildings.get(x + ',' + y); };
   return h;
@@ -1095,6 +1096,129 @@ beschreibe('Am Ende ist der Stand weg und der Lauf in der Liste', () => {
   g.damageCore(1e9, null);
   stimmt('nach dem Kernverlust ist er weg', g.gespeicherteRunde() === null);
   gleich('dafür steht der Lauf in der Bestenliste', g.bestenliste().length, 1);
+});
+
+/* --------------------- Tagesfeld -------------------------- */
+beschreibe('Der Tag bestimmt das Feld', () => {
+  const h = neu(), g = h.game;
+  g.beginnen('2026-09-06');
+  const karte = Array.from(g.gelaende);
+  const seed = g.gelaendeSeed;
+  stimmt('das Tagesfeld ist gesetzt', g.tagesfeld());
+  stimmt('und es liegt Gelände darauf', karte.some(v => v !== 0));
+
+  g.beginnen('2026-09-06');
+  gleich('derselbe Tag, derselbe Seed', g.gelaendeSeed, seed);
+  stimmt('und dieselbe Karte', Array.from(g.gelaende).every((v, i) => v === karte[i]));
+
+  g.beginnen('2026-09-07');
+  stimmt('ein anderer Tag, ein anderes Feld', g.gelaendeSeed !== seed);
+
+  g.beginnen('');
+  stimmt('das freie Feld ist kein Tagesfeld', !g.tagesfeld());
+});
+
+beschreibe('Dieselbe Welle am selben Tag ist dieselbe Welle', () => {
+  const h = neu(), g = h.game;
+  /* Kurzfassung einer geplanten Welle. Bewusst eine Prüfsumme und nicht
+     die ganze Liste: Bei einem Fehlschlag soll eine lesbare Zeile
+     dastehen und nicht vierzig Gegner mit vier Nachkommastellen. */
+  const abdruck = w => {
+    let summe = 0;
+    for (const e of w.queue)
+      summe = (summe * 31 + h.seedVon(e.type + e.angle.toFixed(4))) % 1000000;
+    return w.queue.length + ' Gegner · Prüfsumme ' + summe +
+           ' · Sturm ' + (w.mod ? w.mod.id : '—');
+  };
+  g.beginnen('2026-09-06');
+  const w7 = abdruck(g.planWave(7)), w8 = abdruck(g.planWave(8));
+
+  // Beliebig oft dazwischen würfeln — die Welle bleibt dieselbe
+  for (let i = 0; i < 50; i++) g.planWave(3);
+  gleich('Welle 7 ist wieder dieselbe', abdruck(g.planWave(7)), w7);
+  stimmt('Welle 8 ist eine andere', abdruck(g.planWave(8)) !== w7);
+  gleich('aber auch sie bleibt sich gleich', abdruck(g.planWave(8)), w8);
+
+  g.beginnen('2026-09-07');
+  stimmt('am nächsten Tag kommt etwas anderes', abdruck(g.planWave(7)) !== w7);
+
+  g.beginnen('');
+  const frei1 = abdruck(g.planWave(7)), frei2 = abdruck(g.planWave(7));
+  stimmt('im freien Feld würfelt jede Planung neu', frei1 !== frei2);
+});
+
+beschreibe('Auch die Karten zur Wahl gehören zum Tag', () => {
+  const h = neu(), g = h.game;
+  g.beginnen('2026-09-06');
+  g.wave = 5;
+  g.openDraft();
+  const erste = g.draft.map(c => c.id).join(',');
+  g.draft = null;
+  g.openDraft();
+  gleich('zweimal dieselbe Auswahl', g.draft.map(c => c.id).join(','), erste);
+
+  g.draft = null; g.wave = 6; g.openDraft();
+  stimmt('die nächste Welle zieht anders', g.draft.map(c => c.id).join(',') !== erste);
+});
+
+beschreibe('Eine Tagespartie bleibt ihrem Tag treu', () => {
+  const h = neu(), g = h.game;
+  g.beginnen('2026-09-06');
+  g.wave = 4; g.bestWave = 4;
+  const karte = Array.from(g.gelaende);
+  gleich('sichern gelingt', g.merken(), true);
+
+  const g2 = weiter().game;                  // Neuladen, womöglich an einem anderen Tag
+  gleich('der Tag kommt zurück', g2.tagesTag, '2026-09-06');
+  stimmt('und mit ihm dasselbe Feld',
+         Array.from(g2.gelaende).every((v, i) => v === karte[i]));
+  stimmt('die Partie wartet auf „Fortsetzen"', g2.gestartet === false);
+  gleich('und rechnet solange nicht', (g2.update(1), g2.wave), 4);
+});
+
+beschreibe('Vor dem Start läuft nichts und wird nichts gesichert', () => {
+  const h = frisch(), g = h.game;             // wie eine frisch geöffnete Seite
+  stimmt('die Partie hat nicht begonnen', !g.gestartet);
+  const timer = g.buildTimer;
+  for (let i = 0; i < 60; i++) g.update(1 / 60);
+  gleich('die Bauphase tickt nicht hinter der Startanzeige', g.buildTimer, timer);
+  gleich('und ein Spielstand entsteht auch nicht', g.merken(), false);
+  gleich('gespeichert ist nichts', h.speicher.getItem(h.SAVE_KEY), null);
+
+  g.beginnen('');
+  stimmt('nach der Wahl läuft es', g.gestartet);
+  g.update(1 / 60);
+  stimmt('und die Bauphase zählt herunter', g.buildTimer < timer);
+});
+
+beschreibe('Das Ergebnis lässt sich weitergeben', () => {
+  const h = neu(), g = h.game;
+  g.beginnen('2026-09-06');
+  g.wave = 12; g.bestWave = 12;
+  h.bau('pylon', 24, 12); h.bau('pylon', 25, 12); h.bau('blaster', 26, 12);
+  const erg = g.eintragen();
+  gleich('der Tag steht im Eintrag', erg.eintrag.tag, '2026-09-06');
+  const text = h.ergebnisText(erg.eintrag);
+  stimmt('die Zeile nennt das Tagesfeld mit Datum', text.indexOf('Tagesfeld 06.09.2026') >= 0);
+  stimmt('und die erreichte Welle', text.indexOf('Welle 12') >= 0);
+  stimmt('und die häufigsten Bauteile', text.indexOf('2 Pylone') >= 0);
+
+  // Im freien Feld sagt sie ausdrücklich, dass das Feld ein eigenes war
+  g.tagesTag = '';
+  const frei = h.ergebnisText(g.eintragen().eintrag);
+  stimmt('freies Feld wird als solches benannt', frei.indexOf('freies Feld') >= 0);
+  stimmt('und nennt kein Datum als Feld', frei.indexOf('Tagesfeld') < 0);
+});
+
+beschreibe('Der Tag kommt aus dem Kalender des Spielers', () => {
+  const h = neu();
+  gleich('Silvester, kurz vor Mitternacht',
+         h.heute(new Date(2026, 11, 31, 23, 59)), '2026-12-31');
+  gleich('eine Minute später ist es ein neues Feld',
+         h.heute(new Date(2027, 0, 1, 0, 1)), '2027-01-01');
+  gleich('einstellige Tage stehen mit Null', h.heute(new Date(2026, 8, 6, 12)), '2026-09-06');
+  stimmt('und aus dem Tag wird eine Zahl', h.seedVon('2026-09-06') !== h.seedVon('2026-09-07'));
+  gleich('die Anzeige dreht das Datum um', h.datumKurz('2026-09-06'), '06.09.2026');
 });
 
 /* ---------------------- Balance-Anker ----------------------

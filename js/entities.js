@@ -2,8 +2,16 @@
 
 /* --------------------------- Helfer --------------------------- */
 const clamp = (v, a, b) => v < a ? a : (v > b ? b : v);
-const rand  = (a, b) => a + Math.random() * (b - a);
-const pick  = arr => arr[(Math.random() * arr.length) | 0];
+
+/* Der Würfel des Spiels. Im freien Spiel ist er Math.random; für das
+   Tagesfeld wird er an genau den Stellen, an denen es zählt, gegen
+   einen seedbaren Strom getauscht (game.mitWuerfel). Alles, was für
+   den Verlauf einer Partie gewürfelt wird, muss deshalb hier durch —
+   Partikel und andere Deko dürfen ruhig direkt bei Math.random
+   bleiben, die sollen nicht Teil des Tagesfeldes sein. */
+let wuerfel = Math.random;
+const rand  = (a, b) => a + wuerfel() * (b - a);
+const pick  = arr => arr[(wuerfel() * arr.length) | 0];
 const key   = (x, y) => x + ',' + y;
 const cellToPx = c => (c + 0.5) * GRID.cell;
 const pxToCell = p => Math.floor(p / GRID.cell);
@@ -42,6 +50,25 @@ function compass(a) {
   return names[sektorVon(a) % names.length];
 }
 
+/* Das heutige Datum als Zeichenkette, in der Zeitzone des Spielers:
+   „Heute" soll dem Kalender an der Wand entsprechen, nicht der Uhr in
+   Greenwich. Wer um Mitternacht spielt, wechselt das Feld. */
+function heute(d) {
+  d = d || new Date();
+  return d.getFullYear() + '-' +
+         String(d.getMonth() + 1).padStart(2, '0') + '-' +
+         String(d.getDate()).padStart(2, '0');
+}
+// Zeichenkette -> Zahl (FNV-1a). Aus „2026-09-06|welle|7" wird ein Seed.
+function seedVon(text) {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
 /* Seedbarer Zufall (mulberry32). Nur fürs Gelände gedacht: Dieselbe
    Zahl ergibt dieselbe Karte, sonst ließe sich eine Partie nicht
    fortsetzen, ohne das ganze Feld mitzuschreiben. */
@@ -64,8 +91,8 @@ function zahl(zufall, spanne) {
 function pickGewichtet(gew) {
   let summe = 0;
   for (const g of gew) summe += g;
-  if (!(summe > 0)) return (Math.random() * gew.length) | 0;
-  let r = Math.random() * summe;
+  if (!(summe > 0)) return (wuerfel() * gew.length) | 0;
+  let r = wuerfel() * summe;
   for (let i = 0; i < gew.length; i++) { r -= gew[i]; if (r < 0) return i; }
   return gew.length - 1;
 }

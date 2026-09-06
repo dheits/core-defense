@@ -112,9 +112,12 @@ und den drei häufigsten Bauteilen, sichtbar auf der Startanzeige und nach dem K
 Gewertet wird die höchste je begonnene Welle, damit ein Neuladen keine verlorene Welle
 schönrechnet.
 
-**Tagesseed.** Alle spielen dieselbe Wellenfolge, weil der Zufallsgenerator vom Datum
-abhängt. Braucht nur einen seedbaren PRNG statt `Math.random()` — und macht das Teilen
-von Ergebnissen erst sinnvoll. *Klein.*
+**Tagesseed.** ✅ *umgesetzt* als **Tagesfeld** — beim Start stehen zwei Knöpfe, Tagesfeld
+(mit Datum) oder freies Feld. Gleich sind Gelände, Wellenzusammensetzung und die Karten
+zur Wahl; die Einfallsrichtungen folgen weiter dem Druckgedächtnis und damit dem eigenen
+Spiel. Gewürfelt wird nicht aus einem laufenden Strom, sondern je Ziehung aus einem Seed
+aus `Tag | Zweck | Nummer` — ein Strom wäre nach einer fortgesetzten Partie verschoben.
+Am Ende kopiert ein Knopf die Ergebniszeile in die Zwischenablage.
 
 **Erzeugtes Gelände.** ✅ *umgesetzt* — jede Partie bekommt aus einem Seed eine eigene
 Karte: Trümmer, auf denen nicht gebaut werden kann, alte Leiterbahnen, auf denen ein Pylon
@@ -258,8 +261,12 @@ Ein absichtlich einseitiger Aufbau (`schief`) wird *nicht* härter bestraft als 
 gleichmäßiger, und der Moloch auf Welle 20 beendet 13,5 % aller Läufe. Er ist damit die
 nächste Wand, nicht mehr der Titan auf Welle 10.
 
-Bleibt aus der Liste: Tagesseed und die Bedienkomfort-Punkte — der seedbare
-Zufallsgenerator dafür liegt seit dem Gelände schon bereit.
+Zuletzt kam das **Tagesfeld** dazu, das auf dem seedbaren Zufall des Geländes aufsetzt.
+Nebenbei fiel dabei eine alte Ungereimtheit auf: Hinter der Startanzeige lief die erste
+Bauphase bereits ab. Jetzt beginnt die Zeit mit dem Knopfdruck.
+
+Bleibt aus der Liste: die beiden Bedienkomfort-Punkte — Turm verschieben und Bauplan
+spiegeln.
 
 ## Wenn ich drei Dinge auswählen müsste (ursprüngliche Empfehlung)
 

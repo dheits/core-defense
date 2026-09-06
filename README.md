@@ -288,6 +288,60 @@ gar nicht stehen dürfte. Ein Spielstand aus einer Fassung vor dieser Änderung 
 **Seed 0**, also ein leeres Feld: Nachträglich Schutt unter Bauten zu schieben, die dort
 seit zwanzig Wellen stehen, wäre der falsche Umgang mit einem alten Stand.
 
+## Tagesfeld
+
+Beim Start stehen zwei Knöpfe: **Tagesfeld** (mit dem Datum) und **Freies Feld**. Auf dem
+Tagesfeld spielen an einem Tag alle dasselbe — und erst damit lässt sich ein Ergebnis
+überhaupt vergleichen.
+
+Gleich sind: **das Gelände**, die **Zusammensetzung jeder Welle** samt Sturm und Boss, und
+die **Karten, die zur Wahl stehen**. Nicht gleich sind die **Einfallsrichtungen** — die
+folgen dem Druckgedächtnis und damit deinem eigenen Spiel — und alles, was am Bildbedarf
+hängt (Partikel, Streuung im Feuer). Der Anspruch ist also nicht ein Lauf, der sich Bild
+für Bild wiederholen ließe, sondern dieselbe Aufgabe für alle.
+
+Der Kniff steckt darin, **wie** gewürfelt wird. Nicht aus einem laufenden Strom, sondern je
+Ziehung aus einem eigenen Seed aus `Tag | Zweck | Nummer`:
+
+```js
+mitWuerfel(zweck, n, fn) {
+  if (!this.tagesTag) return fn();              // freies Feld: echter Zufall
+  const vorher = wuerfel;
+  wuerfel = prng(seedVon(this.tagesTag + '|' + zweck + '|' + n));
+  try { return fn(); } finally { wuerfel = vorher; }
+}
+```
+
+Ein laufender Strom müsste mitgesichert werden und wäre nach einer fortgesetzten Partie um
+ein paar Ziehungen verschoben — dann wäre Welle 12 nach dem Neuladen eine andere als
+vorher. So bekommt Welle 12 ihren Seed, ganz gleich wie oft vorher gewürfelt wurde. Der
+Preis dafür ist eine Regel, an die man sich halten muss: **Alles, was den Verlauf einer
+Partie bestimmt, muss durch `wuerfel()` gehen** — `rand()`, `pick()` und `pickGewichtet()`
+tun das. Deko darf weiter direkt `Math.random()` nehmen, die soll nicht Teil des
+Tagesfeldes sein.
+
+Der Tag ist der **Kalendertag des Spielers**, nicht UTC: Wer um 23:59 anfängt, spielt das
+Feld von gestern zu Ende, und um 00:01 steht ein neues bereit.
+
+Zwei Kleinigkeiten hängen mit dran:
+
+- **Die Partie gehört ihrem Tag.** Der Spielstand merkt sich das Datum; wer morgen
+  weiterspielt, spielt das Feld von gestern zu Ende. Alles andere wäre eine andere Partie.
+- **Hinter der Startanzeige läuft nichts mehr.** Vorher tickte die erste Bauphase, während
+  man noch den Einleitungstext las. Jetzt beginnt die Zeit mit dem Knopfdruck — und ohne
+  Knopfdruck entsteht auch kein Spielstand.
+
+Nach dem Kernverlust steht neben „Neu starten" ein Knopf **Ergebnis kopieren**. In der
+Zwischenablage landet eine Zeile zum Weitergeben:
+
+```
+CORE DEFENSE · Tagesfeld 06.09.2026 · Welle 23 · 6 Pylone, 4 Blaster, 3 Reaktoren
+```
+
+Im freien Feld steht dort ausdrücklich `freies Feld` statt eines Datums — ein Ergebnis
+ohne gemeinsames Feld soll sich nicht wie ein vergleichbares lesen. In der Bestenliste
+steht bei Tagesläufen entsprechend `Tagesfeld 06.09.2026` statt des Spieldatums.
+
 ## Druckgedächtnis
 
 Die Einfallsrichtungen lagen früher gleichmäßig auf dem Kreis und wurden nur zufällig
@@ -552,8 +606,9 @@ schlimmsten Fall fehlen Fortsetzen und Liste, das Spiel läuft weiter.
 jedem Bau und beim Verlassen der Seite. Beim nächsten Öffnen fragt die Startanzeige, ob
 fortgesetzt werden soll; *Neu anfangen* verwirft den Stand ausdrücklich, von selbst
 passiert das nie. Mitgeschrieben werden Bauten samt Stufe, Struktur, Lastpriorität und
-Überladung, Materie, Puffer, Kern, alle genommenen Karten, der Kernmodus und die bereits
-angekündigte nächste Welle — die Vorschau hält also, was sie vor dem Schließen versprach.
+Überladung, Materie, Puffer, Kern, alle genommenen Karten, der Kernmodus, der Seed des
+Geländes, das Druckgedächtnis, der Tag des Tagesfeldes und die bereits angekündigte
+nächste Welle — die Vorschau hält also, was sie vor dem Schließen versprach.
 
 Gegner, Geschosse und der laufende Sturm werden *nicht* gesichert. Das ist eine
 Entscheidung, keine Sparmaßnahme: Wer mitten im Gefecht die Seite schließt, setzt bei
@@ -561,8 +616,8 @@ derselben Welle wieder an. Damit das kein Ausweg aus einer verlorenen Welle wird
 für die Bestenliste `bestWave` — die höchste je *begonnene* Welle. Ein Neuladen kann eine
 Wertung dadurch nie senken, nur das Weiterkommen kann sie heben.
 
-**Bestenliste.** Die acht besten Läufe mit Welle, Datum und den drei häufigsten Bauteilen
-am Ende. Sie steht auf der Startanzeige und nach dem Kernverlust, dort mit dem eigenen
+**Bestenliste.** Die acht besten Läufe mit Welle, Datum (bei Tagesläufen: welches
+Tagesfeld) und den drei häufigsten Bauteilen am Ende. Sie steht auf der Startanzeige und nach dem Kernverlust, dort mit dem eigenen
 Lauf hervorgehoben. Ein Lauf wird eingetragen, wenn der Kern fällt — und derselbe Moment
 löscht den Spielstand, weil die Partie zu Ende ist und nicht unterbrochen.
 
@@ -689,8 +744,8 @@ node tools/pruefen.js
 
 Sie läuft in einer Zehntelsekunde und deckt Leitungslast, die drei Kernbefehle, alle
 sieben Sturmwellen, die getrennten Akkus, die drei Kernmodi samt Anlauf und Schild,
-Spielstand und Bestenliste, das Druckgedächtnis, das erzeugte Gelände, Reparatur und
-Abbau sowie die Sonderfähigkeiten der fünften Stufe ab. Der Prüfstand hat dafür einen flüchtigen `localStorage`, der ein erneutes Laden
+Spielstand und Bestenliste, das Druckgedächtnis, das erzeugte Gelände, das Tagesfeld,
+Reparatur und Abbau sowie die Sonderfähigkeiten der fünften Stufe ab. Der Prüfstand hat dafür einen flüchtigen `localStorage`, der ein erneutes Laden
 des Spiels im selben Prozess übersteht — nur so lässt sich Sichern gegen Laden prüfen.
 Die Prüfungen sind in zwei Sorten aufgeteilt, und der Unterschied ist wichtig:
 

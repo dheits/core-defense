@@ -145,6 +145,11 @@ const game = {
   // Gegner-Update nichts kostet. 0 als Seed heißt „leeres Feld".
   gelaende: new Uint8Array(GRID.cols * GRID.rows),
   gelaendeSeed: 0,
+  // Tagesfeld: das Datum, zu dem diese Partie gehört ('' = freies Feld)
+  tagesTag: '',
+  // Läuft die Partie schon? Hinter der Startanzeige soll die Bauphase
+  // nicht ticken — und vor der Wahl des Feldes gibt es nichts zu rechnen.
+  gestartet: false,
   tool: null, selected: null, inView: true,
   buffs: freshBuffs(), takenCards: new Map(),
   draft: null, plannedWave: null, turretsDirty: true,
@@ -710,9 +715,41 @@ const game = {
       const erg = this.eintragen();
       showOverlay('KERN VERLOREN',
         'Du hast ' + erg.eintrag.wave + ' Wellen überstanden.' +
-        (erg.platz === 0 ? ' Das ist dein bester Lauf.' : ''),
+        (erg.platz === 0 ? ' Das ist dein bester Lauf.' : '') +
+        (this.tagesfeld() ? ' Tagesfeld vom ' + datumKurz(this.tagesTag) +
+                            ' — heute spielen alle dieses Feld.' : ''),
         bestenlisteHtml(erg.liste, erg.eintrag));
+      const zweit = el('ovBtn2');
+      zweit.hidden = false;
+      zweit.textContent = 'Ergebnis kopieren';
+      zweit.onclick = () => ergebnisKopieren(erg.eintrag);
     }
+  },
+
+  /* ------------------- Tagesfeld -----------------------------
+     An einem Tag spielen alle dasselbe: dasselbe Gelände, dieselben
+     Wellen, dieselben Karten zur Wahl.
+
+     Gewürfelt wird dafür nicht aus einem laufenden Strom, sondern je
+     Ziehung aus einem eigenen Seed aus (Tag, Zweck, Nummer). Das ist
+     der Unterschied, auf den es ankommt: Ein Strom müsste mitgesichert
+     werden und wäre nach einer fortgesetzten Partie verschoben — so
+     bekommt Welle 7 ihren Seed, ganz gleich wie oft vorher gewürfelt
+     wurde und ob dazwischen die Seite neu geladen war. */
+  tagesfeld() { return !!this.tagesTag; },
+  mitWuerfel(zweck, n, fn) {
+    if (!this.tagesTag) return fn();             // freies Feld: echter Zufall
+    const vorher = wuerfel;
+    wuerfel = prng(seedVon(this.tagesTag + '|' + zweck + '|' + n));
+    try { return fn(); } finally { wuerfel = vorher; }
+  },
+  // Eine Partie beginnen: Tag setzen, Feld erzeugen, erste Welle planen
+  beginnen(tag) {
+    this.tagesTag = tag || '';
+    this.neuesGelaende(this.tagesTag ? seedVon(this.tagesTag) : undefined);
+    this.recomputeSupply();
+    this.planNext();
+    this.gestartet = true;
   },
 
   /* ------------------- Erzeugtes Gelände ---------------------
@@ -871,7 +908,8 @@ const game = {
   },
 
   /* ------------------------ Wellen -------------------------- */
-  planWave(n) {
+  planWave(n) { return this.mitWuerfel('welle', n, () => this.planWaveRoh(n)); },
+  planWaveRoh(n) {
     const mod = modifierFor(n);
     let budget = waveBudget(n) * (mod && mod.budget ? mod.budget : 1);
     const pool = Object.keys(UNLOCK).filter(t => n >= UNLOCK[t] && !ENEMIES[t].boss);
@@ -919,7 +957,7 @@ const game = {
       budget -= d.budget;
       const a = angles[gi] + rand(-.12, .12);
       // Gegner kommen in Pulks: erst nach ein paar Stück wechselt die Richtung
-      if (Math.random() < 0.28) gi = pickGewichtet(gruppen);
+      if (wuerfel() < 0.28) gi = pickGewichtet(gruppen);
       queue.push({ type, t, angle: a });
       t += spawnGap(n);
     }
@@ -973,14 +1011,15 @@ const game = {
   },
 
   /* ---------------- Karten zwischen den Wellen ---------------- */
-  openDraft() {
+  openDraft() { return this.mitWuerfel('karten', this.wave, () => this.openDraftRoh()); },
+  openDraftRoh() {
     const pool = CARDS.filter(c => (this.takenCards.get(c.id) || 0) < (c.max || CARD_MAX));
     const picks = [];
     if (this.bossReward) {                        // Bossbeute: eine seltene Karte ist sicher dabei
       this.bossReward = false;
       const selten = pool.filter(c => (c.weight || 1) < 1);
       if (selten.length) {
-        const c = selten[(Math.random() * selten.length) | 0];
+        const c = selten[(wuerfel() * selten.length) | 0];
         picks.push(c);
         pool.splice(pool.indexOf(c), 1);
       }
@@ -988,7 +1027,7 @@ const game = {
     while (picks.length < DRAFT_SIZE && pool.length) {
       let total = 0;
       for (const c of pool) total += c.weight || 1;
-      let r = Math.random() * total, idx = pool.length - 1;
+      let r = wuerfel() * total, idx = pool.length - 1;
       for (let i = 0; i < pool.length; i++) {
         r -= pool[i].weight || 1;
         if (r <= 0) { idx = i; break; }
@@ -1037,6 +1076,7 @@ const game = {
 
   /* ------------------------ Update -------------------------- */
   update(dt) {
+    if (!this.gestartet) return;          // Startanzeige steht noch offen
     if (this.draft) return;               // Kartenwahl hält alles an
     this.time += dt;
     this.energy = Math.min(this.energyMax, this.energy + this.regen * dt * this.modv('regen', 1));
@@ -1301,7 +1341,7 @@ const game = {
      Damit das kein Ausweg wird, zählt für die Bestenliste bestWave —
      die höchste je begonnene Welle, nicht die zuletzt gespielte. */
   merken() {
-    if (this.over || this.phase !== 'build' || this.ziehen) return false;
+    if (!this.gestartet || this.over || this.phase !== 'build' || this.ziehen) return false;
     const plan = this.plannedWave;
     return schreibe(SAVE_KEY, {
       v: SAVE_VERSION,
@@ -1316,6 +1356,8 @@ const game = {
       druck: this.druck.map(v => Math.round(v * 1000) / 1000),
       // Nur der Seed: Die Karte entsteht daraus wieder Zelle für Zelle
       gelaende: this.gelaendeSeed,
+      // Eine Tagespartie gehört ihrem Tag, auch wenn morgen weitergespielt wird
+      tag: this.tagesTag,
       buffs: this.buffs,
       karten: [...this.takenCards],
       bauten: [...this.buildings.values()].map(b => ({
@@ -1364,6 +1406,8 @@ const game = {
          Stand ohne Seed (aus einer Fassung vor dem Gelände) bekommt
          ein leeres Feld — sonst läge plötzlich Schutt unter Bauten,
          die dort seit zwanzig Wellen stehen. */
+      this.tagesTag = typeof s.tag === 'string' ? s.tag : '';
+      this.gestartet = false;              // erst „Fortsetzen" lässt die Zeit laufen
       this.neuesGelaende(s.gelaende | 0);
 
       this.buildings.clear();
@@ -1408,6 +1452,7 @@ const game = {
     const eintrag = {
       wave: Math.max(this.wave, this.bestWave),
       datum: Date.now(),
+      tag: this.tagesTag,
       teile,
       karten: [...this.takenCards.values()].reduce((a, b) => a + b, 0)
     };
@@ -2557,6 +2602,41 @@ function showOverlay(title, text, html) {
   el('overlay').hidden = false;
 }
 
+/* '2026-09-06' -> '06.09.2026'. Der Tag steht überall in dieser Form:
+   auf dem Knopf, im Feldschild und in der geteilten Zeile. */
+function datumKurz(tag) {
+  const t = String(tag || '').split('-');
+  return t.length === 3 ? t[2] + '.' + t[1] + '.' + t[0] : String(tag || '');
+}
+
+// Kleines Schild am Feldrand, solange auf dem Tagesfeld gespielt wird
+function updateTagBadge() {
+  const b = el('tagBadge');
+  b.hidden = !game.tagesfeld();
+  if (!b.hidden) b.textContent = 'Tagesfeld ' + datumKurz(game.tagesTag);
+}
+
+/* Eine Zeile zum Weitergeben. Nur auf dem Tagesfeld ist sie
+   vergleichbar — im freien Feld sagt sie ausdrücklich dazu, dass jeder
+   sein eigenes Feld hatte. */
+function ergebnisText(e) {
+  const teile = e.teile || {};
+  const top = Object.keys(teile).sort((a, b) => teile[b] - teile[a]).slice(0, 3)
+    .map(t => teile[t] + ' ' + teilName(t, teile[t])).join(', ');
+  return 'CORE DEFENSE · ' +
+         (e.tag ? 'Tagesfeld ' + datumKurz(e.tag) : 'freies Feld') +
+         ' · Welle ' + e.wave + (top ? ' · ' + top : '');
+}
+
+function ergebnisKopieren(e) {
+  const text = ergebnisText(e);
+  try {
+    navigator.clipboard.writeText(text).then(
+      () => toast('Ergebnis kopiert'),
+      () => toast(text));                    // kein Zugriff: wenigstens anzeigen
+  } catch (err) { toast(text); }
+}
+
 /* Bestenliste als Tabelle. „Benutzte Bauteile" sind die drei häufigsten —
    mehr sagt in einer Zeile nichts mehr, weniger sagt nichts über den Aufbau. */
 const TEIL_NAMEN = {
@@ -2583,7 +2663,8 @@ function bestenlisteHtml(liste, markiert) {
                   String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear();
     return '<tr' + (e === markiert ? ' class="neu"' : '') + '>' +
            '<td>' + (i + 1) + '</td><td>Welle ' + e.wave + '</td>' +
-           '<td>' + datum + '</td><td>' + top + '</td></tr>';
+           '<td>' + (e.tag ? 'Tagesfeld ' + datumKurz(e.tag) : datum) + '</td>' +
+           '<td>' + top + '</td></tr>';
   }).join('');
   return '<table><tbody>' + zeilen + '</tbody></table>';
 }
@@ -2817,19 +2898,35 @@ buildModes();
 let standVerworfen = false;
 const stand = game.gespeicherteRunde();
 const fortsetzen = !!(stand && game.laden(stand));
-if (!fortsetzen) {
-  game.neuesGelaende();                   // jede Partie bekommt ihr eigenes Feld
-  game.recomputeSupply();
-  game.planNext();
+const heutigerTag = heute();
+// Auch hinter der Startanzeige soll die Anzeige stimmen — Puffer und
+// Nachschub hängen am Kernmodus und werden erst hier ausgerechnet.
+if (!fortsetzen) game.recomputeSupply();
+
+/* Die Startanzeige schließen und die Partie laufen lassen. Ab hier ist
+   der erste Knopf „Neu starten" — der zweite bekommt am Spielende eine
+   neue Aufgabe (Ergebnis kopieren). */
+function anzeigeSchliessen() {
+  el('overlay').hidden = true;
+  el('ovBtn2').hidden = true;
+  el('ovBtn2').onclick = null;
+  el('ovBtn').textContent = 'Neu starten';
+  el('ovBtn').onclick = () => location.reload();
+  updateTagBadge();
 }
+
 if (fortsetzen) {
   showOverlay('PARTIE GEFUNDEN',
     'Du warst nach Welle ' + game.wave + ' stehengeblieben — ' + game.buildings.size +
     ' Bauten, ' + Math.round(game.matter) + ' Materie. Die angekündigte Welle ' +
-    (game.wave + 1) + ' wartet unverändert.',
+    (game.wave + 1) + ' wartet unverändert.' +
+    (game.tagesfeld() ? ' Es ist das Tagesfeld vom ' + datumKurz(game.tagesTag) +
+                        ' — das bleibt es auch, wenn du an einem anderen Tag weiterspielst.' : ''),
     bestenlisteHtml(game.bestenliste()));
   el('ovBtn').textContent = 'Fortsetzen';
+  el('ovBtn').onclick = () => { game.gestartet = true; anzeigeSchliessen(); };
   el('ovBtn2').hidden = false;
+  el('ovBtn2').textContent = 'Neu anfangen';
   el('ovBtn2').onclick = () => {
     standVerworfen = true;
     loesche(SAVE_KEY);
@@ -2839,16 +2936,16 @@ if (fortsetzen) {
   showOverlay('CORE DEFENSE',
     'Der Kern in der Mitte versorgt deine Türme mit Energie. Angriffe kommen aus allen Richtungen. ' +
     'Baue Pylone, um das Netz nach außen zu tragen, und Reaktoren, damit dir mitten in der Welle nicht ' +
-    'der Strom ausgeht. Nach jeder Welle wählst du eine Karte, die für den Rest der Partie gilt.',
+    'der Strom ausgeht. Nach jeder Welle wählst du eine Karte, die für den Rest der Partie gilt. ' +
+    'Auf dem Tagesfeld spielen heute alle dasselbe: dasselbe Gelände, dieselben Wellen, dieselben ' +
+    'Karten zur Wahl. Das freie Feld würfelt jedes Mal neu.',
     bestenlisteHtml(game.bestenliste()));
-  el('ovBtn').textContent = 'Starten';
+  el('ovBtn').textContent = 'Tagesfeld ' + datumKurz(heutigerTag);
+  el('ovBtn').onclick = () => { game.beginnen(heutigerTag); anzeigeSchliessen(); };
+  el('ovBtn2').hidden = false;
+  el('ovBtn2').textContent = 'Freies Feld';
+  el('ovBtn2').onclick = () => { game.beginnen(''); anzeigeSchliessen(); };
 }
-el('ovBtn').onclick = () => {
-  el('overlay').hidden = true;
-  el('ovBtn2').hidden = true;
-  el('ovBtn').textContent = 'Neu starten';
-  el('ovBtn').onclick = () => location.reload();
-};
 
 /* Beim Verlassen der Seite sichern. Nach „Neu anfangen" nicht — sonst
    stünde der eben gelöschte Stand beim Neuladen wieder da. */
