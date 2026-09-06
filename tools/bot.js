@@ -13,6 +13,7 @@
              gleichverteilt statt dorthin, wo es zuletzt eng wurde),
              schief (der Bot lässt den Norden frei — so wird sichtbar, was
              das Druckgedächtnis mit einer Schwachstelle macht),
+             nogelaende (leeres Feld statt erzeugtem Gelände),
              log (Verlauf ausgeben).
 
    Der Bot spielt bewusst schlicht: Er hält jede Himmelsrichtung mit
@@ -59,6 +60,7 @@ function lauf(maxWelle, opt = {}) {
   // Spanne 0 heißt: Alle Sektoren behalten Gewicht 1, das Gedächtnis wird
   // weiter geführt, wirkt aber nicht. Genau der Vergleich, den man will.
   if (opt.ohneDruck) h.DRUCK.spanne = 0;
+  if (opt.ohneGelaende) g.neuesGelaende(0);   // Seed 0 räumt das Feld ab
 
   const zelle = GRID.cell;
   const kosten = t => g.costOf(t);
@@ -196,6 +198,7 @@ if (require.main === module) {
     ohneModi: schalter.includes('nomode'),
     ohneDruck: schalter.includes('nodruck'),
     schief: schalter.includes('schief'),
+    ohneGelaende: schalter.includes('nogelaende'),
     log: schalter.includes('log')
   };
 

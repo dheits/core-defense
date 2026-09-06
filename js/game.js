@@ -8,6 +8,12 @@ const netCanvas = document.createElement('canvas');
 netCanvas.width = W; netCanvas.height = H;
 const netCtx = netCanvas.getContext('2d');
 
+/* Das erzeugte Gelände. Ändert sich nur beim Neuaufbau der Karte,
+   also wird es einmal gezeichnet und danach nur noch aufgelegt. */
+const bodenCanvas = document.createElement('canvas');
+bodenCanvas.width = W; bodenCanvas.height = H;
+const bodenCtx = bodenCanvas.getContext('2d');
+
 /* Bodenspuren. Wird nie gelöscht: Explosionen und gefallene Bauten
    brennen sich ein, und nach zwanzig Wellen sieht man dem Feld die
    Schlacht an. */
@@ -135,6 +141,10 @@ const game = {
   druckNaehe: new Array(DRUCK.sektoren).fill(0),  // tiefster Einbruch dieser Welle
   druckExtra: new Array(DRUCK.sektoren).fill(0),  // was diese Welle dort gekostet hat
   druckTakt: 0,
+  // Erzeugtes Gelände: ein flaches Byte-Feld, damit die Abfrage im
+  // Gegner-Update nichts kostet. 0 als Seed heißt „leeres Feld".
+  gelaende: new Uint8Array(GRID.cols * GRID.rows),
+  gelaendeSeed: 0,
   tool: null, selected: null, inView: true,
   buffs: freshBuffs(), takenCards: new Map(),
   draft: null, plannedWave: null, turretsDirty: true,
@@ -156,7 +166,15 @@ const game = {
     return Math.abs(x - CORE.cx) <= CORE.half && Math.abs(y - CORE.cy) <= CORE.half;
   },
   inBounds(x, y) { return x >= 0 && y >= 0 && x < GRID.cols && y < GRID.rows; },
-  free(x, y) { return this.inBounds(x, y) && !this.isCore(x, y) && !this.buildings.has(key(x, y)); },
+  free(x, y) {
+    return this.inBounds(x, y) && !this.isCore(x, y) &&
+           !this.buildings.has(key(x, y)) && this.boden(x, y) !== BODEN.truemmer;
+  },
+  boden(x, y) { return this.inBounds(x, y) ? this.gelaende[y * GRID.cols + x] : BODEN.leer; },
+  bodenPx(px, py) { return this.boden(pxToCell(px), pxToCell(py)); },
+  gelaendeTempo(px, py) {
+    return this.bodenPx(px, py) === BODEN.schneise ? GELAENDE.tempo : 1;
+  },
   buildingAt(px, py) {
     const x = pxToCell(px), y = pxToCell(py);
     if (!this.inBounds(x, y)) return null;
@@ -266,6 +284,9 @@ const game = {
       cd: 0, supplied: false, node: null, flow: 1, flash: 0, pulse: 0,
       prio: 1, ziel: 0, overload: false, reserve: true, bornAt: performance.now(),
       aim: -Math.PI / 2, scan: rand(0, 6.28),
+      // Steht der Bau auf einer alten Leiterbahn? Zählt nur beim Pylon,
+      // wird aber überall gesetzt — der Spielstand baut über dieselbe Stelle.
+      leiter: this.boden(x, y) === BODEN.leiter,
       px: cellToPx(x), py: cellToPx(y)
     };
     b.maxHp = this.structureOf(b); b.hp = b.maxHp;
@@ -277,7 +298,11 @@ const game = {
   build(type, x, y) {
     const def = BUILDINGS[type];
     const cost = this.costOf(type);
-    if (!this.free(x, y)) { SFX.deny(); return toast('Platz belegt'); }
+    if (!this.free(x, y)) {
+      SFX.deny();
+      return toast(this.boden(x, y) === BODEN.truemmer ? 'Trümmer — hier geht nichts'
+                                                       : 'Platz belegt');
+    }
     if (this.matter < cost) { SFX.deny(); return toast('Zu wenig Materie'); }
     this.matter -= cost;
     const b = this.makeBuilding(type, x, y);
@@ -688,6 +713,98 @@ const game = {
         (erg.platz === 0 ? ' Das ist dein bester Lauf.' : ''),
         bestenlisteHtml(erg.liste, erg.eintrag));
     }
+  },
+
+  /* ------------------- Erzeugtes Gelände ---------------------
+     Aus einem Seed wird die Karte gebaut, nicht gespeichert: Der
+     Spielstand merkt sich nur die Zahl. Trümmerfelder wachsen als
+     kurzer Irrlauf aus einem Startpunkt, Leiterbahnen und Schneisen
+     laufen radial nach außen — die Richtung, in der auch das Netz und
+     die Gegner unterwegs sind.
+
+     `passt` ist die einzige Stelle, die über Fairness entscheidet:
+     Nichts im freien Ring um den Kern, nichts am Feldrand, nichts
+     übereinander. */
+  neuesGelaende(seed) {
+    this.gelaendeSeed = seed === undefined ? (Math.random() * 1e9) | 0 : (seed | 0);
+    this.gelaende = new Uint8Array(GRID.cols * GRID.rows);
+    if (!this.gelaendeSeed) return zeichneGelaende();   // 0 heißt: leeres Feld
+    const G = GELAENDE, zufall = prng(this.gelaendeSeed);
+    const idx = (x, y) => y * GRID.cols + x;
+    const passt = (x, y) => {
+      if (!this.inBounds(x, y)) return false;
+      if (x < G.rand || y < G.rand ||
+          x >= GRID.cols - G.rand || y >= GRID.rows - G.rand) return false;
+      const d = Math.hypot(x - CORE.cx, y - CORE.cy);
+      if (d < G.frei || d > G.weit) return false;
+      return this.gelaende[idx(x, y)] === BODEN.leer;
+    };
+
+    /* Trümmerfelder: Startpunkt würfeln, dann ein paar Schritte irren.
+       Gezählt wird je Himmelsrichtung in ZELLEN, nicht in Nestern — ein
+       Irrlauf wandert über Sektorgrenzen, und zwei Nester von beiden
+       Seiten einer Grenze könnten dieselbe Richtung sonst doch noch
+       zuschütten. */
+    const budget = G.proSektor * G.nest[1];
+    const proSektor = new Array(DRUCK.sektoren).fill(0);
+    const sektorAn = (x, y) => sektorVon(Math.atan2(y - CORE.cy, x - CORE.cx));
+    const schuttPasst = (x, y) => passt(x, y) && proSektor[sektorAn(x, y)] < budget;
+    const nester = zahl(zufall, G.nester);
+    for (let i = 0, schutz = 300; i < nester && schutz-- > 0;) {
+      const a = zufall() * Math.PI * 2;
+      const r = G.frei + zufall() * (G.weit - G.frei);
+      let x = Math.round(CORE.cx + Math.cos(a) * r);
+      let y = Math.round(CORE.cy + Math.sin(a) * r);
+      if (!schuttPasst(x, y)) continue;
+      i++;
+      const felder = zahl(zufall, G.nest);
+      for (let n = 0; n < felder; n++) {
+        this.gelaende[idx(x, y)] = BODEN.truemmer;
+        proSektor[sektorAn(x, y)]++;
+        /* Der nächste Schritt muss frei sein. Beim ersten Fehlversuch
+           gleich aufzuhören ließe die meisten Nester bei zwei Zellen
+           enden — der Irrlauf tritt sich ständig selbst auf die Füße. */
+        let nx = x, ny = y, versuche = 5;
+        do {
+          nx = x + (zufall() * 3 | 0) - 1;
+          ny = y + (zufall() * 3 | 0) - 1;
+        } while (!schuttPasst(nx, ny) && versuche-- > 0);
+        if (!schuttPasst(nx, ny)) break;
+        x = nx; y = ny;
+      }
+    }
+
+    // Bahnen und Schneisen: eine Richtung, dann Zelle für Zelle nach außen
+    const strahl = (art, laenge) => {
+      const a = zufall() * Math.PI * 2;
+      const start = G.frei + zufall() * 2;
+      let gesetzt = 0;
+      for (let n = 0; gesetzt < laenge; n++) {
+        const r = start + n * 0.8;
+        if (r > G.weit) break;
+        const x = Math.round(CORE.cx + Math.cos(a) * r);
+        const y = Math.round(CORE.cy + Math.sin(a) * r);
+        if (!passt(x, y)) continue;          // Belegtes überspringt der Strahl
+        this.gelaende[idx(x, y)] = art;
+        gesetzt++;
+      }
+    };
+    const bahnen = zahl(zufall, G.bahnen);
+    for (let i = 0; i < bahnen; i++) strahl(BODEN.leiter, zahl(zufall, G.bahn));
+    const schneisen = zahl(zufall, G.schneisen);
+    for (let i = 0; i < schneisen; i++) strahl(BODEN.schneise, zahl(zufall, G.schneise));
+
+    zeichneGelaende();
+  },
+  // Was auf dem Feld liegt, in Zahlen — für Prüfung und Anzeige
+  gelaendeZaehlen() {
+    const n = { truemmer: 0, leiter: 0, schneise: 0 };
+    for (const v of this.gelaende) {
+      if (v === BODEN.truemmer) n.truemmer++;
+      else if (v === BODEN.leiter) n.leiter++;
+      else if (v === BODEN.schneise) n.schneise++;
+    }
+    return n;
   },
 
   /* ------------------- Druckgedächtnis -----------------------
@@ -1197,6 +1314,8 @@ const game = {
       buildTimer: Math.round(this.buildTimer * 10) / 10,
       coreMode: this.coreMode,
       druck: this.druck.map(v => Math.round(v * 1000) / 1000),
+      // Nur der Seed: Die Karte entsteht daraus wieder Zelle für Zelle
+      gelaende: this.gelaendeSeed,
       buffs: this.buffs,
       karten: [...this.takenCards],
       bauten: [...this.buildings.values()].map(b => ({
@@ -1238,6 +1357,14 @@ const game = {
       this.druckFrisch();
       this.phase = 'build';
       this.buildTimer = s.buildTimer > 0 ? s.buildTimer : BUILD_TIME;
+
+      /* Das Gelände muss vor den Bauten stehen: Wer auf Trümmern
+         gespeichert wurde, käme sonst durch und stünde danach auf
+         einem Feld, auf dem er gar nicht gebaut werden könnte. Ein
+         Stand ohne Seed (aus einer Fassung vor dem Gelände) bekommt
+         ein leeres Feld — sonst läge plötzlich Schutt unter Bauten,
+         die dort seit zwanzig Wellen stehen. */
+      this.neuesGelaende(s.gelaende | 0);
 
       this.buildings.clear();
       for (const d of s.bauten) {
@@ -1452,6 +1579,7 @@ function render() {
     ctx.translate(rand(-game.shake, game.shake), rand(-game.shake, game.shake));
 
   drawGrid();
+  ctx.drawImage(bodenCanvas, 0, 0);
   ctx.drawImage(spurCanvas, 0, 0);
   ctx.drawImage(netCanvas, 0, 0);
   drawFlow();
@@ -1674,6 +1802,78 @@ function drawGrid() {
   for (let x = 0; x <= GRID.cols; x++) { ctx.moveTo(x * GRID.cell, 0); ctx.lineTo(x * GRID.cell, H); }
   for (let y = 0; y <= GRID.rows; y++) { ctx.moveTo(0, y * GRID.cell); ctx.lineTo(W, y * GRID.cell); }
   ctx.stroke();
+}
+
+/* Gelände zeichnen. Drei Sorten, drei Handschriften: Trümmer sind
+   gebrochene Platten, eine Leiterbahn ist eine Leitung mit Kontakten,
+   eine Schneise ein heller Streifen mit Pfeilen nach innen. Alles
+   liegt unter den Bauten und ist deutlich dunkler als sie — es soll
+   lesbar sein, ohne sich in den Vordergrund zu drängen. */
+function zeichneGelaende() {
+  const z = GRID.cell;
+  bodenCtx.clearRect(0, 0, W, H);
+  for (let y = 0; y < GRID.rows; y++)
+    for (let x = 0; x < GRID.cols; x++) {
+      const art = game.gelaende[y * GRID.cols + x];
+      if (!art) continue;
+      const px = x * z, py = y * z, m = z / 2;
+      // Ein fester Wurf je Zelle, damit das Bild bei jedem Aufbau gleich bleibt
+      const w = prng(game.gelaendeSeed + x * 7919 + y * 104729);
+      bodenCtx.save();
+      bodenCtx.translate(px + m, py + m);
+      if (art === BODEN.truemmer) {
+        bodenCtx.rotate(w() * 6.28);
+        bodenCtx.fillStyle = 'rgba(24,32,44,.92)';
+        bodenCtx.strokeStyle = 'rgba(120,150,180,.30)';
+        bodenCtx.lineWidth = 1;
+        for (let i = 0; i < 3; i++) {
+          const r = m * (.34 + w() * .5);
+          const ox = (w() - .5) * m * .7, oy = (w() - .5) * m * .7;
+          bodenCtx.beginPath();
+          for (let k = 0; k < 5; k++) {
+            const a = k / 5 * 6.28 + w() * .4, rr = r * (.7 + w() * .5);
+            k ? bodenCtx.lineTo(ox + Math.cos(a) * rr, oy + Math.sin(a) * rr)
+              : bodenCtx.moveTo(ox + Math.cos(a) * rr, oy + Math.sin(a) * rr);
+          }
+          bodenCtx.closePath();
+          bodenCtx.fill(); bodenCtx.stroke();
+        }
+      } else if (art === BODEN.leiter) {
+        /* Die Leitung läuft radial — dieselbe Richtung, in die auch das
+           Netz wächst. Zellenweise gedreht sähe eine Bahn wie verstreute
+           Striche aus statt wie eine Leitung. */
+        bodenCtx.rotate(Math.atan2(CORE_PX.y - (py + m), CORE_PX.x - (px + m)));
+        bodenCtx.strokeStyle = 'rgba(95,224,255,.26)';
+        bodenCtx.lineWidth = 2.5;
+        bodenCtx.beginPath();
+        bodenCtx.moveTo(-m, 0); bodenCtx.lineTo(m, 0);
+        bodenCtx.stroke();
+        bodenCtx.strokeStyle = 'rgba(95,224,255,.14)';
+        bodenCtx.lineWidth = 1;
+        bodenCtx.beginPath();
+        bodenCtx.moveTo(-m, -5); bodenCtx.lineTo(m, -5);
+        bodenCtx.moveTo(-m, 5); bodenCtx.lineTo(m, 5);
+        bodenCtx.stroke();
+        bodenCtx.fillStyle = 'rgba(95,224,255,.38)';
+        bodenCtx.beginPath(); bodenCtx.arc(0, 0, 3.2, 0, 7); bodenCtx.fill();
+      } else {
+        // Schneise: Streifen zum Kern hin, mit zwei Winkeln als Richtung
+        const a = Math.atan2(CORE_PX.y - (py + m), CORE_PX.x - (px + m));
+        bodenCtx.rotate(a);
+        bodenCtx.fillStyle = 'rgba(255,209,102,.07)';
+        bodenCtx.fillRect(-m, -m * .62, z, m * 1.24);
+        bodenCtx.strokeStyle = 'rgba(255,209,102,.34)';
+        bodenCtx.lineWidth = 1.6;
+        for (let i = -1; i <= 1; i += 2) {
+          bodenCtx.beginPath();
+          bodenCtx.moveTo(i * 3 - 4, -m * .45);
+          bodenCtx.lineTo(i * 3 + 3, 0);
+          bodenCtx.lineTo(i * 3 - 4, m * .45);
+          bodenCtx.stroke();
+        }
+      }
+      bodenCtx.restore();
+    }
 }
 
 function drawCore() {
@@ -2250,6 +2450,9 @@ function updateInspector() {
       rows.push(['Spitzenlast', b.reserve ? 'geladen' : 'verbraucht']);
   }
   if (b.def.supply) rows.push(['Netzradius', b.def.supply + ' Z']);
+  // Steht der Pylon auf einer alten Leiterbahn, sagt er es auch
+  if (b.type === 'pylon' && b.leiter)
+    rows.push(['Leiterbahn', '+' + Math.round((GELAENDE.leiter - 1) * 100) + ' % Last']);
   // Am Pylon hängt die eigene Leitung, an allem anderen die des Knotens davor
   if (b.type === 'pylon' && b.supplied && b.node)
     rows.push(['Leitungslast', (Math.round(Math.max(0, b.node.through) * 10) / 10) +
@@ -2615,6 +2818,7 @@ let standVerworfen = false;
 const stand = game.gespeicherteRunde();
 const fortsetzen = !!(stand && game.laden(stand));
 if (!fortsetzen) {
+  game.neuesGelaende();                   // jede Partie bekommt ihr eigenes Feld
   game.recomputeSupply();
   game.planNext();
 }

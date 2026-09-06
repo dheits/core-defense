@@ -42,6 +42,23 @@ function compass(a) {
   return names[sektorVon(a) % names.length];
 }
 
+/* Seedbarer Zufall (mulberry32). Nur fürs Gelände gedacht: Dieselbe
+   Zahl ergibt dieselbe Karte, sonst ließe sich eine Partie nicht
+   fortsetzen, ohne das ganze Feld mitzuschreiben. */
+function prng(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+// Ganze Zahl aus [von, bis] mit einem gegebenen Zufall
+function zahl(zufall, spanne) {
+  return spanne[0] + Math.floor(zufall() * (spanne[1] - spanne[0] + 1));
+}
+
 // Gewichtete Ziehung: Index i kommt mit Wahrscheinlichkeit gew[i] / Summe.
 // Ohne brauchbare Gewichte bleibt es beim Gleichverteilten.
 function pickGewichtet(gew) {
@@ -299,7 +316,9 @@ class Enemy {
       return;
     }
 
-    const speed = this.speed * this.slowFactor;
+    // In einer Schneise läuft es sich schneller — am Boden, versteht sich
+    const speed = this.speed * this.slowFactor *
+                  (this.flying ? 1 : game.gelaendeTempo(this.x, this.y));
 
     if (this.flying) {                       // Drohnen ignorieren Bauten
       this.x += dirX * speed * dt;

@@ -244,6 +244,50 @@ Jeder Sturm zielt auf eine Einseitigkeit: *Kältefest* trifft den reinen Frost-A
 *Störnebel* den auf Reichweite gebauten, *EMP-Front* den ohne Pufferreserve. Die seltene
 Karte *Abschirmung* nimmt Störnebel und EMP-Front dauerhaft die Wirkung.
 
+## Erzeugtes Gelände
+
+Das Feld startet nicht leer. Zu Beginn jeder Partie wird aus einem Seed eine eigene Karte
+gebaut — der Sinn ist nicht Deko, sondern das Brechen der radialen Symmetrie: Auf einem
+leeren Feld ist jede Himmelsrichtung gleich, also ist auch jeder Aufbau gleich.
+
+Drei Sorten, jede mit genau einer Wirkung:
+
+| Boden | Wirkung | Aussehen |
+|---|---|---|
+| **Trümmer** | Hier lässt sich nicht bauen. Das Netz muss herum. | graue gebrochene Platten |
+| **Leiterbahn** | Ein Pylon darauf trägt **50 % mehr** Last (22,5 statt 15/s auf Stufe 1). | cyanfarbene Leitung mit Kontakten, radial |
+| **Schneise** | Bodentruppen laufen hier **30 % schneller**. Fliegende nicht. | heller Streifen mit Winkeln nach innen |
+
+Trümmerfelder wachsen als kurzer Irrlauf aus einem Startpunkt, Leiterbahnen und Schneisen
+laufen radial nach außen — in derselben Richtung, in der auch das Netz wächst und die
+Gegner kommen.
+
+Damit eine gewürfelte Karte keine Partie ruiniert, gelten drei Regeln:
+
+- **Der Ring um den Kern bleibt frei** (4,2 Zellen). Die ersten Bauten einer Partie dürfen
+  nicht vom Würfel abhängen.
+- **Je Himmelsrichtung höchstens zehn Trümmerzellen.** Gezählt wird in Zellen, nicht in
+  Feldern: Ein Irrlauf wandert über Sektorgrenzen, und zwei Felder beiderseits einer Grenze
+  könnten dieselbe Richtung sonst doch noch zuschütten. Gemessen über 400 Seeds bleiben in
+  der am stärksten betroffenen Richtung immer noch 82 % des Bauplatzes frei.
+- **Nichts am Feldrand und nichts jenseits von 13 Zellen** — dort baut ohnehin niemand.
+
+Über 400 Seeds liegen 13 bis 33 Trümmerzellen auf dem Feld (Median 22), dazu 8–23 Zellen
+Leiterbahn und 2–18 Zellen Schneise.
+
+Gemessen kostet das Gelände fast nichts: je 300 Läufe ergaben mit Gelände Median 18 und
+Schnitt 18,4, auf leerem Feld (`nogelaende`) Median 18 und Schnitt 19,1 — eine halbe Welle,
+deutlich innerhalb der Streuung. Das ist kein Versehen, sondern die Absicht: Das Gelände
+soll die Partie *anders* machen, nicht schwerer. Und wieder misst der Bot nur die eine
+Hälfte — er weicht Trümmern aus, aber er sucht keine Leiterbahn.
+
+Gespeichert wird **nur der Seed**, nicht die Karte: `neuesGelaende(seed)` baut sie Zelle
+für Zelle wieder auf, und der Zufallsgenerator dafür ist seedbar (mulberry32). Beim Laden
+steht das Gelände vor den Bauten — sonst käme ein Bau durch, der auf seinem eigenen Feld
+gar nicht stehen dürfte. Ein Spielstand aus einer Fassung vor dieser Änderung bekommt
+**Seed 0**, also ein leeres Feld: Nachträglich Schutt unter Bauten zu schieben, die dort
+seit zwanzig Wellen stehen, wäre der falsche Umgang mit einem alten Stand.
+
 ## Druckgedächtnis
 
 Die Einfallsrichtungen lagen früher gleichmäßig auf dem Kreis und wurden nur zufällig
@@ -532,6 +576,7 @@ node tools/bot.js 100 40                 # 100 Partien bis Welle 40
 node tools/bot.js 60 40 noflow,nomod     # dieselbe Messung ohne Leitungslast und Sturmwellen
 node tools/bot.js 60 40 noakku          # ohne Akkus — der Bot lebt vom Kernpuffer allein
 node tools/bot.js 200 40 nodruck        # Wellen gleichverteilt statt ins Druckgedächtnis
+node tools/bot.js 300 40 nogelaende     # leeres Feld statt erzeugtem Gelände
 node tools/bot.js 1 40 log               # eine Partie, Verlauf Welle für Welle
 ```
 
@@ -644,8 +689,8 @@ node tools/pruefen.js
 
 Sie läuft in einer Zehntelsekunde und deckt Leitungslast, die drei Kernbefehle, alle
 sieben Sturmwellen, die getrennten Akkus, die drei Kernmodi samt Anlauf und Schild,
-Spielstand und Bestenliste, das Druckgedächtnis, Reparatur und Abbau sowie die
-Sonderfähigkeiten der fünften Stufe ab. Der Prüfstand hat dafür einen flüchtigen `localStorage`, der ein erneutes Laden
+Spielstand und Bestenliste, das Druckgedächtnis, das erzeugte Gelände, Reparatur und
+Abbau sowie die Sonderfähigkeiten der fünften Stufe ab. Der Prüfstand hat dafür einen flüchtigen `localStorage`, der ein erneutes Laden
 des Spiels im selben Prozess übersteht — nur so lässt sich Sichern gegen Laden prüfen.
 Die Prüfungen sind in zwei Sorten aufgeteilt, und der Unterschied ist wichtig:
 
@@ -661,9 +706,9 @@ Die Prüfungen sind in zwei Sorten aufgeteilt, und der Unterschied ist wichtig:
 Beides ist gegengeprüft: Vier verstellte Werte in `config.js` haben fünf Anker umgeworfen,
 zwei ausgehängte Stellen im Feuerpfad zwei Verdrahtungsprüfungen.
 
-Die Schalter `noflow`, `nomod`, `nopower`, `noakku`, `nomode` und `nodruck` schalten
-Leitungslast, Sturmwellen, Kernbefehle, den Akkubau, den Moduswechsel des Bots und die
-Gewichtung des Druckgedächtnisses ab. So lässt sich messen, was ein einzelnes System zur Schwierigkeit
+Die Schalter `noflow`, `nomod`, `nopower`, `noakku`, `nomode`, `nodruck` und `nogelaende`
+schalten Leitungslast, Sturmwellen, Kernbefehle, den Akkubau, den Moduswechsel des Bots,
+die Gewichtung des Druckgedächtnisses und das erzeugte Gelände ab. So lässt sich messen, was ein einzelnes System zur Schwierigkeit
 beiträgt. Der Prüfstand selbst (`tools/harness.js`) ist auch für schnelle Einzelfragen
 brauchbar:
 

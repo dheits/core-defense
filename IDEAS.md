@@ -116,18 +116,13 @@ schönrechnet.
 abhängt. Braucht nur einen seedbaren PRNG statt `Math.random()` — und macht das Teilen
 von Ergebnissen erst sinnvoll. *Klein.*
 
-**Erzeugtes Gelände.** Das Feld startet nicht leer. Pro Partie — oder pro Tagesseed, dann
-spielen alle auf demselben Gelände — werden Zellen vorbelegt: Trümmer, auf denen nicht
-gebaut werden kann und die Netzäste zu Umwegen zwingen; alte Leiterbahnen, auf denen ein
-Pylon billiger ist oder mehr trägt; Schneisen, in denen Gegner schneller laufen. Der Gewinn
-ist nicht die Deko, sondern das Brechen der radialen Symmetrie: Heute ist jede
-Himmelsrichtung gleich, also ist auch jeder Aufbau gleich, und die Karten sind das Einzige,
-was zwei Partien unterscheidet. Eine Wegfindung braucht es dafür nicht — Gegner laufen
-geradeaus auf ihr Ziel zu und weichen Blockaden seitlich aus (`js/entities.js:292`), das
-Gelände muss also nur in `free()` und `buildingAt()` auftauchen. Zwei Fallstricke: Der
-Speicherstand muss das Gelände mitschreiben, sonst steht die fortgesetzte Partie auf einem
-anderen Feld, und der Bot muss damit umgehen, sonst ist jede Messung danach mit einer
-zusätzlichen Streuquelle belastet. *Mittel.*
+**Erzeugtes Gelände.** ✅ *umgesetzt* — jede Partie bekommt aus einem Seed eine eigene
+Karte: Trümmer, auf denen nicht gebaut werden kann, alte Leiterbahnen, auf denen ein Pylon
+50 % mehr Last trägt, und Schneisen, in denen Bodentruppen 30 % schneller laufen. Der Ring
+um den Kern bleibt frei, je Himmelsrichtung liegen höchstens zehn Trümmerzellen, und
+gespeichert wird nur der Seed. Gemessen kostet es fast nichts (halbe Welle im Schnitt über
+je 300 Läufe) — es macht die Partie anders, nicht schwerer. Der Vorteilsteil fehlt in der
+Messung ohnehin: Der Bot weicht Trümmern aus, sucht aber keine Leiterbahn.
 
 **Dauerhafte Freischaltungen** (Türme, Startboni) über Partien hinweg. Ist der
 Standard-Weg des Genres, lohnt aber erst, wenn oben genug Inhalt zum Freischalten da
@@ -263,7 +258,8 @@ Ein absichtlich einseitiger Aufbau (`schief`) wird *nicht* härter bestraft als 
 gleichmäßiger, und der Moloch auf Welle 20 beendet 13,5 % aller Läufe. Er ist damit die
 nächste Wand, nicht mehr der Titan auf Welle 10.
 
-Bleibt aus der Liste: Tagesseed, das erzeugte Gelände und die Bedienkomfort-Punkte.
+Bleibt aus der Liste: Tagesseed und die Bedienkomfort-Punkte — der seedbare
+Zufallsgenerator dafür liegt seit dem Gelände schon bereit.
 
 ## Wenn ich drei Dinge auswählen müsste (ursprüngliche Empfehlung)
 

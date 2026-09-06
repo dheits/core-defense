@@ -261,7 +261,10 @@ const FLOW = {
   warn: 0.85         // ab hier färbt sich die Leitung
 };
 function flowCap(b) {
-  return FLOW.pylon + FLOW.perLevel * (b.level - 1);
+  const grund = FLOW.pylon + FLOW.perLevel * (b.level - 1);
+  // Auf einer alten Leiterbahn trägt der Pylon mehr — der einzige
+  // Geländevorteil, den man beim Bauen bewusst suchen kann.
+  return b.leiter ? grund * GELAENDE.leiter : grund;
 }
 // Ein Akku puffert dort, wo er hängt — die Leitung davor trägt entsprechend mehr
 function akkuFlow(b) { return FLOW.akku * b.level; }
@@ -350,6 +353,39 @@ function modifierFor(w) {
   if (Math.random() > MOD_CHANCE) return null;
   return MODIFIERS[(Math.random() * MODIFIERS.length) | 0];
 }
+
+/* ---------------------------------------------------------------
+   Erzeugtes Gelände. Das Feld startet nicht mehr leer: Jede Partie
+   bekommt aus einem Seed eine eigene Karte. Der Sinn ist nicht Deko,
+   sondern das Brechen der radialen Symmetrie — auf einem leeren Feld
+   ist jede Himmelsrichtung gleich, also ist auch jeder Aufbau gleich.
+
+   Drei Sorten, jede mit genau einer Wirkung:
+     Trümmer     — hier lässt sich nicht bauen. Netzäste müssen herum.
+     Leiterbahn  — ein Pylon darauf trägt die Hälfte mehr Last.
+     Schneise    — Bodentruppen laufen hier schneller. Fliegende nicht,
+                   die sind ohnehin nicht am Boden.
+
+   Der Ring `frei` um den Kern bleibt immer sauber: Die ersten Bauten
+   einer Partie dürfen nicht am Würfel hängen. Und je Himmelsrichtung
+   liegen höchstens `proSektor` Trümmerfelder, damit keine Seite
+   zugebaut ist, bevor die erste Welle kommt.
+---------------------------------------------------------------- */
+const BODEN = { leer: 0, truemmer: 1, leiter: 2, schneise: 3 };
+const GELAENDE = {
+  frei: 4.2,          // Zellen um den Kern, die frei bleiben
+  weit: 13,           // so weit nach außen reicht Gelände überhaupt
+  rand: 1,            // Abstand zum Feldrand
+  nester: [5, 8],     // so viele Trümmerfelder je Partie
+  nest: [2, 5],       // Zellen je Feld
+  proSektor: 2,       // Trümmerbudget je Himmelsrichtung: so viele Felder mal `nest`-Höchstlänge
+  bahnen: [2, 3],     // alte Leiterbahnen, radial nach außen
+  bahn: [4, 8],       // Zellen je Bahn
+  schneisen: [1, 2],
+  schneise: [6, 11],
+  leiter: 1.5,        // Leitungslast eines Pylons auf einer Leiterbahn
+  tempo: 1.3          // Tempo von Bodentruppen in einer Schneise
+};
 
 /* ---------------------------------------------------------------
    Druckgedächtnis. Die Einfallsrichtungen lagen bisher gleichmäßig auf

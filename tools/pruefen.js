@@ -53,9 +53,14 @@ function stimmt(was, bedingung) {
 }
 const runde = z => typeof z === 'number' ? Math.round(z * 1e4) / 1e4 : String(z);
 
-// Baut ein Spiel mit Materie im Überfluss und liefert einen Baukürzel
+/* Baut ein Spiel mit Materie im Überfluss und liefert einen Baukürzel.
+   Das erzeugte Gelände wird dabei abgeräumt (Seed 0): Jede Prüfung
+   außerhalb des Geländeblocks baut auf festen Zellen, und ein zufällig
+   dorthin gewürfeltes Trümmerfeld würde sie ohne eigenes Zutun umwerfen.
+   Das Gelände selbst wird weiter unten mit festen Seeds geprüft. */
 function neu() {
   const h = frisch();
+  h.game.neuesGelaende(0);
   h.game.matter = 1e6;
   h.bau = (typ, x, y) => { h.game.build(typ, x, y); return h.game.buildings.get(x + ',' + y); };
   return h;
@@ -812,6 +817,170 @@ beschreibe('Das Druckgedächtnis gehört zum Spielstand', () => {
   gleich('er lädt trotzdem', g4.wave, g.wave);
   stimmt('und fängt gleichverteilt an',
          g4.druck.length === h.DRUCK.sektoren && g4.druck.every(v => v === 0));
+});
+
+/* ------------------ Erzeugtes Gelände --------------------- */
+beschreibe('Derselbe Seed ergibt dasselbe Feld', () => {
+  const h = neu(), g = h.game;
+  g.neuesGelaende(12345);
+  const eins = Array.from(g.gelaende);
+  g.neuesGelaende(12345);
+  stimmt('zweimal derselbe Seed, zweimal dieselbe Karte',
+         Array.from(g.gelaende).every((v, i) => v === eins[i]));
+  g.neuesGelaende(999);
+  stimmt('ein anderer Seed ergibt etwas anderes',
+         Array.from(g.gelaende).some((v, i) => v !== eins[i]));
+  g.neuesGelaende(0);
+  stimmt('Seed 0 heißt leeres Feld', Array.from(g.gelaende).every(v => v === 0));
+});
+
+beschreibe('Das Feld bleibt spielbar, egal was gewürfelt wird', () => {
+  const h = neu(), g = h.game, G = h.GRID, C = h.CORE;
+  let imRing = 0, aufKern = 0, amRand = 0, zuWeit = 0;
+  let maxJeSektor = 0, minTruemmer = 1e9, maxTruemmer = 0, schlimmster = 0;
+  for (let seed = 1; seed <= 200; seed++) {
+    g.neuesGelaende(seed);
+    const proSektor = new Array(h.DRUCK.sektoren).fill(0);
+    const freiJeSektor = new Array(h.DRUCK.sektoren).fill(0);
+    let truemmer = 0;
+    // Wie viel Bauplatz im Ring bleibt jeder Richtung übrig?
+    for (let y = 0; y < G.rows; y++)
+      for (let x = 0; x < G.cols; x++) {
+        const d = Math.hypot(x - C.cx, y - C.cy);
+        if (d < h.GELAENDE.frei || d > h.GELAENDE.weit) continue;
+        if (g.gelaende[y * G.cols + x] !== h.BODEN.truemmer)
+          freiJeSektor[h.sektorVon(Math.atan2(y - C.cy, x - C.cx))]++;
+      }
+    for (let y = 0; y < G.rows; y++)
+      for (let x = 0; x < G.cols; x++) {
+        const art = g.gelaende[y * G.cols + x];
+        if (!art) continue;
+        const d = Math.hypot(x - C.cx, y - C.cy);
+        if (g.isCore(x, y)) aufKern++;
+        if (d < h.GELAENDE.frei) imRing++;
+        if (d > h.GELAENDE.weit) zuWeit++;
+        if (x < 1 || y < 1 || x >= G.cols - 1 || y >= G.rows - 1) amRand++;
+        if (art === h.BODEN.truemmer) {
+          truemmer++;
+          proSektor[h.sektorVon(Math.atan2(y - C.cy, x - C.cx))]++;
+        }
+      }
+    maxJeSektor = Math.max(maxJeSektor, ...proSektor);
+    for (let i = 0; i < proSektor.length; i++)
+      schlimmster = Math.max(schlimmster, proSektor[i] / (proSektor[i] + freiJeSektor[i]));
+    minTruemmer = Math.min(minTruemmer, truemmer);
+    maxTruemmer = Math.max(maxTruemmer, truemmer);
+  }
+  gleich('nichts auf dem Kern', aufKern, 0);
+  gleich('nichts im freien Ring um den Kern', imRing, 0);
+  gleich('nichts jenseits der Außengrenze', zuWeit, 0);
+  gleich('nichts am Feldrand', amRand, 0);
+  // Zwei Nester à höchstens fünf Zellen — mehr darf in einer Richtung nicht liegen
+  stimmt('keine Himmelsrichtung wird zugeschüttet (max ' + maxJeSektor + ' Zellen)',
+         maxJeSektor <= h.GELAENDE.proSektor * h.GELAENDE.nest[1]);
+  stimmt('und jedes Feld hat Trümmer, aber nie zu viele (' +
+         minTruemmer + '-' + maxTruemmer + ')', minTruemmer >= 8 && maxTruemmer <= 45);
+  stimmt('in jeder Richtung bleibt der Bauplatz überwiegend frei (höchstens ' +
+         Math.round(schlimmster * 100) + ' % Schutt)', schlimmster < 0.25);
+});
+
+beschreibe('Auf Trümmern lässt sich nicht bauen', () => {
+  const h = neu(), g = h.game;
+  g.gelaende[12 * h.GRID.cols + 24] = h.BODEN.truemmer;   // Zelle 24,12
+  stimmt('die Zelle gilt als belegt', !g.free(24, 12));
+  const materie = g.matter;
+  g.build('blaster', 24, 12);
+  stimmt('gebaut wird dort nichts', !g.buildings.has('24,12'));
+  gleich('und es kostet auch nichts', g.matter, materie);
+  // Der Zug über eine Reihe überspringt sie still
+  g.tool = 'wall';
+  g.ziehStart('wall', 22, 12);
+  g.ziehWeiter(26, 12);
+  g.ziehEnde();
+  stimmt('der Zug lässt die Trümmerzelle aus', !g.buildings.has('24,12'));
+  stimmt('baut aber daneben weiter', g.buildings.has('23,12') && g.buildings.has('25,12'));
+});
+
+beschreibe('Ein Pylon auf einer Leiterbahn trägt mehr', () => {
+  const h = neu(), g = h.game;
+  const schlicht = h.bau('pylon', 24, 12);
+  g.recomputeSupply();
+  const ohne = schlicht.node.cap;
+  g.sell(schlicht);
+
+  g.gelaende[12 * h.GRID.cols + 24] = h.BODEN.leiter;
+  const drauf = h.bau('pylon', 24, 12);
+  g.recomputeSupply();
+  gleich('die Leitung trägt anderthalbmal so viel',
+         drauf.node.cap, ohne * h.GELAENDE.leiter, 1e-9);
+  stimmt('der Bau weiß, worauf er steht', drauf.leiter === true);
+});
+
+beschreibe('In der Schneise laufen Bodentruppen schneller', () => {
+  const h = neu(), g = h.game, z = h.GRID.cell;
+  const mx = (h.CORE.cx + .5) * z, my = (h.CORE.cy + .5) * z;
+  g.phase = 'combat'; g.spawnQueue = [{ at: 1e9 }];
+
+  // Zwei gleiche Gegner, gleich weit vom Kern, einer davon auf einer Schneise
+  const setz = (e, zellenX, zellenY) => {
+    e.x = (h.CORE.cx + zellenX + .5) * z;
+    e.y = (h.CORE.cy + zellenY + .5) * z;
+  };
+  const a = g.spawn({ type: 'crawler', angle: 0 });
+  const b = g.spawn({ type: 'crawler', angle: Math.PI });
+  setz(a, 8, 0);
+  setz(b, -8, 0);
+  g.gelaende[(h.CORE.cy | 0) * h.GRID.cols + (h.CORE.cx + 8)] = h.BODEN.schneise;
+
+  const weg = e => { const x0 = e.x, y0 = e.y; e.update(1 / 60, g);
+                     return Math.hypot(e.x - x0, e.y - y0); };
+  const schnell = weg(a), normal = weg(b);
+  gleich('genau der Geländefaktor', schnell / normal, h.GELAENDE.tempo, 1e-6);
+
+  // Fliegende sind nicht am Boden — für sie gilt die Schneise nicht
+  const d1 = g.spawn({ type: 'drone', angle: 0 });
+  const d2 = g.spawn({ type: 'drone', angle: Math.PI });
+  setz(d1, 8, 0); setz(d2, -8, 0);
+  gleich('die Drohne fliegt überall gleich schnell', weg(d1) / weg(d2), 1, 1e-6);
+  stimmt('der Kern steht noch', g.coreHp > 0 && mx > 0 && my > 0);
+});
+
+beschreibe('Das Feld gehört zum Spielstand', () => {
+  const h = neu(), g = h.game;
+  g.neuesGelaende(4242);
+  const karte = Array.from(g.gelaende);
+  gleich('sichern gelingt', g.merken(), true);
+
+  const g2 = weiter().game;                    // wie ein Neuladen der Seite
+  gleich('der Seed kommt zurück', g2.gelaendeSeed, 4242);
+  stimmt('und daraus wieder dieselbe Karte',
+         Array.from(g2.gelaende).every((v, i) => v === karte[i]));
+
+  /* Ein Stand aus einer Fassung vor dem Gelände bekommt ein leeres Feld:
+     Seine Bauten stehen auf Zellen, die damals frei waren — nachträglich
+     Schutt darunter zu schieben würde sie beim Laden verschlucken. */
+  const h3 = weiter();
+  const roh = JSON.parse(h3.speicher.getItem(h3.SAVE_KEY));
+  delete roh.gelaende;
+  h3.speicher.setItem(h3.SAVE_KEY, JSON.stringify(roh));
+  const g4 = weiter().game;
+  gleich('er lädt trotzdem', g4.wave, g.wave);
+  gleich('bekommt aber ein leeres Feld', g4.gelaendeSeed, 0);
+  stimmt('ohne jedes Gelände', Array.from(g4.gelaende).every(v => v === 0));
+});
+
+beschreibe('Gespeicherte Bauten überleben ihr eigenes Gelände', () => {
+  const h = neu(), g = h.game;
+  g.neuesGelaende(4242);
+  // Auf jeden freien Platz im Ring einen Pylon, dann sichern und laden
+  let gebaut = 0;
+  for (let x = 16; x < 26 && gebaut < 12; x++)
+    for (let y = 8; y < 17 && gebaut < 12; y++)
+      if (g.free(x, y) && g.boden(x, y) !== h.BODEN.truemmer) { h.bau('pylon', x, y); gebaut++; }
+  stimmt('es steht etwas', gebaut === 12);
+  g.merken();
+  const g2 = weiter().game;
+  gleich('alle Bauten kommen zurück', g2.buildings.size, gebaut);
 });
 
 /* --------------------- Spielstand ------------------------ */
