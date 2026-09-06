@@ -32,7 +32,7 @@ es zählt auch, wie viel Energie dort noch ankommt. Siehe *Leitungslast* weiter 
 
 Zweite Währung ist **Materie**: fällt bei jedem Abschuss an und bezahlt alle Bauten.
 
-**4. Karten zwischen den Wellen.** Nach jeder abgewehrten Welle sind vier von 57 Karten
+**4. Karten zwischen den Wellen.** Nach jeder abgewehrten Welle sind vier von 62 Karten
 zur Wahl, die für den Rest der Partie gelten. Der Pool hat fünf Sorten:
 
 - **Grundwerte** für alle Türme — Reichweite, Schaden, Feuerrate, Energie, Struktur
@@ -49,15 +49,16 @@ erscheinen entsprechend ihrem Gewicht seltener. Beides hält Partien auseinander
 
 ## Steuerung
 
-Alles Anwählbare sitzt in einer einzeiligen **Taskleiste** am unteren Rand: links die
-Bauteile, dann die Kernbefehle, rechts die Kernmodi. Sie ist 41 Pixel hoch, damit das
-Spielfeld frei bleibt — die Erklärungen stehen im Tooltip, die Werte eines gebauten
-Turms im Inspektor rechts. Ein schmaler Farbbalken am linken Rand jeder Fläche trägt die
+Alles Anwählbare sitzt in einer **Taskleiste** am unteren Rand: links die Bauteile,
+dann der Bauplan, die Kernbefehle und rechts die Kernmodi. Die Bauteile stehen seit dem
+achten in zwei Reihen — elf Flächen passen nicht mehr in eine Zeile, und die Leiste
+kostet dadurch rund eine Zellenreihe Spielfeld mehr. Die Erklärungen stehen im Tooltip,
+die Werte eines gebauten Turms im Inspektor rechts. Ein schmaler Farbbalken am linken Rand jeder Fläche trägt die
 Farbe, in der das Bauteil auch auf dem Feld gezeichnet wird.
 
 | Eingabe | Wirkung |
 |---|---|
-| `1`–`7` / Klick auf Karte | Gebäude wählen |
+| `1`–`9`, `0`, `G` / Klick auf Karte | Gebäude wählen |
 | Linksklick | bauen bzw. bestehendes Gebäude auswählen |
 | Ziehen mit gedrückter Maustaste | Barrieren reihenweise setzen — Lücken beim schnellen Ziehen wachsen zu, Belegtes und Unbezahlbares wird still übersprungen |
 | Rechtsklick | Auswahl abbrechen / Gebäude abbauen (60 % des Bauwerts zurück) |
@@ -500,6 +501,10 @@ ab. Bei stumm geschaltetem Ton werden gar keine Audio-Nodes erzeugt.
 - **Kanone** (65) — langsam, hoher Flächenschaden
 - **Frostturm** (45) — Sofortstrahl, bremst Gegner um 50 %
 - **Barriere** (10) — braucht keinen Strom, lenkt Bodentruppen um, in Reihen ziehbar
+- **Lichtbogen** (55) — Strahl, der auf drei weitere Gegner überspringt
+- **Minenleger** (40) — legt Minen in Zellen, die kein Turm deckt
+- **Werkdrohne** (45) — setzt Bauten in Reichweite instand, mitten im Gefecht
+- **Schildfeld** (60) — lädt aus Überschuss vor und fängt Treffer auf Nachbarn und Kern ab
 
 Jedes Gebäude hat **fünf Ausbaustufen**: je +42 % Schaden, +7 % Reichweite, +28 % Struktur.
 Der Ausbau kostet mit jeder Stufe mehr (Blaster: 39, 56, 72, 89 — zusammen 286 gegenüber
@@ -514,6 +519,10 @@ Der Ausbau kostet mit jeder Stufe mehr (Blaster: 39, 56, 72, 89 — zusammen 286
 | Reaktor | **Materiekonverter** — erzeugt zusätzlich 0,6 Materie pro Sekunde |
 | Akku | **Spitzenlast** — speist unter 15 % Puffer einmal je Welle seinen Speicher ein |
 | Barriere | **Reaktivpanzerung** — reißt beim Bersten alles im Umkreis mit |
+| Lichtbogen | **Kettenreaktion** — wer am Bogen stirbt, entlädt sich in seine Nachbarn |
+| Minenleger | **Näherungszünder** — die Minen zünden auch unter fliegenden Gegnern |
+| Werkdrohne | **Notfallschweißung** — einmal je Welle ein fallender Bau sofort wieder ganz |
+| Schildfeld | **Rückkopplung** — zwei Fünftel des Geschluckten treffen den Angreifer |
 
 Am Bau erkennbar: Stufe 2 bis 4 an Kerben am Sockel, Stufe 5 an einem goldenen Ring.
 
@@ -568,6 +577,70 @@ Drei Regeln, die man beim Spielen sofort bemerkt:
   spiegeln".
 - **Reicht die Materie nicht, wächst der Plan von innen nach außen.** So entsteht ein
   zusammenhängender Anfang, der am Netz hängt, statt verstreuter Inseln am Rand.
+
+## Vier späte Bauteile
+
+Die ersten sieben Bauteile liegen alle auf derselben Achse: mehr Schaden, mehr
+Reichweite, mehr Struktur. Die vier späten füllen vier Rollen, die es davor gar nicht
+gab — und drei von ihnen machen nicht auf die übliche Art Schaden.
+
+### Lichtbogen (55, Taste `8`)
+
+Ein Strahl, der auf bis zu drei weitere Gegner überspringt; jeder Sprung trifft mit 72 %
+des vorigen (14 → 10,1 → 7,3 → 5,2) und reicht 2,1 Zellen weit. Zwei Eigenschaften
+folgen daraus:
+
+- Er ist ein **Strahl**, kein Geschoss — gegen Schilde trifft er anderthalbfach statt halb.
+- **Panzerung geht von jedem einzelnen Sprung ab.** Gegen einen Brute (6 Panzerung) bleibt
+  vom dritten Sprung fast nichts übrig. Der Bogen ist gegen Pulks überlegen und gegen
+  gepanzerte Einzelziele schwach. Das ist kein Versehen, das ist seine Rolle.
+
+Stufe 5 **Kettenreaktion**: Wer am Bogen stirbt, entlädt sich in seine Nachbarn.
+
+Zum Namen: „Kettenblitz" war schon vergeben — als Karte, die Geschosse überspringen lässt.
+
+### Minenleger (40, Taste `9`)
+
+Der einzige Bau, der Schaden macht, ohne zu zielen. Alle 3,2 s legt er eine Mine und hält
+höchstens fünf davon. Er sucht dafür die Zelle, die **am wenigsten gedeckt** ist: je
+weniger Türme sie erreichen, desto besser, bei Gleichstand die weiter außen und die mit
+mehr Abstand zu den anderen Minen. So wandern die Minen von selbst in die toten Winkel,
+die auf einem Feld ohne Wege zwangsläufig entstehen.
+
+Eine Mine zündet unter Bodentruppen (62 Schaden, 1,45 Zellen Umkreis), nicht unter
+Fliegern — bis Stufe 5, dann bekommt sie einen **Näherungszünder**. Gelegte Minen
+überdauern die Welle, werden aber nicht mitgespeichert: Wer mitten im Gefecht schließt,
+findet das Feld wieder ohne sie, genau wie bei Gegnern und Geschossen.
+
+### Werkdrohne (45, Taste `0`)
+
+Setzt den am schlimmsten beschädigten Bau in Reichweite instand: 14 Struktur je Sekunde,
+0,3 Energie je Punkt, also 4,2 Energie/s Dauerlast — ungefähr so viel wie ein Blaster
+verschießt. Reparieren von Hand kostet Materie und geht nur zwischen den Wellen; die
+Drohne kostet Energie und arbeitet mitten im Gefecht.
+
+Stufe 5 **Notfallschweißung**: Fällt ein Bau in Reichweite unter ein Viertel Struktur,
+ist er einmal je Welle sofort wieder ganz.
+
+### Schildfeld (60, Taste `G`)
+
+Die erste Fassung zog ihre Energie in dem Augenblick, in dem der Treffer fiel — und
+verlor jede Messung, auch mit halbiertem Preis und größerer Reichweite. Der Grund ist
+strukturell: Dieselbe Energie verhindert als Feuerkraft mehr Schaden, als sie als
+Absorption auffängt. Solange beides um denselben Puffer streitet, kann ein rein
+defensiver Bau nicht gewinnen.
+
+Deshalb **lädt es vor**. Es füllt einen Vorrat von 170 Punkten je Stufe mit 8 Punkten je
+Sekunde, aber nur aus dem Überschuss oberhalb von 60 % Puffer — also vor allem in der
+Bauphase, in der die Regeneration sonst am vollen Puffer verpufft. Im Gefecht gibt es aus
+dem Vorrat aus und kostet dabei keinen einzigen Schuss.
+
+Gedeckt sind alle Bauten in 3,2 Zellen — **außer dem Generator selbst**, der damit die
+weiche Stelle im eigenen Feld bleibt — und der **Kern**, wenn er nah genug steht. Das ist
+der eigentliche Grund, eines zu bauen: Es ist der einzige Bau, der Kernschaden abfängt,
+ohne dem Puffer im selben Moment etwas wegzunehmen.
+
+Stufe 5 **Rückkopplung**: Zwei Fünftel des Geschluckten treffen den Angreifer.
 
 ## Gegner
 
@@ -760,6 +833,77 @@ nicht**. Der ganze Zweck des Gedächtnisses ist, dass man die genannte Seite in 
 nächsten Bauphase verstärkt — und genau das kann der Bot nicht. Er misst deshalb immer nur
 den Preis, nie den Gewinn.
 
+### Was die vier späten Bauteile kosten
+
+Gemessen wurde in drei Schritten, weil eine einzige Zahl hier drei verschiedene Fragen
+verwischt hätte. Alle Bot-Läufe gegen den Stand direkt davor, je 200 Läufe:
+
+| Konfiguration | Median | Schnitt | am Limit |
+|---|---|---|---|
+| vorher, ohne die vier Bauteile | 19 | 19,3 | 14/200 |
+| nachher, Bot baut sie nicht | 17 | 17,2 | 8/200 |
+| nachher, ohne die fünf neuen Karten | 18 | 18,0 | 13/200 |
+| `stuetzen` — Werkdrohnen und Schildfelder dazu | 17 | 17,0 | 12/200 |
+
+Die zweite Zeile war die Überraschung: Der Bot baut die neuen Bauteile gar nicht, und
+trotzdem fällt der Median. Die dritte Zeile erklärt es — **der Kartenstapel wächst mit**.
+Fünf neue Karten sind für ihn wertlos, weil er die zugehörigen Bauteile nie baut, und bei
+vier Karten zur Wahl aus jetzt 62 verdünnt das jede Ziehung. Der Rest liegt im Rauschen
+(dokumentiert: selbst bei 200 Läufen wandert der Median um ein bis zwei Wellen). Wer
+künftig Bauteile ergänzt, sollte das mitrechnen: Jedes neue Bauteil bringt Karten mit, und
+die kosten alle anderen ein Stück Trefferwahrscheinlichkeit.
+
+Die vierte Zeile sagt, was die beiden Stützbauten den Bot kosten: nichts. Sie sagt aber
+auch nichts über ihren Nutzen — der Bot repariert zwischen den Wellen ohnehin alles, was
+kaputt ist, also bleibt der Werkdrohne genau das, was sie *während* der Welle hält.
+
+**Die beiden neuen Türme einzeln**, je 150 Läufe, jeweils als vierter Typ in derselben
+Rotation:
+
+| Rotation | Median | Schnitt | am Limit |
+|---|---|---|---|
+| Blaster, Kanone, Frost (Grundstand) | 17–19 | ~18 | 4–7 % |
+| + Lichtbogen | 16 | 18,0 | 12/150 |
+| + Minenleger | 15 | 15,7 | 7/150 |
+| + beide (`neu`) | **5** | 9,9 | 3/200 |
+
+Die letzte Zeile sieht nach einer Katastrophe aus und ist eine über das Messgerät. Mit
+beiden Türmen rotiert der Bot durch **fünf** Typen statt drei — und weil er stumpf
+gleichmäßig verteilt, fällt der Anteil der **Kanonen** von einem Drittel auf ein Fünftel.
+Nachgezählt über je zwölf Läufe bis Welle 10: 124 Kanonen im Grundstand, 30 mit `neu`.
+Die Kanone ist die Antwort auf die gepanzerten Brutes ab Welle 4 — und genau dort enden
+76 der 200 Läufe. Nicht die neuen Türme sind das Problem, sondern eine Bauregel, die
+„alle Typen gleich oft" mit „richtig gemischt" verwechselt. Einzeln kommt jeder der beiden
+im Rahmen des Rauschens durch.
+
+**Die beiden Stützbauten** lassen sich mit dem Bot gar nicht messen, siehe oben. Dafür
+gibt es eine eigene Messung mit festem Aufbau: ein geschlossener Barrierenring, acht
+Blaster dahinter, Netz und Nachschub fest, der Kern für die Dauer der Messung
+unverwundbar — und dann viermal derselbe Platz, einmal mit einem weiteren Blaster, einmal
+mit vier Werkdrohnen, einmal mit vier Schildfeldern. 120 **gepaarte** Läufe: Lauf *i*
+bekommt für alle drei Varianten denselben Tagesseed und damit dieselbe Welle. Ohne diese
+Paarung ist das Rauschen zwischen den Wellen größer als der Unterschied zwischen den
+Bauten — der erste Anlauf ohne Paarung hat genau daran nichts gezeigt.
+
+| Variante | verlorene Struktur (Welle 8) | gegen den Blaster | besser in |
+|---|---|---|---|
+| ein weiterer Blaster | 752 | — | — |
+| vier Werkdrohnen | 702 | −50 | 81/120 |
+| vier Schildfelder | 801 | +49 | 30/120 |
+
+Die Werkdrohne ist ihren Platz also wert, das Schildfeld verliert knapp. Dabei ist die
+Messung zugunsten der Feuerkraft verzerrt: Der Aufbau hat zu wenig davon, jeder weitere
+Blaster wirkt dort überdurchschnittlich, und das Schildfeld deckt nur 26 der 46 Bauten.
+Was die Zahl nicht sieht, ist der Kern — den fängt nur das Schildfeld ab, und der
+entscheidet die Partie.
+
+Der Weg dorthin ist der eigentliche Ertrag der Messung. Die erste Fassung des Schildfelds
+zog die Energie im Augenblick des Treffers und verlor **jede** Variante: mit halbem Preis
+je Punkt, mit größerer Reichweite, mit Energieüberschuss im Netz. Dieselbe Energie
+verhindert als Feuerkraft mehr Schaden, als sie als Absorption auffängt — solange beides
+um denselben Puffer streitet, kann ein rein defensiver Bau nicht gewinnen. Erst das
+Vorladen aus Überschuss macht daraus einen Bau, der im Gefecht nichts wegnimmt.
+
 ### Die Wand bei Welle 10
 
 Bis vor Kurzem endete dort gut jeder vierte Lauf (57 von 200). Die Ursache lag zur Hälfte
@@ -794,8 +938,8 @@ node tools/pruefen.js
 Sie läuft in einer Zehntelsekunde und deckt Leitungslast, die drei Kernbefehle, alle
 sieben Sturmwellen, die getrennten Akkus, die drei Kernmodi samt Anlauf und Schild,
 Spielstand und Bestenliste, das Druckgedächtnis, das erzeugte Gelände, das Tagesfeld,
-Reparatur, Abbau, Verschieben und den gespiegelten Bauplan sowie die Sonderfähigkeiten
-der fünften Stufe ab. Der Prüfstand hat dafür einen flüchtigen `localStorage`, der ein erneutes Laden
+Reparatur, Abbau, Verschieben, den gespiegelten Bauplan und die vier späten Bauteile
+sowie die Sonderfähigkeiten der fünften Stufe ab. Der Prüfstand hat dafür einen flüchtigen `localStorage`, der ein erneutes Laden
 des Spiels im selben Prozess übersteht — nur so lässt sich Sichern gegen Laden prüfen.
 Die Prüfungen sind in zwei Sorten aufgeteilt, und der Unterschied ist wichtig:
 
@@ -813,7 +957,8 @@ zwei ausgehängte Stellen im Feuerpfad zwei Verdrahtungsprüfungen.
 
 Die Schalter `noflow`, `nomod`, `nopower`, `noakku`, `nomode`, `nodruck` und `nogelaende`
 schalten Leitungslast, Sturmwellen, Kernbefehle, den Akkubau, den Moduswechsel des Bots,
-die Gewichtung des Druckgedächtnisses und das erzeugte Gelände ab. So lässt sich messen, was ein einzelnes System zur Schwierigkeit
+die Gewichtung des Druckgedächtnisses und das erzeugte Gelände ab; `neu` nimmt Lichtbogen
+und Minenleger in die Turmauswahl auf, `stuetzen` baut Werkdrohnen und Schildfelder dazu. So lässt sich messen, was ein einzelnes System zur Schwierigkeit
 beiträgt. Der Prüfstand selbst (`tools/harness.js`) ist auch für schnelle Einzelfragen
 brauchbar:
 

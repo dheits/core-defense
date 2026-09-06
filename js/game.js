@@ -165,6 +165,8 @@ const game = {
   sources: [], overloadedNodes: 0,
   coreMode: 0, coreModeNext: 0, modeTimer: 0, shieldFlash: 0,
   lichter: [], risse: [],           // kurzlebige Lichtquellen, Spawn-Risse
+  minen: [],                        // gelegte Minen, sie überdauern die Welle
+  schilde: [],                      // versorgte Schildfelder, aus recomputeSupply
   cooldowns: { discharge: 0, surge: 0, pulse: 0 },
   surge: 0, shockwave: null, mod: null,
 
@@ -220,9 +222,23 @@ const game = {
   // Dauerlast eines Turms in Energie pro Sekunde — genau die Größe,
   // die durch die Leitungen bis zu ihm fließen muss.
   drawOf(b) {
+    // Die Werkdrohne zieht, was sie an Struktur nachschiebt; das
+    // Schildfeld zieht seine Grundlast. Beides muss durch dieselben
+    // Leitungen wie das Feuer der Türme — sonst wäre der Stützbau ein
+    // Gratis-Bau, und die Leitungslast hätte ein Loch.
+    if (b.def.repair) return b.def.repair * b.level * b.def.perHp * this.buffs.repairSpeed;
+    if (b.def.laden) return b.def.laden * b.def.perPoint;
     if (!b.def.turret || !b.def.energy) return 0;
     return this.energyOf(b) / this.cooldownOf(b);
   },
+  // Was ein Schildfeld vom Treffer übernimmt …
+  absorbOf(b) { return Math.min(0.9, b.def.absorb + this.buffs.absorbPlus); },
+  // … und wie viel es davon vorrätig hält
+  schildPool(b) { return b.def.pool * b.level; },
+  // Wie viel Struktur eine Werkdrohne je Sekunde nachschiebt
+  repairRate(b) { return b.def.repair * b.level * this.buffs.repairSpeed; },
+  // Wie viele Minen ein Leger gleichzeitig hält
+  minenZahl(b) { return b.def.minen + this.buffs.minenPlus; },
   // Speicher, den ein Bau beisteuert — beim Akku greift die Karte „Zellenstapel"
   capOf(b) {
     if (!b.def.capacity) return 0;
@@ -291,7 +307,7 @@ const game = {
       type, def, x, y, level: 1,
       hp: 0, maxHp: 0,
       cd: 0, supplied: false, node: null, flow: 1, flash: 0, pulse: 0,
-      prio: 1, ziel: 0, overload: false, reserve: true, bornAt: performance.now(),
+      prio: 1, ziel: 0, overload: false, reserve: true, puffer: 0, bornAt: performance.now(),
       aim: -Math.PI / 2, scan: rand(0, 6.28),
       // Steht der Bau auf einer alten Leiterbahn? Zählt nur beim Pylon,
       // wird aber überall gesetzt — der Spielstand baut über dieselbe Stelle.
@@ -617,7 +633,7 @@ const game = {
     const feed = this.buffs.reactorFeed;
     for (const b of this.buildings.values()) {
       if (!b.supplied || !b.node) continue;
-      if (b.def.turret) b.node.demand += this.drawOf(b);
+      if (b.def.turret || b.def.support) b.node.demand += this.drawOf(b);
       else if (b.type === 'reactor') b.node.demand -= b.def.regen * b.level * feed;
       // Der Akku erzeugt nichts, aber er puffert vor Ort — die Leitung
       // davor muss die Spitzen deshalb nicht allein tragen.
@@ -643,10 +659,14 @@ const game = {
     // Energie-Ökonomie neu bilanzieren: Reaktoren liefern, Akkus fassen
     let regen = CORE.regen + this.buffs.regen;
     let cap = CORE.energy + this.buffs.capacity;
+    // Die versorgten Schildfelder gleich mitführen — damit muss nicht bei
+    // jedem einzelnen Treffer die ganze Bauliste durchsucht werden.
+    this.schilde = [];
     for (const b of this.buildings.values()) {
       if (!b.supplied) continue;
       if (b.def.regen) regen += b.def.regen * b.level;
       if (b.def.capacity) cap += this.capOf(b);
+      if (b.def.absorb) this.schilde.push(b);
     }
     this.regen = Math.round(regen * (this.buffs.regenMul || 1) * this.modeMul('regen') * 10) / 10;
     this.energyMax = Math.max(1, Math.round(cap * this.modeMul('cap')));
@@ -795,7 +815,25 @@ const game = {
     }
   },
 
-  damageBuilding(b, dmg) {
+  damageBuilding(b, dmg, angreifer) {
+    /* Schildfeld: Ein Teil des Treffers geht in den vorgeladenen Vorrat
+       statt in die Struktur. Bezahlt wurde er vorher aus Überschuss —
+       im Augenblick des Treffers kostet er keinen Schuss. */
+    const feld = this.schildFuer(b);
+    if (feld) {
+      const wunsch = dmg * this.absorbOf(feld);
+      const geschluckt = Math.max(0, Math.min(wunsch, feld.puffer || 0));
+      if (geschluckt > 0) {
+        feld.puffer -= geschluckt;
+        dmg -= geschluckt;
+        feld.pulse = 1;
+        this.particles.push(new Particle(b.px + rand(-9, 9), b.py + rand(-9, 9), feld.def.color,
+          { speed: rand(30, 90), life: .3, size: 2 }));
+        // Rückkopplung: Das ausgebaute Feld gibt einen Teil zurück
+        if (angreifer && !angreifer.dead && feld.level >= UPGRADE.maxLevel)
+          this.hurt(angreifer, geschluckt * SPECIALS.schild.thorns, 'thorns', feld);
+      }
+    }
     b.hp -= dmg;
     b.flash = 0.12;
     SFX.buildingHit(panOf(b.px), farOf(b.px, b.py));
@@ -829,6 +867,22 @@ const game = {
   },
 
   damageCore(dmg, enemy) {
+    /* Steht ein Schildfeld nah genug am Kern, nimmt sein vorgeladener
+       Vorrat den ersten Teil des Treffers — vor dem Schildmodus, weil er
+       schon bezahlt ist und keinen Schuss kostet. Das ist der eigentliche
+       Grund, eines zu bauen: Es schützt nicht nur Bauten, sondern das,
+       woran die Partie hängt. */
+    const feld = this.schildAmKern();
+    if (feld) {
+      const geschluckt = Math.min(dmg * this.absorbOf(feld), feld.puffer || 0);
+      if (geschluckt > 0.01) {
+        feld.puffer -= geschluckt;
+        dmg -= geschluckt;
+        this.shieldFlash = 0.35;
+        feld.pulse = 1;
+        SFX.shieldHit();
+      }
+    }
     // Schildmodus: Der Puffer nimmt einen Teil des Treffers auf — solange
     // Energie da ist. Was der Puffer schluckt, fehlt danach den Türmen.
     const m = this.activeMode();
@@ -1161,7 +1215,7 @@ const game = {
     this.plannedWave = null;
     if (this.buffs.waveStartFull) this.energy = this.energyMax;
     for (const b of this.buildings.values()) {
-      if (b.type === 'akku') b.reserve = true;
+      if (b.type === 'akku' || b.type === 'drohne') b.reserve = true;
       b.schaden = 0;                            // Schadensbeitrag dieser Welle
     }
     this.stats = frischeStats();
@@ -1298,6 +1352,7 @@ const game = {
       this.pendingSpawns.length = 0;
     }
     this.enemies = this.enemies.filter(e => !e.dead);
+    this.minenPruefen(dt);
     this.druckAbtasten(dt);
 
     // Solange ein Wächter steht, kommt beim Boss kaum Schaden an
@@ -1332,6 +1387,9 @@ const game = {
       }
       if (this.buffs.repair && b.hp < b.maxHp)
         b.hp = Math.min(b.maxHp, b.hp + this.buffs.repair * dt);
+      // Werkdrohne setzt instand, Schildfeld zieht seine Grundlast
+      if (b.def.repair && b.supplied) this.drohneTickt(b, dt);
+      if (b.def.laden && b.supplied) this.schildLaedt(b, dt);
       // Materiekonverter des voll ausgebauten Reaktors
       if (b.type === 'reactor' && b.supplied && b.level >= UPGRADE.maxLevel)
         this.matter += SPECIALS.reactor.matter * dt;
@@ -1379,7 +1437,8 @@ const game = {
         dmg *= POWERS.surge.damage;
         cost *= POWERS.surge.cost;
       }
-      const target = this.findTarget(b);
+      // Der Minenleger zielt nicht auf Gegner, sondern auf eine Zelle
+      const target = b.def.minen ? this.minenPlatz(b) : this.findTarget(b);
       if (!target) { b.scan += dt * 0.5; b.aim = b.scan; continue; }
       if (this.energy < cost) { b.pulse = 0; knapp = true; SFX.lowPower(); continue; }
       this.energy -= cost;
@@ -1390,9 +1449,14 @@ const game = {
       const pan = panOf(b.px), weit = farOf(b.px, b.py);
       if (b.type === 'cannon') SFX.cannon(pan, weit);
       else if (b.type === 'frost') SFX.frost(pan, weit);
-      else SFX.blaster(pan, weit);
+      else if (b.type === 'arc') SFX.arc(pan, weit);
+      else if (b.type !== 'mine') SFX.blaster(pan, weit);
       const voll = b.level >= UPGRADE.maxLevel;
-      if (b.def.hitscan) {
+      if (b.def.minen) {
+        this.mineLegen(b, target);
+      } else if (b.def.arc) {
+        this.bogenSchlagen(b, target, dmg, voll);
+      } else if (b.def.hitscan) {
         this.hurt(target, dmg, 'beam', b);
         if (b.def.slow && !this.modv('noSlow', false))
           target.applySlow(Math.max(0.1, b.def.slow - this.buffs.slowBonus),
@@ -1435,6 +1499,200 @@ const game = {
     p.speed *= this.modv('projSpeed', 1);
     this.projectiles.push(p);
     return p;
+  },
+
+  /* ------------------- Lichtbogen ---------------------------
+     Eine Kette aus Sprüngen: Der Bogen trifft sein Ziel, sucht von dort
+     das nächste noch unberührte in Sprungweite und schlägt dort
+     schwächer zu. Als Strahl bricht jeder Treffer Schilde besser als
+     ein Geschoss — dafür geht von JEDEM der kleinen Treffer die volle
+     Panzerung ab. Genau das macht ihn gegen Pulks stark und gegen
+     Brutes stumpf. */
+  bogenSchlagen(b, ziel, dmg, voll) {
+    const def = b.def;
+    const spruenge = def.arc + this.buffs.arcPlus;
+    const weite = def.arcRange * GRID.cell;
+    const getroffen = new Set();
+    let von = { x: b.px, y: b.py }, e = ziel, k = dmg;
+    for (let i = 0; i <= spruenge && e; i++) {
+      getroffen.add(e);
+      this.beams.push({ x1: von.x, y1: von.y, x2: e.x, y2: e.y, life: .13, color: def.color });
+      this.hurt(e, k, 'beam', b);
+      // Kettenreaktion: Wer am Bogen stirbt, entlädt sich in die Nachbarn
+      if (voll && e.dead) this.kettenreaktion(e, b);
+      von = { x: e.x, y: e.y };
+      const letzter = e;
+      k *= def.arcFalloff;
+      e = null;
+      let bd = weite;
+      for (const o of this.enemies) {
+        if (o.dead || getroffen.has(o)) continue;
+        const d = dist(o.x, o.y, letzter.x, letzter.y);
+        if (d < bd) { bd = d; e = o; }
+      }
+    }
+  },
+  kettenreaktion(e, b) {
+    const sp = SPECIALS.arc, r = sp.blastRange * GRID.cell;
+    for (const o of this.enemies)
+      if (!o.dead && o !== e && dist(o.x, o.y, e.x, e.y) <= r) this.hurt(o, sp.blast, 'chain', b);
+    this.blitz(e.x, e.y, r * 1.4, b.def.color, .35);
+    for (let i = 0; i < 10; i++)
+      this.particles.push(new Particle(e.x, e.y, b.def.color, { speed: rand(60, 200), life: .35 }));
+  },
+
+  /* -------------------- Minenleger --------------------------
+     Er sucht sich die Zelle, die am wenigsten gedeckt ist: je weniger
+     Türme sie erreichen, desto besser, und bei Gleichstand die weiter
+     außen. So wandern die Minen von selbst in die toten Winkel, statt
+     dorthin, wo ohnehin schon geschossen wird. */
+  minenPlatz(b) {
+    let eigene = 0;
+    for (const m of this.minen) if (m.owner === b) eigene++;
+    if (eigene >= this.minenZahl(b)) return null;
+    const r = this.stat(b, 'range'), w = Math.ceil(r);
+    const tuerme = this.turrets().filter(t => t !== b && !t.def.minen);
+    let best = null, bestW = -Infinity;
+    for (let dx = -w; dx <= w; dx++)
+      for (let dy = -w; dy <= w; dy++) {
+        if (Math.hypot(dx, dy) > r) continue;
+        const x = b.x + dx, y = b.y + dy;
+        if (!this.free(x, y)) continue;                  // nicht unter einen Bau
+        if (this.minen.some(m => m.zx === x && m.zy === y)) continue;
+        const px = cellToPx(x), py = cellToPx(y);
+        let gedeckt = 0;
+        for (const t of tuerme)
+          if (dist(px, py, t.px, t.py) <= this.stat(t, 'range') * GRID.cell) gedeckt++;
+        // Abstand zur nächsten schon liegenden Mine, damit sie sich
+        // verteilen statt sich in einer Reihe zu stapeln
+        let frei = 4;
+        for (const m of this.minen) frei = Math.min(frei, Math.hypot(x - m.zx, y - m.zy));
+        const wert = -gedeckt * 8 + frei * 1.5 + Math.hypot(x - CORE.cx, y - CORE.cy);
+        if (wert > bestW) { bestW = wert; best = { x: px, y: py, zx: x, zy: y }; }
+      }
+    return best;
+  },
+  mineLegen(b, platz) {
+    this.minen.push({
+      zx: platz.zx, zy: platz.zy, x: platz.x, y: platz.y, owner: b,
+      dmg: this.stat(b, 'damage'), splash: b.def.minenSplash,
+      // Näherungszünder: die ausgebaute Mine spricht auch auf Flieger an
+      luft: b.level >= UPGRADE.maxLevel, arm: 0.5, t: 0
+    });
+    SFX.mineSet(panOf(platz.x), farOf(platz.x, platz.y));
+  },
+  minenPruefen(dt) {
+    if (!this.minen.length) return;
+    const r = GRID.cell * (BUILDINGS.mine.minenNah || 0.55);
+    let weg = false;
+    for (const m of this.minen) {
+      if (m.arm > 0) { m.arm -= dt; continue; }
+      m.t += dt;
+      for (const e of this.enemies) {
+        if (e.dead || (e.flying && !m.luft)) continue;
+        if (dist(e.x, e.y, m.x, m.y) > r + e.radius) continue;
+        this.mineZuenden(m);
+        m.weg = weg = true;
+        break;
+      }
+    }
+    if (weg) this.minen = this.minen.filter(m => !m.weg);
+  },
+  mineZuenden(m) {
+    const r = m.splash * this.buffs.splash * GRID.cell;
+    for (const e of this.enemies) {
+      if (e.dead || (e.flying && !m.luft)) continue;
+      const d = dist(e.x, e.y, m.x, m.y);
+      if (d <= r) this.hurt(e, m.dmg * (1 - 0.5 * d / r), 'proj', m.owner);
+    }
+    for (let i = 0; i < 14; i++)
+      this.particles.push(new Particle(m.x, m.y, i % 2 ? '#ffb84a' : '#ffe0a8',
+        { speed: rand(70, 260), life: rand(.2, .5) }));
+    this.blitz(m.x, m.y, r * 1.5, '#ffb066', .3);
+    brandfleck(m.x, m.y, r * .8, .12);
+    this.shake = Math.max(this.shake, 3);
+    SFX.mineBoom(panOf(m.x), farOf(m.x, m.y));
+  },
+
+  /* -------------- Werkdrohne und Schildfeld -----------------
+     Beide arbeiten aus demselben Puffer, aus dem die Türme schießen —
+     Struktur zu halten kostet also Feuerkraft. Das ist der Preis, und
+     er ist gewollt. */
+  imUmkreis(b) {
+    const r = this.stat(b, 'range') * GRID.cell;
+    const res = [];
+    for (const o of this.buildings.values())
+      if (dist(o.px, o.py, b.px, b.py) <= r) res.push(o);
+    return res;
+  },
+  drohneTickt(b, dt) {
+    const rate = this.repairRate(b) * (b.flow === undefined ? 1 : b.flow);
+    if (rate <= 0) return;
+    const nah = this.imUmkreis(b);
+    // Notfallschweißung: Stufe 5 reißt einmal je Welle einen Bau heraus,
+    // der sonst in dieser Welle fällt.
+    if (b.level >= UPGRADE.maxLevel && b.reserve && this.phase === 'combat') {
+      const not = nah.find(o => o.hp < o.maxHp * SPECIALS.drohne.at);
+      if (not) {
+        b.reserve = false;
+        not.hp = not.maxHp;
+        this.blitz(not.px, not.py, GRID.cell * 2.2, b.def.color, .45);
+        for (let i = 0; i < 14; i++)
+          this.particles.push(new Particle(not.px, not.py, b.def.color, { speed: rand(50, 170), life: .5 }));
+        SFX.repair(panOf(not.px), farOf(not.px, not.py));
+        toast('Notfallschweißung — ' + not.def.name + ' wieder ganz');
+      }
+    }
+    let ziel = null, schlimm = 1;
+    for (const o of nah) {
+      const f = o.hp / o.maxHp;
+      if (f < schlimm) { schlimm = f; ziel = o; }
+    }
+    if (!ziel) return;
+    const menge = Math.min(rate * dt, ziel.maxHp - ziel.hp);
+    const kosten = menge * b.def.perHp;
+    if (menge <= 0 || this.energy < kosten) return;
+    this.energy -= kosten;
+    this.stats.energie += kosten;
+    ziel.hp += menge;
+    b.pulse = 1;
+    b.werkZiel = ziel;
+    if (Math.random() < dt * 5)
+      this.particles.push(new Particle(ziel.px + rand(-8, 8), ziel.py + rand(-8, 8), b.def.color,
+        { angle: -Math.PI / 2, speed: rand(20, 50), life: .5, size: 2 }));
+  },
+  /* Vorladen: Das Feld nimmt nur, was über der Schwelle steht — in der
+     Bauphase also fast alles, was sonst am vollen Puffer verpufft. Sinkt
+     der Puffer im Gefecht darunter, lädt es nicht nach und nimmt den
+     Türmen nichts weg. */
+  schildLaedt(b, dt) {
+    const max = this.schildPool(b);
+    if (b.puffer === undefined) b.puffer = 0;
+    if (b.puffer >= max) return;
+    const rate = b.def.laden * (b.flow === undefined ? 1 : b.flow);
+    const menge = Math.min(rate * dt, max - b.puffer,
+                           (this.energy - this.energyMax * b.def.ab) / b.def.perPoint);
+    if (menge <= 0) return;
+    this.energy -= menge * b.def.perPoint;
+    this.stats.energie += menge * b.def.perPoint;
+    b.puffer += menge;
+  },
+  // Das Schildfeld mit Vorrat, das den Kern deckt
+  schildAmKern() {
+    for (const f of this.schilde) {
+      if (!(f.puffer > 0)) continue;
+      if (dist(f.px, f.py, CORE_PX.x, CORE_PX.y) <= this.stat(f, 'range') * GRID.cell) return f;
+    }
+    return null;
+  },
+  // Das Schildfeld, das diesen Bau deckt — sich selbst deckt keines,
+  // der Generator bleibt also die weiche Stelle im eigenen Feld.
+  schildFuer(b) {
+    for (const f of this.schilde) {
+      if (f === b) continue;
+      if (dist(b.px, b.py, f.px, f.py) <= this.stat(f, 'range') * GRID.cell) return f;
+    }
+    return null;
   },
 
   // Nächstes Netzteil für Saboteure: Pylone zuerst, sonst Reaktoren
@@ -1795,6 +2053,8 @@ function render() {
   drawSpawnWarnings();
   drawCore();
 
+  drawFelder();
+  drawMinen();
   for (const b of game.buildings.values()) drawBuilding(b);
   if (game.selected) drawRange(game.selected.px, game.selected.py, game.stat(game.selected, 'range'), '#5fe0ff');
   if (game.alarm.on) drawAlarmBelow();
@@ -2179,6 +2439,8 @@ function drawBuilding(b) {
   else if (b.type === 'pylon')  drawPylon(b, s, body);
   else if (b.type === 'reactor') drawReactor(b, s, body);
   else if (b.type === 'akku')   drawAkku(b, s, body);
+  else if (b.type === 'drohne') drawDrohne(b, s, body);
+  else if (b.type === 'schild') drawSchildfeld(b, s, body);
   else                          drawTurret(b, s, body);
 
   if (hpF < .72) drawSchaden(b, s, hpF);
@@ -2300,6 +2562,33 @@ function drawTurret(b, s, body) {
     ctx.beginPath();
     ctx.arc(s * 1.05, 0, 5.5 + Math.sin(game.time * 4) * .8, 0, 7);
     ctx.stroke();
+  } else if (b.type === 'arc') {
+    // Zwei Elektroden, dazwischen ein Funke, der mit dem Puls springt
+    ctx.fillStyle = 'rgba(10,16,28,.98)';
+    ctx.fillRect(2, -6, s * .75, 4);
+    ctx.fillRect(2, 2, s * .75, 4);
+    ctx.strokeStyle = col; ctx.lineWidth = 1.3;
+    ctx.strokeRect(2, -6, s * .75, 4);
+    ctx.strokeRect(2, 2, s * .75, 4);
+    ctx.strokeStyle = col;
+    ctx.globalAlpha = .5 + .5 * Math.max(0, b.pulse);
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();                              // Zickzack zwischen den Spitzen
+    const sp = s * .8;
+    ctx.moveTo(sp, -4);
+    ctx.lineTo(sp + 3, -1.2); ctx.lineTo(sp - 2, 1.2); ctx.lineTo(sp + 2, 4);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  } else if (b.type === 'mine') {
+    // Kurzes Wurfrohr mit Trommel — er legt, er schießt nicht
+    ctx.fillStyle = 'rgba(10,16,28,.98)';
+    ctx.fillRect(2, -3.4, s * .8, 6.8);
+    ctx.strokeStyle = col; ctx.lineWidth = 1.4;
+    ctx.strokeRect(2, -3.4, s * .8, 6.8);
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(-s * .18, 0, s * .3, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(10,16,28,.9)';
+    ctx.beginPath(); ctx.arc(-s * .18, 0, s * .14, 0, 7); ctx.fill();
   } else {
     ctx.fillStyle = 'rgba(10,16,28,.98)';         // Doppellauf
     ctx.fillRect(2, -4.4, s * 1.1, 3.4);
@@ -2420,6 +2709,119 @@ function drawAkku(b, s, body) {
   if (b.level >= UPGRADE.maxLevel && b.reserve) {
     ctx.fillStyle = '#fff';
     ctx.beginPath(); ctx.arc(0, -h / 2 - s * .34, s * .16, 0, 7); ctx.fill();
+  }
+}
+
+/* Werkdrohne: ein Rumpf, der über der Platte schwebt, mit zwei
+   Rotorbügeln. Arbeitet sie gerade, läuft ein Strahl zum Werkstück. */
+function drawDrohne(b, s, body) {
+  const col = b.def.color;
+  const heb = Math.sin(game.time * 3 + b.x) * 1.6;       // leichtes Schweben
+  const dreh = game.time * (b.supplied ? 5 : 0.6);
+  ctx.save();
+  ctx.translate(0, heb - 2);
+  ctx.strokeStyle = 'rgba(140,200,255,.45)';
+  ctx.lineWidth = 1.1;
+  for (const seite of [-1, 1]) {                          // Rotorbügel
+    ctx.save();
+    ctx.translate(seite * s * .62, 0);
+    ctx.beginPath(); ctx.ellipse(0, 0, s * .34, s * .12, dreh * seite, 0, 7); ctx.stroke();
+    ctx.restore();
+  }
+  ctx.fillStyle = body;
+  ctx.strokeStyle = col; ctx.lineWidth = 1.6;
+  ctx.beginPath();                                        // sechseckiger Rumpf
+  for (let i = 0; i < 6; i++) {
+    const a = i * Math.PI / 3;
+    const x = Math.cos(a) * s * .55, y = Math.sin(a) * s * .42;
+    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  }
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = col;
+  ctx.globalAlpha = .5 + .5 * Math.max(0, b.pulse);
+  ctx.beginPath(); ctx.arc(0, 0, s * .2, 0, 7); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+
+  // Schweißstrahl zum Werkstück — der Strahl läuft im Weltmaß, deshalb
+  // wird die Verschiebung des Bauwerks kurz herausgerechnet.
+  const z = b.werkZiel;
+  if (b.pulse > 0 && z && z !== b && game.buildings.get(key(z.x, z.y)) === z) {
+    ctx.save();
+    ctx.translate(-b.px, -b.py);
+    ctx.strokeStyle = col;
+    ctx.globalAlpha = .25 + .35 * b.pulse;
+    ctx.lineWidth = 1.4;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(b.px, b.py + heb - 2); ctx.lineTo(z.px, z.py); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+}
+
+/* Schildfeld: ein Emitter mit drei Bögen, die sich drehen, solange
+   Strom da ist. Steht der Puffer unter der Untergrenze, stehen sie still. */
+function drawSchildfeld(b, s, body) {
+  const col = b.def.color;
+  const voll = Math.min(1, (b.puffer || 0) / game.schildPool(b));
+  const an = b.supplied && voll > 0;
+  ctx.fillStyle = body;
+  ctx.strokeStyle = col; ctx.lineWidth = 1.7;
+  ctx.beginPath(); ctx.arc(0, 0, s * .52, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = col;
+  ctx.beginPath(); ctx.arc(0, 0, s * .2, 0, 7); ctx.fill();
+  // Drei Bögen, deren Länge den Vorrat zeigt — leer stehen nur Stummel
+  const dreh = an ? game.time * 1.6 : 0;
+  ctx.strokeStyle = col;
+  ctx.globalAlpha = an ? .35 + .5 * voll : .25;
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.arc(0, 0, s * .92, dreh + i * 2.09, dreh + i * 2.09 + .25 + .95 * voll);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* Die Wirkfelder der beiden Stützbauten. Sie liegen unter allem
+   anderen — ohne sie wüsste niemand, wen die Drohne noch erreicht. */
+function drawFelder() {
+  for (const b of game.buildings.values()) {
+    if (!b.def.support || !b.supplied) continue;
+    ctx.strokeStyle = b.def.color;
+    ctx.globalAlpha = .13;
+    ctx.setLineDash([4, 6]);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(b.px, b.py, game.stat(b, 'range') * GRID.cell, 0, 7);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+  }
+}
+
+/* Gelegte Minen: flache Scheiben im Boden. Solange sie scharf werden,
+   liegen sie dunkel da; danach blinkt der Zünder. Eine Mine mit
+   Näherungszünder trägt einen zweiten Ring. */
+function drawMinen() {
+  for (const m of game.minen) {
+    const scharf = m.arm <= 0;
+    const blink = scharf ? .45 + .45 * Math.sin(game.time * 4 + m.zx) : .3;
+    ctx.fillStyle = 'rgba(18,26,40,.9)';
+    ctx.beginPath(); ctx.arc(m.x, m.y, 6.5, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#ffb84a';
+    ctx.globalAlpha = scharf ? .7 : .35;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(m.x, m.y, 6.5, 0, 7); ctx.stroke();
+    if (m.luft) {
+      ctx.globalAlpha = .3;
+      ctx.beginPath(); ctx.arc(m.x, m.y, 9.5, 0, 7); ctx.stroke();
+    }
+    ctx.globalAlpha = blink;
+    ctx.fillStyle = '#ffd166';
+    ctx.beginPath(); ctx.arc(m.x, m.y, 2.2, 0, 7); ctx.fill();
+    ctx.globalAlpha = 1;
   }
 }
 
@@ -2592,13 +2994,13 @@ function buildShop() {
     const d = document.createElement('div');
     d.className = 'card';
     d.dataset.type = type;
-    d.title = def.name + ' — ' + def.desc + '  (Taste ' + def.key + ')';
+    d.title = def.name + ' — ' + def.desc + '  (Taste ' + def.key.toUpperCase() + ')';
     // Die Bauteilfarbe sitzt als schmaler Balken am linken Rand der Fläche.
     // Er kostet drei Pixel Breite statt der vierzehn eines Farbpunkts und
     // ist besser zu lesen als eingefärbte Schrift.
     d.style.setProperty('--farbe', def.color);
     d.innerHTML =
-      `<span class="k">${def.key}</span>
+      `<span class="k">${def.key.toUpperCase()}</span>
        <span class="n">${def.name}</span>
        <span class="c">${def.cost}</span>`;
     d.onclick = () => selectTool(type);
@@ -2740,16 +3142,41 @@ function updateInspector() {
   el('insLevel').textContent = 'Stufe ' + b.level + '/' + UPGRADE.maxLevel;
   const rows = [['Struktur', Math.ceil(b.hp) + '/' + b.maxHp]];
   if (b.def.turret) {
-    rows.push(['Schaden', Math.round(game.stat(b, 'damage') * 10) / 10]);
-    rows.push(['Reichweite', (Math.round(game.stat(b, 'range') * 10) / 10) + ' Z']);
-    rows.push(['Energie/Schuss', Math.round(game.energyOf(b) * 10) / 10]);
-    rows.push(['Schuss alle', (Math.round(game.cooldownOf(b) * 100) / 100) + ' s']);
-    rows.push(['Zielpriorität', TARGETS[b.ziel || 0].name]);
+    const legt = !!b.def.minen;                  // der Minenleger zielt nicht
+    rows.push([legt ? 'Schaden je Mine' : 'Schaden', Math.round(game.stat(b, 'damage') * 10) / 10]);
+    rows.push([legt ? 'Legeradius' : 'Reichweite', (Math.round(game.stat(b, 'range') * 10) / 10) + ' Z']);
+    rows.push([legt ? 'Energie je Mine' : 'Energie/Schuss', Math.round(game.energyOf(b) * 10) / 10]);
+    rows.push([legt ? 'Mine alle' : 'Schuss alle', (Math.round(game.cooldownOf(b) * 100) / 100) + ' s']);
+    if (b.def.arc) rows.push(['Sprünge', b.def.arc + game.buffs.arcPlus]);
+    if (legt) {
+      let liegen = 0;
+      for (const m of game.minen) if (m.owner === b) liegen++;
+      rows.push(['Minen scharf', liegen + '/' + game.minenZahl(b)]);
+    } else rows.push(['Zielpriorität', TARGETS[b.ziel || 0].name]);
     rows.push(['Lastpriorität', PRIORITY[b.prio].name]);
     if (b.boost > 1) rows.push(['Verstärkerfeld', '+' + Math.round((b.boost - 1) * 100) + ' %']);
   }
   if (b.def.turret && b.supplied && b.flow < 0.995)
     rows.push(['Netzdrossel', '−' + Math.round((1 - b.flow) * 100) + ' %']);
+  // Werkdrohne und Schildfeld: was sie leisten und was sie dafür ziehen
+  if (b.def.repair) {
+    rows.push(['Instandsetzung', (Math.round(game.repairRate(b) * 10) / 10) + '/s']);
+    rows.push(['Reichweite', (Math.round(game.stat(b, 'range') * 10) / 10) + ' Z']);
+    rows.push(['Energie je Struktur', b.def.perHp]);
+    rows.push(['Dauerlast', (Math.round(game.drawOf(b) * 10) / 10) + '/s']);
+    if (b.level >= UPGRADE.maxLevel)
+      rows.push(['Notfallschweißung', b.reserve ? 'bereit' : 'verbraucht']);
+  }
+  if (b.def.absorb) {
+    rows.push(['Schluckt', Math.round(game.absorbOf(b) * 100) + ' %']);
+    rows.push(['Vorrat', Math.round(b.puffer || 0) + '/' + game.schildPool(b)]);
+    rows.push(['Reichweite', (Math.round(game.stat(b, 'range') * 10) / 10) + ' Z']);
+    rows.push(['Lädt', b.def.laden + '/s']);
+    rows.push(['Energie je Punkt', b.def.perPoint]);
+    rows.push(['Lädt ab', Math.round(b.def.ab * 100) + ' % Puffer']);
+    rows.push(['Feld', !b.supplied ? 'ohne Strom'
+                       : ((b.puffer || 0) > 0 ? 'geladen' : 'leer')]);
+  }
   if (b.def.regen) rows.push(['Ertrag', '+' + b.def.regen * b.level + '/s']);
   if (b.def.capacity) {
     rows.push(['Speicher', '+' + Math.round(game.capOf(b))]);
@@ -2793,6 +3220,7 @@ function updateInspector() {
 
   const turretBox = el('insTurret');
   turretBox.hidden = !b.def.turret;
+  el('zielBtn').hidden = !!b.def.minen;
   if (b.def.turret) {
     // Die Knöpfe sagen nur, was sie umschalten — was gerade eingestellt
     // ist, steht zwei Zeilen darüber und muss nicht doppelt dastehen.
@@ -3111,7 +3539,8 @@ addEventListener('keydown', ev => {
   else if (k === 'r') { if (game.selected) game.repair(game.selected); else game.repairAll(); }
   else if (k === 'o' && game.selected) game.toggleOverload(game.selected);
   else if (k === 'l' && game.selected && game.selected.def.turret) game.cyclePriority(game.selected);
-  else if (k === 'z' && game.selected && game.selected.def.turret) game.cycleTarget(game.selected);
+  else if (k === 'z' && game.selected && game.selected.def.turret && !game.selected.def.minen)
+    game.cycleTarget(game.selected);
   else if (k === 'k') game.cycleMode();
 });
 

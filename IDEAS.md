@@ -90,9 +90,19 @@ und der Boss sucht sich dieselbe Seite. Gedeckelt auf das Vierfache zwischen st�
 schwächstem Sektor — ohne Deckel endet jede Partie an derselben Ecke. Die Bilanz nach der
 Welle nennt die Richtung, in die es zieht.
 
-**Mehr Turmtypen mit klarer Rolle** statt mehr Zahlen: Kettenblitz gegen Pulks,
-Minenleger für tote Winkel, Reparaturdrohne, Schildgenerator für Nachbarbauten.
-*Je Turm klein, weil das Turmgerüst steht.*
+**Mehr Turmtypen mit klarer Rolle** ✅ *umgesetzt* — alle vier: **Lichtbogen** (der
+Name „Kettenblitz" war als Karte schon vergeben) springt auf drei weitere Gegner über und
+ist gegen Pulks überlegen, gegen Panzerung schwach, weil sie von jedem Sprung einzeln
+abgeht. Der **Minenleger** legt Minen in die Zellen, die kein Turm deckt. Die
+**Werkdrohne** setzt instand, während gekämpft wird. Das **Schildfeld** lädt aus
+überschüssiger Energie vor und fängt damit Treffer auf Nachbarbauten und den Kern ab.
+
+Zwei Befunde aus der Messung, die vorher nicht auf dem Zettel standen: Ein Schildfeld,
+das im Augenblick des Treffers zahlt, verliert **jede** Messung gegen einen zusätzlichen
+Blaster — dieselbe Energie verhindert als Feuerkraft mehr Schaden, als sie als Absorption
+auffängt. Erst das Vorladen aus Überschuss macht daraus einen Bau, der nichts wegnimmt.
+Und der Kartenstapel wächst mit jedem Bauteil mit: fünf neue Karten kosten den Bot rund
+eine Welle im Median, weil er die zugehörigen Bauteile nie baut.
 
 ---
 
@@ -286,9 +296,12 @@ diesem Feld reine Arithmetik — sondern den Preis: Stufe 1 zum Neubaupreis, nic
 volle Bauwert. Damit ist Spiegeln nie billiger als Bauen von Hand, nur schneller, und
 kann die Bilanz gar nicht verschieben.
 
-Aus den Abschnitten 1 bis 4 offen geblieben: mehr Turmtypen mit klarer Rolle
-(Kettenblitz, Minenleger, Reparaturdrohne, Schildgenerator), Schadenszahlen beim
-Überfahren und die dauerhaften Freischaltungen zwischen den Partien.
+Zuletzt kamen die **vier späten Bauteile** dazu — Lichtbogen, Minenleger, Werkdrohne,
+Schildfeld. Damit stehen elf Bauteile in der Taskleiste, die dafür in zwei Reihen
+umbrechen musste; die Leiste kostet jetzt rund eine Zellenreihe Spielfeld mehr.
+
+Aus den Abschnitten 1 bis 4 offen geblieben: Schadenszahlen beim Überfahren und die
+dauerhaften Freischaltungen zwischen den Partien.
 
 ## Wenn ich drei Dinge auswählen müsste (ursprüngliche Empfehlung)
 

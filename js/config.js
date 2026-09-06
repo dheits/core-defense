@@ -78,6 +78,61 @@ const BUILDINGS = {
     name: 'Barriere', key: '7', cost: 10, hp: 260, color: '#8892a6',
     needsPower: false, drag: true,        // lässt sich in einem Zug reihenweise setzen
     desc: 'Lenkt Bodentruppen um, braucht keinen Strom. Mit gedrückter Maustaste in Reihen ziehbar.'
+  },
+
+  /* Die vier folgenden füllen Rollen, die die ersten sieben offenlassen.
+     Keine davon ist ein stärkerer Blaster — jede tut etwas, das die
+     anderen gar nicht können.
+
+     Lichtbogen: Der Name „Kettenblitz" war schon vergeben (die Karte,
+     die Geschosse überspringen lässt). Der Bogen trifft eine Kette von
+     Gegnern, jeder Sprung schwächer — gegen Pulks überlegen, gegen
+     Panzerung nutzlos, weil die Panzerung von JEDEM der kleinen Treffer
+     abgeht. Als Strahl bricht er Schilde besser als ein Geschoss. */
+  arc: {
+    name: 'Lichtbogen', key: '8', cost: 55, hp: 80, color: '#a5b4ff',
+    needsPower: true, turret: true, hitscan: true,
+    range: 3.6, cooldown: 0.8, damage: 14, energy: 3.6,
+    arc: 3, arcRange: 2.1, arcFalloff: 0.72,
+    desc: 'Der Bogen springt auf bis zu drei weitere Gegner über, jeder Sprung schwächer.'
+  },
+
+  /* Minenleger: der einzige Bau, der Schaden macht, ohne zu zielen.
+     Er legt seine Minen dorthin, wo KEIN Turm hinreicht — genau in die
+     toten Winkel, die auf einem Feld ohne Pfade zwangsläufig entstehen. */
+  mine: {
+    name: 'Minenleger', key: '9', cost: 40, hp: 75, color: '#ffb84a',
+    needsPower: true, turret: true,
+    range: 3.2, cooldown: 3.2, damage: 62, energy: 7, minen: 5, minenSplash: 1.45,
+    minenNah: 0.9,
+    desc: 'Legt Minen in unbewachte Zellen; sie zünden unter Bodentruppen.'
+  },
+
+  /* Werkdrohne: setzt instand, während gekämpft wird. Reparieren von
+     Hand kostet Materie und geht nur zwischen den Wellen — die Drohne
+     kostet Energie und arbeitet mitten im Gefecht. */
+  drohne: {
+    name: 'Werkdrohne', key: '0', cost: 45, hp: 85, color: '#6bff9f',
+    needsPower: true, support: true,
+    range: 3.4, repair: 14, perHp: 0.3,
+    desc: 'Setzt beschädigte Bauten in Reichweite instand, 14 Struktur je Sekunde.'
+  },
+
+  /* Schildfeld. Die erste Fassung zog die Energie in dem Augenblick,
+     in dem der Treffer fiel — und verlor jede Messung: Energie in
+     Feuerkraft verhindert mehr Schaden, als dieselbe Energie als
+     Absorption auffängt. Solange beides um denselben Puffer streitet,
+     kann ein rein defensiver Bau nicht gewinnen.
+
+     Deshalb lädt es jetzt vor: Es füllt seinen Vorrat nur aus dem
+     Überschuss (über 60 % Puffer) — also vor allem in der Bauphase, in
+     der die Regeneration sonst am vollen Puffer verpufft. Im Gefecht
+     gibt es aus, ohne einen einzigen Schuss zu kosten. */
+  schild: {
+    name: 'Schildfeld', key: 'g', cost: 60, hp: 90, color: '#c9a0ff',
+    needsPower: true, support: true,
+    range: 3.2, absorb: 0.7, pool: 170, laden: 8, perPoint: 0.9, ab: 0.6,
+    desc: 'Lädt aus überschüssiger Energie vor und fängt damit im Gefecht 70 % jedes Treffers auf Nachbarbauten ab.'
   }
 };
 
@@ -108,7 +163,14 @@ const SPECIALS = {
   akku:    { name: 'Spitzenlast',      desc: 'Fällt der Puffer unter 15 %, speist der Akku einmal je Welle seinen ganzen Speicher ein',
              at: 0.15 },
   wall:    { name: 'Reaktivpanzerung', desc: 'Reißt beim Bersten die Angreifer mit',
-             blast: 70, blastRange: 1.8 }
+             blast: 70, blastRange: 1.8 },
+  arc:     { name: 'Kettenreaktion',   desc: 'Wer am Bogen stirbt, reißt seine Nachbarn mit',
+             blast: 26, blastRange: 1.4 },
+  mine:    { name: 'Näherungszünder',  desc: 'Die Minen zünden auch unter fliegenden Gegnern' },
+  drohne:  { name: 'Notfallschweißung', desc: 'Fällt ein Bau unter ein Viertel Struktur, setzt die Drohne ihn einmal je Welle sofort ganz instand',
+             at: 0.25 },
+  schild:  { name: 'Rückkopplung',     desc: 'Zwei Fünftel des geschluckten Schadens treffen den Angreifer',
+             thorns: 0.4 }
 };
 
 /* ---------------------------------------------------------------
@@ -474,11 +536,15 @@ const BASE_BUFFS = {
   chain: 0, deathSpark: 0, hitSlow: 0,
   wallThorns: 0, coreShock: 0,
   overloadCost: OVERLOAD.cost,
+  // Die vier späten Bauteile
+  arcPlus: 0, minenPlus: 0, repairSpeed: 1, absorbPlus: 0,
   // Türme einzeln: Schaden, Rate, Reichweite, Verbrauch
   type: {
     blaster: { dmg: 1, rate: 1, range: 1, energy: 1 },
     cannon:  { dmg: 1, rate: 1, range: 1, energy: 1 },
-    frost:   { dmg: 1, rate: 1, range: 1, energy: 1 }
+    frost:   { dmg: 1, rate: 1, range: 1, energy: 1 },
+    arc:     { dmg: 1, rate: 1, range: 1, energy: 1 },
+    mine:    { dmg: 1, rate: 1, range: 1, energy: 1 }
   }
 };
 
@@ -541,6 +607,18 @@ const CARDS = [
     apply:b => b.type.frost.dmg *= 2.2 },
   { id:'weitwurf',     name:'Weitwurf',           desc:'Frost: +40 % Reichweite',
     apply:b => b.type.frost.range *= 1.4 },
+
+  /* --- Lichtbogen, Minenleger, Werkdrohne, Schildfeld --- */
+  { id:'ueberschlag',  name:'Überschlag',         desc:'Lichtbogen: ein Sprung mehr',
+    apply:b => b.arcPlus += 1 },
+  { id:'ionenspur',    name:'Ionenspur',          desc:'Lichtbogen: +45 % Schaden',
+    apply:b => b.type.arc.dmg *= 1.45 },
+  { id:'minenfeld',    name:'Minenfeld',          desc:'Jeder Minenleger hält zwei Minen mehr bereit',
+    apply:b => b.minenPlus += 2 },
+  { id:'wartungsnetz', name:'Wartungsnetz',       desc:'Werkdrohnen setzen 60 % schneller instand',
+    apply:b => b.repairSpeed *= 1.6 },
+  { id:'feldharmonie', name:'Feldharmonie',       desc:'Schildfelder schlucken 15 Punkte mehr vom Treffer',
+    apply:b => b.absorbPlus += 0.15 },
 
   /* --- Antworten auf Gegner-Eigenschaften --- */
   { id:'durchschlag',  name:'Durchschlagmunition',desc:'Jeder Treffer ignoriert 5 Panzerung',

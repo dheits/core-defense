@@ -14,6 +14,9 @@
              schief (der Bot lässt den Norden frei — so wird sichtbar, was
              das Druckgedächtnis mit einer Schwachstelle macht),
              nogelaende (leeres Feld statt erzeugtem Gelände),
+             neu (Lichtbogen und Minenleger in die Turmauswahl aufnehmen),
+             stuetzen (Werkdrohnen und Schildfelder dazubauen; unabhängig
+                       von `neu`, damit sich beides getrennt messen lässt),
              log (Verlauf ausgeben).
 
    Der Bot spielt bewusst schlicht: Er hält jede Himmelsrichtung mit
@@ -67,7 +70,11 @@ function lauf(maxWelle, opt = {}) {
 
   const zelle = GRID.cell;
   const kosten = t => g.costOf(t);
-  const turmTypen = ['blaster', 'cannon', 'frost'];
+  /* `neu`: Die beiden späten Türme kommen in dieselbe Rotation wie die
+     drei alten. Nur so lässt sich vergleichen, ob sie mithalten — ein
+     Bot, der sie nie baut, misst sie auch nicht. */
+  const turmTypen = opt.neueTuerme ? ['blaster', 'cannon', 'frost', 'arc', 'mine']
+                                   : ['blaster', 'cannon', 'frost'];
 
   // Alle Bauplätze im Ring um den Kern, von innen nach außen sortiert
   const plaetze = [];
@@ -117,7 +124,7 @@ function lauf(maxWelle, opt = {}) {
          der sich das Druckgedächtnis überhaupt zeigen könnte. */
       if (opt.schief) proSektor[6] = 1e6;
       const duenn = proSektor.indexOf(Math.min(...proSektor));
-      const typ = turmTypen[g.wave < 2 ? 0 : (g.wave + duenn) % 3];
+      const typ = turmTypen[g.wave < 2 ? 0 : (g.wave + duenn) % turmTypen.length];
       if (g.matter >= kosten(typ)) {
         const p = plaetze.find(q => frei(q.x, q.y) && versorgt(q.x, q.y) && sektor(q) === duenn);
         if (p) { g.build(typ, p.x, p.y); continue; }
@@ -129,6 +136,21 @@ function lauf(maxWelle, opt = {}) {
             || plaetze.filter(q => frei(q.x, q.y) && versorgt(q.x, q.y))
                       .sort((a, b) => b.d - a.d)[0];
           if (aussen) { g.build('pylon', aussen.x, aussen.y); continue; }
+        }
+      }
+      /* 3b. `stuetzen`: auf je fünf Türme ein Stützbau, abwechselnd
+         Werkdrohne und Schildfeld, neben einen bestehenden Turm. Der Bot
+         repariert zwischen den Wellen ohnehin alles — den Stützbauten
+         bleibt damit nur, was sie WÄHREND der Welle halten. */
+      if (opt.stuetzen) {
+        const tuerme = [...g.buildings.values()].filter(b => b.def.turret);
+        const stuetzen = [...g.buildings.values()].filter(b => b.def.support);
+        if (tuerme.length >= 5 && stuetzen.length < Math.floor(tuerme.length / 5)) {
+          const typ2 = stuetzen.length % 2 ? 'schild' : 'drohne';
+          const ziel = tuerme[(stuetzen.length * 3) % tuerme.length];
+          const p = plaetze.find(q => frei(q.x, q.y) && versorgt(q.x, q.y) &&
+                                      Math.hypot(q.x - ziel.x, q.y - ziel.y) <= 2.2);
+          if (p && g.matter >= kosten(typ2)) { g.build(typ2, p.x, p.y); continue; }
         }
       }
       // 4. Sonst die billigste Ausbaustufe mitnehmen
@@ -202,6 +224,8 @@ if (require.main === module) {
     ohneDruck: schalter.includes('nodruck'),
     schief: schalter.includes('schief'),
     ohneGelaende: schalter.includes('nogelaende'),
+    neueTuerme: schalter.includes('neu'),
+    stuetzen: schalter.includes('stuetzen'),
     log: schalter.includes('log')
   };
 

@@ -391,7 +391,7 @@ class Enemy {
     this.attackCd = 1;
     this.recoil = 1;
     if (building) {
-      game.damageBuilding(building, this.def.dmg);
+      game.damageBuilding(building, this.def.dmg, this);
       if (building.type === 'wall' && game.buffs.wallThorns)
         game.hurt(this, game.buffs.wallThorns, 'thorns');
     } else game.damageCore(this.def.dmg, this);

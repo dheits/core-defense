@@ -281,6 +281,35 @@ const SFX = (() => {
              attack: 0.01, pan, send: 0.2 });
     },
 
+    /* Lichtbogen: ein Knistern mit hartem Anschlag. Kurz und trocken,
+       damit eine Kette aus vier Sprüngen nicht zum Dauerton wird. */
+    arc(pan, far) {
+      if (!gate('arc', 0.05)) return;
+      ferne = far || 0;
+      const v = R(0.9, 1.12);
+      noise({ dur: 0.05, freq: 3800 * v, freqTo: 900, gain: 0.06, filter: 'bandpass',
+              q: 0.9, shape: 3, attack: 0.001, pan, send: 0.18 });
+      tone({ type: 'sawtooth', freq: 240 * v, to: 1600, dur: 0.06, gain: 0.035,
+             attack: 0.001, pan, send: 0.15 });
+    },
+    // Eine Mine wird scharf gemacht — ein trockener Doppelklick
+    mineSet(pan, far) {
+      ferne = far || 0;
+      noise({ dur: 0.02, freq: 2600, freqTo: 1200, gain: 0.05, filter: 'bandpass',
+              q: 2, shape: 3, attack: 0.001, pan });
+      tone({ type: 'square', freq: 900, to: 620, dur: 0.03, gain: 0.02, attack: 0.001, pan });
+    },
+    // …und wieder aus: ein kurzer, harter Schlag von unten
+    mineBoom(pan, far) {
+      if (!gate('mine', 0.05)) return;
+      ferne = far || 0;
+      noise({ dur: 0.04, freq: 5200, freqTo: 1400, gain: 0.12, filter: 'highpass',
+              shape: 4, attack: 0.001, pan });
+      tone({ type: 'sine', freq: 130, to: 34, dur: 0.26, gain: 0.18, attack: 0.003,
+             pan, send: 0.3 });
+      noise({ dur: 0.24, freq: 1500, freqTo: 110, gain: 0.09, shape: 1.5, pan, send: 0.35 });
+    },
+
     /* ---------------- Treffer und Abschüsse ----------------
        Ein Abschuss ist ein Bersten: harter Anschlag, kurzer Körper,
        Rauschfahne nach unten. */

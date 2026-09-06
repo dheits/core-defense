@@ -63,7 +63,12 @@ button.danger:hover{background:rgba(190,50,70,.5);border-color:var(--red)}
   padding:6px 8px 7px;
   background:linear-gradient(0deg,rgba(5,8,15,.96) 62%,rgba(5,8,15,0));
 }
-.tb-group{display:flex;gap:3px;align-items:stretch;flex:0 0 auto}
+.tb-group{display:flex;gap:3px;align-items:center;flex:0 0 auto}
+/* Elf Bauteile passen nicht mehr in eine Zeile — sie stehen deshalb in
+   zwei Reihen, zeilenweise gefüllt, damit die Ziffernfolge lesbar
+   bleibt. Die Leiste wächst dadurch um eine Zellenreihe; alles andere
+   (Kernbefehle, Kernmodi) bleibt daneben stehen. */
+#shop{display:grid;grid-auto-flow:row;grid-template-columns:repeat(6,auto);gap:3px}
 .tb-sep{width:1px;margin:3px 2px;background:var(--line);flex:0 0 auto}
 
 /* gemeinsame Grundform aller drei Sorten */

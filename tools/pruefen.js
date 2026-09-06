@@ -580,6 +580,342 @@ beschreibe('Der gespiegelte Plan steht im Spielstand', () => {
   stimmt('geladen wird nie mitten in der Vorschau', h2.game.bauplan === null);
 });
 
+/* -------------------- Lichtbogen -------------------- */
+beschreibe('Der Lichtbogen springt weiter und wird dabei schwächer', () => {
+  const h = neu(), g = h.game, z = h.GRID.cell;
+  const b = h.bau('arc', 22, 12);
+  g.recomputeSupply();
+  g.phase = 'combat'; g.energyMax = 1e6; g.energy = 1e6;
+
+  // Vier Gegner in einer Reihe, je 1,5 Zellen auseinander — innerhalb der
+  // Sprungweite von 2,1 Zellen, der erste in Reichweite des Turms
+  const reihe = [0, 1.5, 3, 4.5].map(d => ziel(h, z * (24.5 + d), z * 12.5));
+  g.enemies = reihe.slice();
+  const vorher = reihe.map(e => e.hp);
+  g.update(1 / 60);
+  const ab = reihe.map((e, i) => vorher[i] - e.hp);
+
+  const d0 = g.stat(b, 'damage'), f = h.BUILDINGS.arc.arcFalloff;
+  gleich('das erste Ziel nimmt den vollen Schlag', ab[0], d0, 1e-6);
+  gleich('das zweite drei Viertel davon', ab[1], d0 * f, 1e-6);
+  gleich('das dritte wieder drei Viertel', ab[2], d0 * f * f, 1e-6);
+  gleich('das vierte ebenso', ab[3], d0 * f * f * f, 1e-6);
+});
+
+beschreibe('Über die Sprungweite hinaus springt nichts', () => {
+  const h = neu(), g = h.game, z = h.GRID.cell;
+  h.bau('arc', 22, 12);
+  g.recomputeSupply();
+  g.phase = 'combat'; g.energyMax = 1e6; g.energy = 1e6;
+
+  const nah = ziel(h, z * 24.5, z * 12.5);
+  const weit = ziel(h, z * 27.5, z * 12.5);      // 3 Zellen weiter, zu weit
+  g.enemies = [nah, weit];
+  const v = [nah.hp, weit.hp];
+  g.update(1 / 60);
+  stimmt('der erste wird getroffen', nah.hp < v[0]);
+  gleich('der zweite bleibt unberührt', weit.hp, v[1]);
+});
+
+beschreibe('Der Bogen ist ein Strahl und bricht Schilde', () => {
+  const h = neu(), g = h.game, z = h.GRID.cell;
+  const b = h.bau('arc', 22, 12);
+  g.recomputeSupply();
+  g.phase = 'combat'; g.energyMax = 1e6; g.energy = 1e6;
+  const e = ziel(h, z * 24.5, z * 12.5);
+  e.shield = 400;
+  g.enemies = [e];
+  g.update(1 / 60);
+  gleich('anderthalbfach gegen den Schild', 400 - e.shield, g.stat(b, 'damage') * 1.5, 1e-6);
+  gleich('und die Struktur bleibt heil', e.hp, 1e9);
+});
+
+beschreibe('Stufe 5: Kettenreaktion', () => {
+  const h = neu(), g = h.game, z = h.GRID.cell;
+  const b = h.bau('arc', 22, 12);
+  for (let i = 1; i < h.UPGRADE.maxLevel; i++) g.upgrade(b);
+  g.recomputeSupply();
+  g.phase = 'combat'; g.energyMax = 1e6; g.energy = 1e6;
+
+  const schwach = ziel(h, z * 24.5, z * 12.5);
+  schwach.hp = 1;                                  // stirbt am ersten Treffer
+  const nachbar = ziel(h, z * 25.5, z * 12.5);     // eine Zelle daneben
+  nachbar.hp = 1e9;
+  g.enemies = [schwach, nachbar];
+  g.update(1 / 60);
+
+  const kette = h.BUILDINGS.arc.arcFalloff * g.stat(b, 'damage');
+  stimmt('der Schwache stirbt', schwach.dead === true);
+  gleich('der Nachbar bekommt Sprung und Explosion',
+         1e9 - nachbar.hp, kette + h.SPECIALS.arc.blast, 1e-6);
+});
+
+/* -------------------- Minenleger -------------------- */
+beschreibe('Der Minenleger legt in die toten Winkel', () => {
+  const h = neu(), g = h.game;
+  const b = h.bau('mine', 22, 12);
+  // Ein Blaster deckt alles östlich davon ab — die Mine soll nach Westen
+  h.bau('blaster', 25, 12);
+  g.recomputeSupply();
+
+  const p = g.minenPlatz(b);
+  const blaster = g.buildings.get('25,12');
+  stimmt('es gibt einen Platz', !!p);
+  stimmt('und keiner, den der Blaster ohnehin deckt',
+         Math.hypot(p.zx - 25, p.zy - 12) > g.stat(blaster, 'range'));
+  stimmt('im Legeradius', Math.hypot(p.zx - 22, p.zy - 12) <= g.stat(b, 'range'));
+
+  g.mineLegen(b, p);
+  gleich('eine Mine liegt', g.minen.length, 1);
+  const q = g.minenPlatz(b);
+  stimmt('die nächste kommt woandershin', q.zx !== p.zx || q.zy !== p.zy);
+});
+
+beschreibe('Der Vorrat ist gedeckelt und nichts liegt unter einem Bau', () => {
+  const h = neu(), g = h.game;
+  const b = h.bau('mine', 22, 12);
+  g.recomputeSupply();
+  for (let i = 0; i < 20; i++) {
+    const p = g.minenPlatz(b);
+    if (!p) break;
+    g.mineLegen(b, p);
+  }
+  gleich('höchstens so viele wie vorgesehen', g.minen.length, g.minenZahl(b));
+  stimmt('und keine zweimal auf derselben Zelle',
+         new Set(g.minen.map(m => m.zx + ',' + m.zy)).size === g.minen.length);
+
+  /* Wo ein Bau steht, kommt keine Mine hin. Geprüft an genau der Zelle,
+     die der Leger sonst gewählt hätte — sonst bewiese der Test nur, dass
+     er zufällig woandershin gelegt hat. */
+  g.minen.length = 0;
+  g.buffs.minenPlus = 0;
+  const waere = g.minenPlatz(b);
+  h.bau('wall', waere.zx, waere.zy);
+  const stattdessen = g.minenPlatz(b);
+  stimmt('die Zelle ist jetzt tabu',
+         stattdessen.zx !== waere.zx || stattdessen.zy !== waere.zy);
+  g.mineLegen(b, stattdessen);
+  stimmt('und nichts liegt unter einem Bauwerk',
+         g.minen.every(m => !g.buildings.has(m.zx + ',' + m.zy)));
+
+  g.minen.length = 0;
+  g.buffs.minenPlus = 2;
+  for (let i = 0; i < 20; i++) {
+    const p = g.minenPlatz(b);
+    if (!p) break;
+    g.mineLegen(b, p);
+  }
+  gleich('die Karte legt zwei drauf', g.minen.length, h.BUILDINGS.mine.minen + 2);
+});
+
+beschreibe('Minen zünden unter Bodentruppen, nicht unter Fliegern', () => {
+  const h = neu(), g = h.game, z = h.GRID.cell;
+  const b = h.bau('mine', 22, 12);
+  g.recomputeSupply();
+  g.phase = 'combat';
+
+  const legen = () => { g.minen.length = 0;
+                        g.mineLegen(b, { x: z * 20.5, y: z * 18.5, zx: 20, zy: 18 });
+                        g.minen[0].arm = 0; };
+
+  // Flieger lösen nichts aus
+  legen();
+  const flieger = ziel(h, z * 20.5, z * 18.5); flieger.flying = true;
+  g.enemies = [flieger];
+  g.minenPruefen(1 / 60);
+  gleich('die Mine liegt noch', g.minen.length, 1);
+  gleich('und der Flieger ist unversehrt', flieger.hp, 1e9);
+
+  // Bodentruppen schon
+  legen();
+  const fuss = ziel(h, z * 20.5, z * 18.5);
+  const daneben = ziel(h, z * 21.4, z * 18.5);        // knapp im Splash
+  g.enemies = [fuss, daneben];
+  g.minenPruefen(1 / 60);
+  gleich('die Mine ist weg', g.minen.length, 0);
+  stimmt('der Auslöser nimmt den vollen Schaden', 1e9 - fuss.hp > g.stat(b, 'damage') * 0.9);
+  stimmt('der Nachbar weniger', 1e9 - daneben.hp > 0 && 1e9 - daneben.hp < 1e9 - fuss.hp);
+
+  // Stufe 5 zündet auch unter Fliegern
+  for (let i = 1; i < h.UPGRADE.maxLevel; i++) g.upgrade(b);
+  legen();
+  const f2 = ziel(h, z * 20.5, z * 18.5); f2.flying = true;
+  g.enemies = [f2];
+  g.minenPruefen(1 / 60);
+  gleich('der Näherungszünder greift', g.minen.length, 0);
+  stimmt('und der Flieger hat es gemerkt', f2.hp < 1e9);
+});
+
+/* -------------------- Werkdrohne -------------------- */
+beschreibe('Die Werkdrohne setzt instand und bezahlt es aus dem Puffer', () => {
+  const h = neu(), g = h.game;
+  const d = h.bau('drohne', 22, 12);
+  const wand = h.bau('wall', 24, 12);
+  const fern = h.bau('wall', 30, 12);              // außerhalb der Reichweite
+  g.recomputeSupply();
+  g.phase = 'combat';
+  // Der ferne Bau ist der schlimmere Fall — nur die Reichweite hält die
+  // Drohne davon ab, sich um ihn zu kümmern.
+  wand.hp = 10; fern.hp = 5;
+  g.energyMax = 1e6; g.energy = 1e6;
+
+  const e0 = g.energy;
+  g.drohneTickt(d, 1);
+  const geheilt = wand.hp - 10;
+  gleich('sie schiebt ihre Rate nach', geheilt, g.repairRate(d), 1e-6);
+  gleich('und zahlt je Struktur', e0 - g.energy, geheilt * h.BUILDINGS.drohne.perHp, 1e-6);
+  gleich('was zu weit weg steht, bleibt kaputt', fern.hp, 5);
+
+  // Ohne Energie geht nichts
+  g.energy = 0;
+  const stand = wand.hp;
+  g.drohneTickt(d, 1);
+  gleich('ohne Puffer keine Instandsetzung', wand.hp, stand);
+});
+
+beschreibe('Die Werkdrohne hängt mit ihrer Dauerlast am Netz', () => {
+  const h = neu(), g = h.game;
+  const d = h.bau('drohne', 22, 12);
+  g.recomputeSupply();
+  const soll = h.BUILDINGS.drohne.repair * h.BUILDINGS.drohne.perHp;
+  gleich('Dauerlast wie gerechnet', g.drawOf(d), soll, 1e-9);
+  stimmt('und sie steht im Leitungsbedarf', d.node.through >= soll - 1e-9);
+});
+
+beschreibe('Stufe 5: Notfallschweißung, einmal je Welle', () => {
+  const h = neu(), g = h.game;
+  const d = h.bau('drohne', 22, 12);
+  for (let i = 1; i < h.UPGRADE.maxLevel; i++) g.upgrade(d);
+  const wand = h.bau('wall', 24, 12);
+  g.recomputeSupply();
+  g.phase = 'combat'; g.energyMax = 1e6; g.energy = 1e6;
+
+  wand.hp = wand.maxHp * 0.1;
+  g.drohneTickt(d, 1 / 60);
+  gleich('der Bau ist sofort wieder ganz', wand.hp, wand.maxHp);
+  stimmt('und die Schweißung ist verbraucht', d.reserve === false);
+
+  wand.hp = wand.maxHp * 0.1;
+  g.drohneTickt(d, 1 / 60);
+  stimmt('ein zweites Mal in derselben Welle nicht', wand.hp < wand.maxHp);
+});
+
+/* -------------------- Schildfeld -------------------- */
+beschreibe('Das Schildfeld fängt aus seinem Vorrat ab', () => {
+  const h = neu(), g = h.game;
+  const f = h.bau('schild', 22, 12);
+  const wand = h.bau('wall', 23, 12);
+  g.recomputeSupply();
+  g.energyMax = 1000; g.energy = 1000;
+  const def = h.BUILDINGS.schild;
+
+  // Erst laden: der Vorrat kommt aus dem Überschuss über der Schwelle
+  const e0 = g.energy;
+  g.schildLaedt(f, 1);
+  gleich('eine Sekunde lädt die Laderate', f.puffer, def.laden, 1e-9);
+  gleich('und kostet je Punkt', e0 - g.energy, def.laden * def.perPoint, 1e-9);
+
+  const vorrat = f.puffer, hp0 = wand.hp, e1 = g.energy;
+  g.damageBuilding(wand, 10);
+  gleich('drei Fünftel gehen in den Vorrat', hp0 - wand.hp, 10 * (1 - def.absorb), 1e-6);
+  gleich('der Vorrat sinkt genau darum', vorrat - f.puffer, 10 * def.absorb, 1e-6);
+  gleich('und der Puffer bleibt im Gefecht unberührt', g.energy, e1);
+
+  // Ist der Vorrat leer, trifft es voll
+  f.puffer = 0;
+  const hp1 = wand.hp;
+  g.damageBuilding(wand, 10);
+  gleich('leer heißt ungeschützt', hp1 - wand.hp, 10, 1e-6);
+});
+
+beschreibe('Geladen wird nur aus dem Überschuss', () => {
+  const h = neu(), g = h.game;
+  const f = h.bau('schild', 22, 12);
+  g.recomputeSupply();
+  const def = h.BUILDINGS.schild;
+  g.energyMax = 1000;
+
+  g.energy = 1000 * def.ab;                       // genau auf der Schwelle
+  g.schildLaedt(f, 1);
+  gleich('auf der Schwelle lädt es nicht', f.puffer, 0);
+
+  g.energy = 1000 * def.ab + 2 * def.perPoint;    // knapp darüber
+  g.schildLaedt(f, 1);
+  gleich('nur der Überschuss geht hinein', f.puffer, 2, 1e-9);
+  gleich('und der Puffer steht wieder auf der Schwelle', g.energy, 1000 * def.ab, 1e-9);
+
+  g.energy = 1000;
+  f.puffer = g.schildPool(f);
+  g.schildLaedt(f, 1);
+  gleich('ein volles Feld lädt nicht weiter', f.puffer, g.schildPool(f));
+});
+
+beschreibe('Das Schildfeld deckt sich selbst nicht', () => {
+  const h = neu(), g = h.game;
+  const f = h.bau('schild', 22, 12);
+  g.recomputeSupply();
+  g.energyMax = 1000; g.energy = 1000;
+  g.schildLaedt(f, 5);
+  const hp0 = f.hp, vorrat = f.puffer;
+  g.damageBuilding(f, 20);
+  gleich('der Generator nimmt den vollen Treffer', hp0 - f.hp, 20, 1e-6);
+  gleich('und sein Vorrat rührt sich nicht', f.puffer, vorrat);
+});
+
+beschreibe('Stufe 5: Rückkopplung trifft den Angreifer', () => {
+  const h = neu(), g = h.game, z = h.GRID.cell;
+  const f = h.bau('schild', 22, 12);
+  for (let i = 1; i < h.UPGRADE.maxLevel; i++) g.upgrade(f);
+  const wand = h.bau('wall', 23, 12);
+  g.recomputeSupply();
+  g.energyMax = 1000; g.energy = 1000;
+  g.schildLaedt(f, 5);
+
+  const gegner = ziel(h, z * 23.5, z * 12.5);
+  g.damageBuilding(wand, 20, gegner);
+  gleich('zwei Fünftel des Geschluckten kommen zurück',
+         1e9 - gegner.hp, 20 * h.BUILDINGS.schild.absorb * h.SPECIALS.schild.thorns, 1e-6);
+});
+
+beschreibe('Das Schildfeld am Kern fängt auch für den Kern ab', () => {
+  const h = neu(), g = h.game;
+  const f = h.bau('schild', 22, 12);            // zwei Zellen neben dem Kern
+  g.recomputeSupply();
+  g.energyMax = 1000; g.energy = 1000;
+  g.schildLaedt(f, 5);
+  const vorrat = f.puffer, hp0 = g.coreHp;
+  stimmt('das Feld deckt den Kern', g.schildAmKern() === f);
+
+  g.damageCore(30, null);
+  const anteil = h.BUILDINGS.schild.absorb;
+  gleich('nur der Rest kommt am Kern an', hp0 - g.coreHp, 30 * (1 - anteil), 1e-6);
+  gleich('der Vorrat trägt den Anteil', vorrat - f.puffer, 30 * anteil, 1e-6);
+
+  // Ein Feld weiter draußen deckt den Kern nicht mehr — versorgt ist es,
+  // aber vier Zellen entfernt und damit außerhalb seiner Reichweite
+  const weit = h.bau('schild', 24, 12);
+  g.recomputeSupply();
+  g.schildLaedt(weit, 5);
+  f.puffer = 0;
+  const hp1 = g.coreHp;
+  g.damageCore(30, null);
+  gleich('ohne Vorrat in Kernnähe trifft es voll', hp1 - g.coreHp, 30, 1e-6);
+});
+
+beschreibe('Der Vorrat wächst mit der Ausbaustufe und hängt am Netz', () => {
+  const h = neu(), g = h.game;
+  const f = h.bau('schild', 22, 12);
+  g.recomputeSupply();
+  const def = h.BUILDINGS.schild;
+  gleich('Stufe 1: ein Vorrat', g.schildPool(f), def.pool);
+  gleich('Dauerlast ist die Laderate', g.drawOf(f), def.laden * def.perPoint, 1e-9);
+  stimmt('und sie steht im Leitungsbedarf',
+         f.node.through >= def.laden * def.perPoint - 1e-9);
+
+  for (let i = 1; i < h.UPGRADE.maxLevel; i++) g.upgrade(f);
+  gleich('Stufe 5: fünffacher Vorrat', g.schildPool(f), def.pool * h.UPGRADE.maxLevel);
+});
+
 /* ------------------ Sonderfähigkeiten ------------------ */
 beschreibe('Stufe 5: Sonderfähigkeiten', () => {
   const h = neu(), g = h.game;
@@ -1530,6 +1866,18 @@ beschreibe('Balance-Anker (bei gewollter Abstimmung hier nachziehen)', () => {
 
   gleich('Ausbaukosten Blaster Stufe 2 bis 5',
          [1, 2, 3, 4].map(l => h.upgradeSteps(30, l)).join(','), '39,56,72,89');
+  gleich('Bauteile insgesamt', Object.keys(h.BUILDINGS).length, 11);
+  gleich('Lichtbogen: Sprünge', h.BUILDINGS.arc.arc, 3);
+  gleich('Lichtbogen: Abfall je Sprung', h.BUILDINGS.arc.arcFalloff, 0.72);
+  gleich('Dauerlast Lichtbogen', last('arc'), 4.5, 1e-9);
+  gleich('Minenleger: Schaden je Mine', h.BUILDINGS.mine.damage, 62);
+  gleich('Minenleger: Minen je Leger', h.BUILDINGS.mine.minen, 5);
+  gleich('Werkdrohne: Struktur je Sekunde', h.BUILDINGS.drohne.repair, 14);
+  gleich('Werkdrohne: Energie je Struktur', h.BUILDINGS.drohne.perHp, 0.3);
+  gleich('Schildfeld: Anteil am Treffer', h.BUILDINGS.schild.absorb, 0.7);
+  gleich('Schildfeld: Vorrat je Stufe', h.BUILDINGS.schild.pool, 170);
+  gleich('Schildfeld: Energie je Punkt', h.BUILDINGS.schild.perPoint, 0.9);
+  gleich('Schildfeld: lädt ab', h.BUILDINGS.schild.ab, 0.6);
   gleich('Reparaturanteil', h.REPAIR_SHARE, 0.35);
   gleich('Erstattung beim Abbau', h.SELL_REFUND, 0.6);
   gleich('Anteil beim Verschieben', h.MOVE_SHARE, 0.25);
@@ -1559,7 +1907,7 @@ beschreibe('Balance-Anker (bei gewollter Abstimmung hier nachziehen)', () => {
   gleich('Druck: Vorsprung für die Bilanzzeile', h.DRUCK.vorsprung, 0.25);
   gleich('Druck: Tiefe in Zellen', h.DRUCK.tiefe, 12);
 
-  gleich('Karten im Pool', h.CARDS.length, 57);
+  gleich('Karten im Pool', h.CARDS.length, 62);
   gleich('Gegnertypen', Object.keys(h.ENEMIES).length, 13);
   gleich('Sturmwellen', h.MODIFIERS.length, 7);
   gleich('Bosse', h.BOSSES.length, 3);
