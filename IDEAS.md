@@ -82,16 +82,13 @@ eine Eigenschaft mitbringen (Störnebel, EMP-Front, Magnetsturm, Schwarm, Kälte
 Panzerkonvoi, Hetzjagd), angekündigt in der Vorschau und mit 50 % höherer Prämie belohnt.
 Jeder Sturm zielt auf eine Einseitigkeit im Aufbau. *Klein, weil nur Multiplikatoren.*
 
-**Druckgedächtnis der Gegner.** Die Einfallsrichtungen liegen heute gleichmäßig auf dem
-Kreis und werden nur zufällig gedreht (`planWave`, `js/game.js:686`). Deshalb ist der
-symmetrische Igel der beste Aufbau, und deshalb sieht jede Partie ab Welle 10 gleich aus.
-Stattdessen merkt sich das Spiel je Sektor, wie weit die letzte Welle gekommen ist — engste
-Annäherung an den Kern, Kernschaden, verlorene Bauten — und verschiebt die Gewichte der
-nächsten Richtungen dorthin: Wer eine Seite vernachlässigt, bekommt sie zurück. Nötig ist
-ein Deckel auf die Verschiebung, sonst schlägt die Rückmeldung immer auf dieselbe Seite und
-der Lauf endet an einer Ecke statt an einer Entscheidung. Lesbar ist es sofort, weil die
-Wellenvorschau die Himmelsrichtungen ohnehin nennt. *Klein bis mittel — die Auswertung nach
-der Welle gibt es schon, die Statistik je Sektor noch nicht.*
+**Druckgedächtnis der Gegner.** ✅ *umgesetzt* — das Feld merkt sich in acht Sektoren,
+wie weit die letzte Welle gekommen ist (engste Annäherung als Höchstwert, dazu Kernschaden
+und verlorene Bauten), mischt das zu 55 % ins Gedächtnis und zieht die nächste Welle
+dorthin: Der Ring der Einfallsrichtungen wird verschoben, die Masse je Richtung gewichtet,
+und der Boss sucht sich dieselbe Seite. Gedeckelt auf das Vierfache zwischen stärkstem und
+schwächstem Sektor — ohne Deckel endet jede Partie an derselben Ecke. Die Bilanz nach der
+Welle nennt die Richtung, in die es zieht.
 
 **Mehr Turmtypen mit klarer Rolle** statt mehr Zahlen: Kettenblitz gegen Pulks,
 Minenleger für tote Winkel, Reparaturdrohne, Schildgenerator für Nachbarbauten.
@@ -259,8 +256,14 @@ Selbsttest, der Anlauf, Schild und Akku-Entlastung nachrechnet.
 Zuletzt kamen Speicherstand und Bestenliste dazu: Eine unterbrochene Partie wird beim
 Öffnen zum Fortsetzen angeboten, eine beendete landet in einer Liste der acht besten Läufe.
 
-Bleibt aus der Liste: Tagesseed, das erzeugte Gelände, das Druckgedächtnis der Gegner und
-die Bedienkomfort-Punkte.
+Zuletzt kam das **Druckgedächtnis** dazu: Die Wellen kommen nicht mehr gleichverteilt,
+sondern verstärkt von der Seite, an der die letzte Welle am weitesten kam. Gemessen kostet
+das den Bot etwa eine Welle im Schnitt — und die Messung selbst brachte zwei Nebenbefunde:
+Ein absichtlich einseitiger Aufbau (`schief`) wird *nicht* härter bestraft als ein
+gleichmäßiger, und der Moloch auf Welle 20 beendet 13,5 % aller Läufe. Er ist damit die
+nächste Wand, nicht mehr der Titan auf Welle 10.
+
+Bleibt aus der Liste: Tagesseed, das erzeugte Gelände und die Bedienkomfort-Punkte.
 
 ## Wenn ich drei Dinge auswählen müsste (ursprüngliche Empfehlung)
 

@@ -26,11 +26,31 @@ function farOf(x, y) {
   return Math.min(1, Math.hypot(dx, dy) / 1.35);
 }
 
+// Winkel -> Sektor 0..7. Dieselbe Einteilung wie compass(): Die Vorschau
+// nennt Himmelsrichtungen, das Druckgedächtnis rechnet in Sektoren — beides
+// muss dasselbe meinen, sonst kündigt die Vorschau die falsche Seite an.
+function sektorVon(a) {
+  const schritt = Math.PI * 2 / DRUCK.sektoren;
+  const turn = ((a % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+  return Math.round(turn / schritt) % DRUCK.sektoren;
+}
+function sektorMitte(s) { return s * Math.PI * 2 / DRUCK.sektoren; }
+
 // Winkel -> Himmelsrichtung (x nach rechts = Ost, y nach unten = Süd)
 function compass(a) {
   const names = ['Ost', 'Südost', 'Süd', 'Südwest', 'West', 'Nordwest', 'Nord', 'Nordost'];
-  const turn = ((a % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-  return names[Math.round(turn / (Math.PI / 4)) % 8];
+  return names[sektorVon(a) % names.length];
+}
+
+// Gewichtete Ziehung: Index i kommt mit Wahrscheinlichkeit gew[i] / Summe.
+// Ohne brauchbare Gewichte bleibt es beim Gleichverteilten.
+function pickGewichtet(gew) {
+  let summe = 0;
+  for (const g of gew) summe += g;
+  if (!(summe > 0)) return (Math.random() * gew.length) | 0;
+  let r = Math.random() * summe;
+  for (let i = 0; i < gew.length; i++) { r -= gew[i]; if (r < 0) return i; }
+  return gew.length - 1;
 }
 
 // Punkt auf dem Kartenrand in Richtung `a` (margin>0 = außerhalb, <0 = innerhalb)

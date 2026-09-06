@@ -94,7 +94,8 @@ module.exports = (0, eval)(quelle + `
 ;({
   game, CARDS, BUILDINGS, ENEMIES, MODIFIERS, POWERS, POWER_LIST, BOSSES,
   CORE, GRID, FLOW, UPGRADE, SPECIALS, PRIORITY, TARGETS, OVERLOAD,
-  CORE_MODES, CORE_SWITCH,
+  CORE_MODES, CORE_SWITCH, DRUCK,
+  sektorVon, sektorMitte, compass, pickGewichtet,
   REPAIR_SHARE, MOD_FROM_WAVE, MOD_BONUS, SELL_REFUND,
   flowCap, akkuFlow, upgradeSteps, waveHpScale, waveBudget, bossFor,
   SAVE_KEY, BEST_KEY, SAVE_VERSION, BEST_MAX, bestenlisteHtml,

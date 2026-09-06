@@ -351,6 +351,35 @@ function modifierFor(w) {
   return MODIFIERS[(Math.random() * MODIFIERS.length) | 0];
 }
 
+/* ---------------------------------------------------------------
+   Druckgedächtnis. Die Einfallsrichtungen lagen bisher gleichmäßig auf
+   dem Kreis und wurden nur zufällig gedreht — deshalb war der
+   symmetrische Igel der beste Aufbau, und deshalb sah jede Partie ab
+   Welle 10 gleich aus. Jetzt merkt sich das Feld je Sektor, wie weit
+   die letzte Welle gekommen ist, und zieht die nächste dorthin.
+
+   Die acht Sektoren sind dieselben wie die Himmelsrichtungen in der
+   Vorschau (compass()), sonst wäre die Ankündigung nicht lesbar.
+
+   `min`/`max` sind kein Feinschliff, sondern der Kern der Sache: Ohne
+   Deckel schlägt die Rückmeldung nach zwei, drei Wellen immer auf
+   dieselbe Seite, und die Partie endet an einer Ecke statt an einer
+   Entscheidung. Mit Deckel bleibt jede Richtung möglich — die schwache
+   nur wahrscheinlicher.
+---------------------------------------------------------------- */
+const DRUCK = {
+  sektoren: 8,
+  tiefe: 12,        // Zellen: erst innerhalb dieses Radius zählt Annäherung
+  glaettung: 0.55,  // wie stark die letzte Welle das Gedächtnis überschreibt
+  spanne: 1.5,      // wie stark Druckunterschiede die Gewichte spreizen
+  min: 0.5,         // kein Sektor verstummt ganz …
+  max: 2.0,         // … und keiner bekommt alles
+  kernSchaden: 0.01,// Zuschlag je Punkt Kernschaden aus dem Sektor
+  verlust: 0.3,     // Zuschlag je verlorenem Bau in dem Sektor
+  zeigen: 1.15,     // so weit muss ein Sektor über dem Schnitt liegen …
+  vorsprung: 0.25   // … und so weit vor dem zweiten, damit die Bilanz ihn nennt
+};
+
 // Gegner-HP wächst mit der Wellennummer
 // Bis Welle 20 die eingespielte Kurve; danach ein zweiter Term, weil ab dort
 // voll ausgebaute Türme mit Sonderfähigkeiten stehen.

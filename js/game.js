@@ -130,6 +130,11 @@ const game = {
   buildings: new Map(),
   enemies: [], projectiles: [], particles: [], beams: [],
   spawnQueue: [], incoming: [],
+  // Druckgedächtnis: je Sektor, wie weit die Wellen zuletzt gekommen sind
+  druck: new Array(DRUCK.sektoren).fill(0),
+  druckNaehe: new Array(DRUCK.sektoren).fill(0),  // tiefster Einbruch dieser Welle
+  druckExtra: new Array(DRUCK.sektoren).fill(0),  // was diese Welle dort gekostet hat
+  druckTakt: 0,
   tool: null, selected: null, inView: true,
   buffs: freshBuffs(), takenCards: new Map(),
   draft: null, plannedWave: null, turretsDirty: true,
@@ -625,6 +630,7 @@ const game = {
       }
       this.buildings.delete(key(b.x, b.y));
       this.stats.verluste++;
+      this.druckZuschlag(b.px, b.py, DRUCK.verlust);
       this.turretsDirty = true;
       if (this.selected === b) this.select(null);
       this.recomputeSupply();
@@ -654,6 +660,8 @@ const game = {
     }
     this.coreHp -= dmg;
     this.stats.kernSchaden += dmg;
+    // Was am Kern ankam, zählt auf die Seite, aus der es kam
+    if (enemy) this.druckZuschlag(enemy.x, enemy.y, dmg * DRUCK.kernSchaden);
     SFX.coreHit();
     if (this.time - this.alarm.last > 2) this.alarm.since = this.time;   // neue Serie
     this.alarm.last = this.time;
@@ -682,6 +690,69 @@ const game = {
     }
   },
 
+  /* ------------------- Druckgedächtnis -----------------------
+     Wo die letzte Welle am weitesten kam, kommt die nächste verstärkt
+     wieder. Gemessen wird während der Welle in zwei Größen: wie nah ein
+     Sektor den Kern kommen ließ — als Höchstwert, nicht als Summe, denn
+     die Aussage ist der Durchbruch und nicht die Zahl der Läufer — und
+     was er gekostet hat: Kernschaden und verlorene Bauten, die addieren
+     sich. Der Rest ist Buchhaltung. */
+  druckSektor(px, py) {
+    return sektorVon(Math.atan2(py - CORE_PX.y, px - CORE_PX.x));
+  },
+  // Ereignis an einer Stelle: Kernschaden, verlorener Bau
+  druckZuschlag(px, py, wert) {
+    if (this.phase !== 'combat' || !(wert > 0)) return;
+    this.druckExtra[this.druckSektor(px, py)] += wert;
+  },
+  // Während der Welle: je Sektor die engste Annäherung an den Kern
+  druckAbtasten(dt) {
+    if ((this.druckTakt -= dt) > 0) return;
+    this.druckTakt = 0.2;                     // fünf Proben je Sekunde reichen
+    const tiefe = DRUCK.tiefe * GRID.cell;
+    for (const e of this.enemies) {
+      const d = dist(e.x, e.y, CORE_PX.x, CORE_PX.y);
+      if (d >= tiefe) continue;               // wer draußen bleibt, macht keinen Druck
+      const s = this.druckSektor(e.x, e.y);
+      const wert = 1 - d / tiefe;
+      if (wert > this.druckNaehe[s]) this.druckNaehe[s] = wert;
+    }
+  },
+  // Nach der Welle: ins Gedächtnis falten, Wellenwerte zurücksetzen
+  druckMerken() {
+    for (let s = 0; s < DRUCK.sektoren; s++) {
+      const roh = this.druckNaehe[s] + this.druckExtra[s];
+      this.druck[s] = this.druck[s] * (1 - DRUCK.glaettung) + roh * DRUCK.glaettung;
+    }
+    this.druckFrisch();
+  },
+  druckFrisch() {
+    this.druckNaehe.fill(0);
+    this.druckExtra.fill(0);
+    this.druckTakt = 0;
+  },
+  /* Gewichte für die nächste Wellenplanung. Gemessen wird gegen den
+     eigenen Mittelwert: Eine Welle, die überall gleich weit kam, sagt
+     nichts über eine Schwachstelle — und verschiebt deshalb nichts. */
+  druckGewichte() {
+    let summe = 0;
+    for (const v of this.druck) summe += v;
+    const mittel = summe / DRUCK.sektoren;
+    return this.druck.map(v => clamp(1 + (v - mittel) * DRUCK.spanne, DRUCK.min, DRUCK.max));
+  },
+  /* Wohin es zieht — oder null, solange keine Seite heraussticht. Genannt
+     wird nur, was beides erfüllt: über dem Schnitt und deutlich vor dem
+     zweiten Sektor. Zwei fast gleich starke Seiten zu einer zu erklären
+     wäre eine Auskunft, die nicht stimmt — und eine Zeile, die in jeder
+     Welle steht, liest nach der dritten niemand mehr. */
+  druckSchwerpunkt() {
+    const g = this.druckGewichte()
+      .map((v, s) => ({ v, s }))
+      .sort((a, b) => b.v - a.v);
+    if (g[0].v < DRUCK.zeigen || g[0].v - g[1].v < DRUCK.vorsprung) return null;
+    return compass(sektorMitte(g[0].s));
+  },
+
   /* ------------------------ Wellen -------------------------- */
   planWave(n) {
     const mod = modifierFor(n);
@@ -689,14 +760,24 @@ const game = {
     const pool = Object.keys(UNLOCK).filter(t => n >= UNLOCK[t] && !ENEMIES[t].boss);
     const groups = clamp(1 + Math.floor(n / 3), 1, 5);
     const angles = [];
-    const base = rand(0, Math.PI * 2);
+    /* Der Ring der Einfallsrichtungen bleibt gleichmäßig — das
+       Druckgedächtnis verschiebt nur, wo er zu liegen kommt: Die erste
+       Richtung fällt in einen gewichtet gezogenen Sektor, die Streuung
+       darin ist eine halbe Sektorbreite. Ohne Gedächtnis sind alle
+       Gewichte 1, und damit ist die Drehung wieder gleichverteilt —
+       genau wie vorher. */
+    const gew = this.druckGewichte();
+    const base = sektorMitte(pickGewichtet(gew)) +
+                 rand(-1, 1) * Math.PI / DRUCK.sektoren;
     for (let i = 0; i < groups; i++)
       angles.push(base + i / groups * Math.PI * 2 + rand(-.35, .35));
+    // Und wie viel Masse jede dieser Richtungen abbekommt
+    const gruppen = angles.map(a => gew[sektorVon(a)]);
 
     const queue = [];
     const boss = bossFor(n);
     if (boss) {
-      const a = pick(angles);
+      const a = angles[pickGewichtet(gruppen)];   // auch der Boss sucht die schwache Seite
       queue.push({ type: boss.type, t: 2.2, angle: a, boss: true });
       budget -= ENEMIES[boss.type].budget;
       if (boss.escort) {
@@ -709,7 +790,7 @@ const game = {
       }
     }
     let t = 0;
-    let gi = 0;
+    let gi = pickGewichtet(gruppen);
     const gezogen = {};
     while (budget > 0 && queue.length < 400) {
       const frei = pool.filter(x => (gezogen[x] || 0) < (TYPE_CAP[x] || 999));
@@ -719,8 +800,9 @@ const game = {
       if (d.budget > budget + 1) break;
       gezogen[type] = (gezogen[type] || 0) + 1;
       budget -= d.budget;
-      const a = angles[gi % angles.length] + rand(-.12, .12);
-      gi += Math.random() < 0.28 ? 1 : 0;
+      const a = angles[gi] + rand(-.12, .12);
+      // Gegner kommen in Pulks: erst nach ein paar Stück wechselt die Richtung
+      if (Math.random() < 0.28) gi = pickGewichtet(gruppen);
       queue.push({ type, t, angle: a });
       t += spawnGap(n);
     }
@@ -766,6 +848,7 @@ const game = {
       b.schaden = 0;                            // Schadensbeitrag dieser Welle
     }
     this.stats = frischeStats();
+    this.druckFrisch();
     const sturm = this.modActive();
     SFX.waveStart();
     if (sturm) SFX.storm();
@@ -878,6 +961,9 @@ const game = {
         this.matter += praemie + this.buffs.matterPerWave;
         if (this.buffs.coreRepair)
           this.coreHp = Math.min(this.coreHpMax, this.coreHp + this.buffs.coreRepair);
+        // Erst das Gedächtnis falten: Bilanz und nächste Welle sollen
+        // beide schon wissen, wohin es zieht.
+        this.druckMerken();
         this.bilanz = this.bilanzZiehen(praemie);
         SFX.waveClear();
         toast('Welle ' + this.wave + ' abgewehrt  +' + praemie + ' Materie');
@@ -893,6 +979,7 @@ const game = {
       this.pendingSpawns.length = 0;
     }
     this.enemies = this.enemies.filter(e => !e.dead);
+    this.druckAbtasten(dt);
 
     // Solange ein Wächter steht, kommt beim Boss kaum Schaden an
     if (this.boss && !this.boss.dead)
@@ -1083,6 +1170,7 @@ const game = {
       materie: Math.round(s.materie) + (praemie || 0),
       leer: Math.round(s.leer * 10) / 10,
       drossel: s.zeit > 0 ? s.drossel / s.zeit : 0,
+      druck: this.druckSchwerpunkt(),
       bester: bester ? { name: bester.def.name, level: bester.level,
                          schaden: Math.round(bester.schaden) } : null
     };
@@ -1108,6 +1196,7 @@ const game = {
       coreHp: Math.round(this.coreHp), coreHpMax: this.coreHpMax,
       buildTimer: Math.round(this.buildTimer * 10) / 10,
       coreMode: this.coreMode,
+      druck: this.druck.map(v => Math.round(v * 1000) / 1000),
       buffs: this.buffs,
       karten: [...this.takenCards],
       bauten: [...this.buildings.values()].map(b => ({
@@ -1140,6 +1229,13 @@ const game = {
       this.coreMode = CORE_MODES[s.coreMode] ? s.coreMode : 0;
       this.coreModeNext = this.coreMode;
       this.modeTimer = 0;
+      /* Das Druckgedächtnis gehört zur Partie — sonst stünde die
+         fortgesetzte Runde plötzlich wieder gleichverteilt da. Ein Stand
+         aus einer älteren Fassung hat keins und fängt bei null an. */
+      this.druck = Array.isArray(s.druck) && s.druck.length === DRUCK.sektoren
+        ? s.druck.map(v => (typeof v === 'number' && isFinite(v) ? v : 0))
+        : new Array(DRUCK.sektoren).fill(0);
+      this.druckFrisch();
       this.phase = 'build';
       this.buildTimer = s.buildTimer > 0 ? s.buildTimer : BUILD_TIME;
 
@@ -2216,6 +2312,8 @@ function bilanzHtml(b) {
   if (b.drossel > 0.02) zeig(Math.round(b.drossel * 100) + ' %', 'Netzdrossel', 'schlecht');
   if (b.bester)
     zeig(b.bester.schaden, 'Schaden · ' + b.bester.name + ' Stufe ' + b.bester.level);
+  // Wohin die nächste Welle gezogen wird — die einzige Zeile, die nach vorn schaut
+  if (b.druck) zeig(b.druck, 'Druck der nächsten Welle', 'schlecht');
   return teile.join('');
 }
 

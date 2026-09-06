@@ -9,7 +9,11 @@
 
    Schalter: noflow (Leitungen ohne Grenze), nomod (keine Sturmwellen),
              nopower (keine Kernbefehle), noakku (keine Akkus bauen),
-             nomode (Kernmodus nie wechseln), log (Verlauf ausgeben).
+             nomode (Kernmodus nie wechseln), nodruck (Wellen kommen
+             gleichverteilt statt dorthin, wo es zuletzt eng wurde),
+             schief (der Bot lässt den Norden frei — so wird sichtbar, was
+             das Druckgedächtnis mit einer Schwachstelle macht),
+             log (Verlauf ausgeben).
 
    Der Bot spielt bewusst schlicht: Er hält jede Himmelsrichtung mit
    Türmen besetzt, baut Reaktoren, bevor der Verbrauch die Erzeugung zu
@@ -52,6 +56,9 @@ function lauf(maxWelle, opt = {}) {
     g.recomputeSupply();
   }
   if (opt.ohneMods) h.setModChance(0);
+  // Spanne 0 heißt: Alle Sektoren behalten Gewicht 1, das Gedächtnis wird
+  // weiter geführt, wirkt aber nicht. Genau der Vergleich, den man will.
+  if (opt.ohneDruck) h.DRUCK.spanne = 0;
 
   const zelle = GRID.cell;
   const kosten = t => g.costOf(t);
@@ -100,6 +107,10 @@ function lauf(maxWelle, opt = {}) {
       const proSektor = [0, 0, 0, 0, 0, 0, 0, 0];
       for (const b of g.buildings.values())
         if (b.def.turret) proSektor[sektor({ a: Math.atan2(b.y - C.cy, b.x - C.cx) })]++;
+      /* `schief`: Der Norden bleibt absichtlich unbesetzt. Nur zum Messen —
+         der sonst rundum gleichmäßige Bot hat gar keine schwache Seite, an
+         der sich das Druckgedächtnis überhaupt zeigen könnte. */
+      if (opt.schief) proSektor[6] = 1e6;
       const duenn = proSektor.indexOf(Math.min(...proSektor));
       const typ = turmTypen[g.wave < 2 ? 0 : (g.wave + duenn) % 3];
       if (g.matter >= kosten(typ)) {
@@ -183,6 +194,8 @@ if (require.main === module) {
     ohneMods: schalter.includes('nomod'),
     ohneAkkus: schalter.includes('noakku'),
     ohneModi: schalter.includes('nomode'),
+    ohneDruck: schalter.includes('nodruck'),
+    schief: schalter.includes('schief'),
     log: schalter.includes('log')
   };
 

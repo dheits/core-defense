@@ -680,6 +680,140 @@ beschreibe('Der Wellenstart setzt das Zählwerk zurück', () => {
   gleich('Schaden am Turm zurückgesetzt', t.schaden, 0);
 });
 
+/* ------------------ Druckgedächtnis ----------------------- */
+beschreibe('Ohne Geschichte zieht es an keine Seite', () => {
+  const h = neu(), g = h.game;
+  const gew = g.druckGewichte();
+  gleich('acht Sektoren, wie die Himmelsrichtungen', gew.length, h.DRUCK.sektoren);
+  stimmt('alle Gewichte stehen auf 1', gew.every(v => Math.abs(v - 1) < 1e-9));
+  gleich('und die Bilanz nennt keine Richtung', g.druckSchwerpunkt(), null);
+
+  // Auch zwei gleich starke Seiten sind keine Auskunft wert
+  g.druck = [1.2, 0, 1.2, 0, 0, 0, 0, 0];
+  gleich('bei zwei gleich starken Seiten schweigt sie ebenfalls', g.druckSchwerpunkt(), null);
+  g.druck = [1.2, 0, 0.4, 0, 0, 0, 0, 0];
+  gleich('sobald eine vorn liegt, nennt sie diese', g.druckSchwerpunkt(), 'Ost');
+});
+
+beschreibe('Gemessen wird die engste Annäherung, nicht die Zahl der Gegner', () => {
+  const h = neu(), g = h.game;
+  const zelle = h.GRID.cell;
+  const mx = (h.CORE.cx + .5) * zelle, my = (h.CORE.cy + .5) * zelle;
+  g.phase = 'combat'; g.spawnQueue = [{ at: 1e9 }];
+  g.enemies = [
+    ziel(h, mx + zelle * 2, my),                        // dicht im Osten
+    ziel(h, mx + zelle * 6, my),                        // weiter draußen, gleiche Seite
+    ziel(h, mx - zelle * (h.DRUCK.tiefe + 3), my)       // im Westen, außer Reichweite
+  ];
+  g.update(1 / 60);
+
+  gleich('der tiefste Einbruch zählt', g.druckNaehe[0], 1 - 2 / h.DRUCK.tiefe, 1e-9);
+  gleich('wer draußen bleibt, macht keinen Druck', g.druckNaehe[4], 0);
+
+  g.druckMerken();
+  const gew = g.druckGewichte();
+  stimmt('Ost bekommt mehr Gewicht als West', gew[0] > gew[4]);
+  gleich('die Bilanz nennt die Richtung', g.druckSchwerpunkt(), 'Ost');
+  stimmt('die Wellenwerte sind zurückgesetzt',
+         g.druckNaehe.every(v => v === 0) && g.druckExtra.every(v => v === 0));
+});
+
+beschreibe('Kernschaden und verlorene Bauten zählen auf ihre Seite', () => {
+  const h = neu(), g = h.game;
+  const zelle = h.GRID.cell;
+  g.phase = 'combat';
+  // Ein Gegner südlich des Kerns trifft
+  g.damageCore(100, { x: (h.CORE.cx + .5) * zelle, y: (h.CORE.cy + 6.5) * zelle });
+  gleich('Kernschaden bucht nach Süden', g.druckExtra[2], 100 * h.DRUCK.kernSchaden, 1e-9);
+
+  const wand = h.bau('wall', 12, 12);          // westlich vom Kern
+  g.damageBuilding(wand, wand.maxHp + 1);
+  stimmt('der Bau ist gefallen', !g.buildings.has('12,12'));
+  gleich('der Verlust bucht nach Westen', g.druckExtra[4], h.DRUCK.verlust, 1e-9);
+  gleich('und nirgends sonst', g.druckExtra[0], 0);
+});
+
+beschreibe('Die Planung zieht die nächste Welle in den Drucksektor', () => {
+  const h = neu(), g = h.game;
+  g.druck = [3, 0, 0, 0, 0, 0, 0, 0];          // alles kam zuletzt aus Osten
+  let ost = 0, west = 0, gesamt = 0;
+  for (let i = 0; i < 300; i++)
+    for (const e of g.planWave(6).queue) {
+      gesamt++;
+      const s = h.sektorVon(e.angle);
+      if (s === 0) ost++;
+      if (s === 4) west++;
+    }
+  const anteilOst = ost / gesamt, anteilWest = west / gesamt;
+  const gleichanteil = 1 / h.DRUCK.sektoren;
+  stimmt('Ost bekommt klar mehr als den Gleichanteil (' +
+         Math.round(anteilOst * 100) + ' %)', anteilOst > gleichanteil * 1.6);
+  stimmt('die ruhige Gegenseite bekommt weniger (' +
+         Math.round(anteilWest * 100) + ' %)', anteilWest < gleichanteil);
+  stimmt('aber sie kommt weiter vor', west > 0);
+});
+
+beschreibe('Der Deckel hält die Rückmeldung im Rahmen', () => {
+  const h = neu(), g = h.game;
+  g.druck = [50, 0, 0, 0, 0, 0, 0, 0];         // zehn Wellen lang nur eine Seite
+  const gew = g.druckGewichte();
+  gleich('kein Sektor über max', gew[0], h.DRUCK.max);
+  gleich('und keiner unter min', gew[4], h.DRUCK.min);
+  gleich('mehr als das Vierfache ist nicht drin', gew[0] / gew[4], h.DRUCK.max / h.DRUCK.min);
+
+  let mitWest = 0;
+  for (let i = 0; i < 200; i++)
+    if (g.planWave(6).queue.some(e => h.sektorVon(e.angle) === 4)) mitWest++;
+  stimmt('auch bei Dauerdruck kommt noch etwas aus der Gegenrichtung (' +
+         mitWest + '/200)', mitWest > 10);
+});
+
+beschreibe('Ein einmaliger Einbruch klingt wieder ab', () => {
+  const h = neu(), g = h.game;
+  g.druckNaehe[2] = 1;                         // der Süden war einmal offen
+  g.druckMerken();
+  const nach = g.druck[2];
+  // Gemischt, nicht überschrieben: Eine einzelne Welle darf das Gedächtnis
+  // weder ganz bestimmen noch wirkungslos verpuffen.
+  stimmt('eine Welle schlägt durch, aber nicht voll', nach > 0.2 && nach < 0.9);
+  g.druckMerken();                             // eine ruhige Welle
+  stimmt('schon eine ruhige Welle nimmt Druck weg', g.druck[2] < nach * 0.6);
+  g.druckMerken();
+  stimmt('nach zwei ruhigen Wellen ist kaum noch Druck da', g.druck[2] < nach * 0.3);
+  gleich('und die Bilanz nennt keine Richtung mehr', g.druckSchwerpunkt(), null);
+});
+
+beschreibe('Jede Welle fängt ohne Altlasten an', () => {
+  const h = neu(), g = h.game;
+  g.druckNaehe[3] = 0.9; g.druckExtra[3] = 2;      // Reste einer abgebrochenen Welle
+  const vorher = g.druck.slice();
+  g.startWave();
+  stimmt('die Wellenwerte stehen auf null',
+         g.druckNaehe.every(v => v === 0) && g.druckExtra.every(v => v === 0));
+  stimmt('das Gedächtnis selbst bleibt unberührt',
+         g.druck.every((v, i) => v === vorher[i]));
+});
+
+beschreibe('Das Druckgedächtnis gehört zum Spielstand', () => {
+  const h = neu(), g = h.game;
+  g.druck = [0, 0, 1.4, 0, 0, 0, 0, 0];
+  gleich('sichern gelingt', g.merken(), true);
+
+  const g2 = weiter().game;                    // wie ein Neuladen der Seite
+  gleich('der Süden kommt zurück', g2.druck[2], 1.4, 1e-3);
+  gleich('der Rest steht auf null', g2.druck[0], 0);
+
+  // Ein Stand aus einer Fassung vor dieser Änderung hat kein Gedächtnis
+  const h3 = weiter();
+  const roh = JSON.parse(h3.speicher.getItem(h3.SAVE_KEY));
+  delete roh.druck;
+  h3.speicher.setItem(h3.SAVE_KEY, JSON.stringify(roh));
+  const g4 = weiter().game;
+  gleich('er lädt trotzdem', g4.wave, g.wave);
+  stimmt('und fängt gleichverteilt an',
+         g4.druck.length === h.DRUCK.sektoren && g4.druck.every(v => v === 0));
+});
+
 /* --------------------- Spielstand ------------------------ */
 beschreibe('Spielstand überlebt das Neuladen', () => {
   const h = neu(), g = h.game;
@@ -856,6 +990,16 @@ beschreibe('Balance-Anker (bei gewollter Abstimmung hier nachziehen)', () => {
   gleich('Wellenbudget Welle 10', h.waveBudget(10), 74.4, 1e-2);
   gleich('Wellenbudget Welle 20', h.waveBudget(20), 238.4, 1e-2);
   gleich('Wellenbudget Welle 30', h.waveBudget(30), 516.8, 1e-2);
+
+  // Druckgedächtnis: Diese vier Zahlen entscheiden, wie hart die
+  // Rückmeldung ausfällt. min/max sind der Deckel — wer sie weitet,
+  // riskiert Partien, die immer an derselben Ecke enden.
+  gleich('Druck: Glättung', h.DRUCK.glaettung, 0.55);
+  gleich('Druck: Spanne', h.DRUCK.spanne, 1.5);
+  gleich('Druck: Untergrenze', h.DRUCK.min, 0.5);
+  gleich('Druck: Obergrenze', h.DRUCK.max, 2);
+  gleich('Druck: Vorsprung für die Bilanzzeile', h.DRUCK.vorsprung, 0.25);
+  gleich('Druck: Tiefe in Zellen', h.DRUCK.tiefe, 12);
 
   gleich('Karten im Pool', h.CARDS.length, 57);
   gleich('Gegnertypen', Object.keys(h.ENEMIES).length, 13);

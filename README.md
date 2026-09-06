@@ -244,6 +244,58 @@ Jeder Sturm zielt auf eine Einseitigkeit: *Kältefest* trifft den reinen Frost-A
 *Störnebel* den auf Reichweite gebauten, *EMP-Front* den ohne Pufferreserve. Die seltene
 Karte *Abschirmung* nimmt Störnebel und EMP-Front dauerhaft die Wirkung.
 
+## Druckgedächtnis
+
+Die Einfallsrichtungen lagen früher gleichmäßig auf dem Kreis und wurden nur zufällig
+gedreht. Das hatte eine unangenehme Folge: Der beste Aufbau war der gleichmäßige Igel,
+und ab Welle 10 sah jede Partie gleich aus. Jetzt merkt sich das Feld, wo es eng wurde.
+
+Gemessen wird während jeder Welle in acht Sektoren — denselben, die die Vorschau als
+Himmelsrichtungen nennt:
+
+| Größe | Wie sie zählt |
+|---|---|
+| **Engste Annäherung** | 0 bis 1, gemessen ab 12 Zellen Abstand zum Kern. Wer weiter draußen stirbt, macht keinen Druck. |
+| **Kernschaden** | 0,01 je Punkt, gebucht auf die Seite, aus der der Treffer kam |
+| **Verlorene Bauten** | 0,3 je Bau, gebucht auf seine Position |
+
+Die Annäherung zählt als **Höchstwert**, nicht als Summe: Die Aussage ist der Durchbruch,
+nicht die Zahl der Läufer. Kernschaden und Verluste addieren sich dagegen — sie sagen,
+was der Durchbruch gekostet hat.
+
+Nach der Welle wird das Ergebnis zu 55 % ins Gedächtnis gemischt, der Rest bleibt vom
+Vorherigen stehen. Ein einmaliger Einbruch ist damit nach zwei ruhigen Wellen fast
+vergessen, eine dauerhaft offene Flanke nicht.
+
+Aus dem Gedächtnis werden Gewichte je Sektor, gemessen **gegen den eigenen Mittelwert**:
+Eine Welle, die überall gleich weit kam, sagt nichts über eine Schwachstelle und
+verschiebt deshalb auch nichts. Ohne Geschichte steht jeder Sektor auf 1, und die Drehung
+des Rings ist wieder gleichverteilt wie vorher. Ganz dieselbe Planung ist es trotzdem
+nicht: Welche Richtung den nächsten Pulk bekommt, wird jetzt gezogen statt reihum
+vergeben — auch bei lauter Einsen. Das allein verteilt die Gegner ungleichmäßiger auf die
+Richtungen als früher.
+
+Die Gewichte wirken an drei Stellen:
+
+- **Wo der Ring liegt.** Die Zahl der Einfallsrichtungen bleibt gleich, und sie bleiben
+  gleichmäßig über den Kreis verteilt — verschoben wird nur, wo die erste zu liegen kommt.
+- **Wie viel Masse jede Richtung bekommt.** Gegner kommen in Pulks; wohin der nächste
+  Pulk geht, wird gewichtet gezogen.
+- **Wo der Boss erscheint.** Auch er sucht die schwache Seite.
+
+Der Deckel ist dabei der wichtigste Teil: Kein Sektor kommt über **2,0**, keiner unter
+**0,5**. Ohne ihn schlägt die Rückmeldung nach zwei, drei Wellen immer auf dieselbe Seite
+und die Partie endet an einer Ecke statt an einer Entscheidung. Mit ihm bleibt jede
+Richtung möglich, die schwache nur wahrscheinlicher: Bei Dauerdruck aus einer Richtung
+bekommt sie rund ein Drittel aller Gegner statt der gleichverteilten 12,5 % — und in
+jeder vierten Welle kommt trotzdem etwas aus der Gegenrichtung.
+
+Eine eigene Anzeige braucht es dafür nicht. Die Bilanz nach der Welle nennt die Richtung,
+in die es zieht, und danach zeigen Vorschau und Randpfeile die geplante Welle ohnehin.
+Genannt wird sie nur, wenn eine Seite wirklich heraussticht: über dem Schnitt **und**
+mindestens 0,25 Gewicht vor der zweitstärksten. Zwei fast gleich starke Seiten zu einer zu
+erklären wäre eine Auskunft, die nicht stimmt.
+
 ## Darstellung
 
 Alles ist Canvas-Zeichnung, keine Bilddateien. Jeder Gegnertyp hat eine eigene Silhouette
@@ -435,6 +487,7 @@ im selben Fenster, in dem man ohnehin einen Moment innehält:
 | **Puffer leer** | Sekunden, in denen ein Turm feuern wollte und nicht konnte |
 | **Netzdrossel** | mittlere Drosselung durch die Leitungslast |
 | **bester Turm** | welcher Bau den Schaden tatsächlich gemacht hat |
+| **Druck der nächsten Welle** | wohin das Druckgedächtnis zieht — die einzige Zeile, die nach vorn schaut |
 
 Angezeigt wird nur, was passiert ist: Wer keinen Bau verlor, liest dazu auch keine Null.
 Die ersten vier Zahlen stehen immer, der Rest erscheint, wenn er etwas zu sagen hat.
@@ -478,6 +531,7 @@ und ein simulierter Spieler, der damit Partien spielt. Beides braucht nichts au�
 node tools/bot.js 100 40                 # 100 Partien bis Welle 40
 node tools/bot.js 60 40 noflow,nomod     # dieselbe Messung ohne Leitungslast und Sturmwellen
 node tools/bot.js 60 40 noakku          # ohne Akkus — der Bot lebt vom Kernpuffer allein
+node tools/bot.js 200 40 nodruck        # Wellen gleichverteilt statt ins Druckgedächtnis
 node tools/bot.js 1 40 log               # eine Partie, Verlauf Welle für Welle
 ```
 
@@ -498,12 +552,12 @@ Drei Dinge sind beim Auswerten wichtig, sonst führt die Zahl in die Irre:
   Überladung und stellt Reaktoren nicht planvoll an überlastete Äste. Gerade bei der
   Leitungslast — einer Planungsaufgabe — unterschätzt er einen Menschen deutlich.
 
-Stand der Messung (Bot in dieser Fassung, je 200 Läufe, Limit Welle 40):
+Stand der Messung (Bot in dieser Fassung, Limit Welle 40):
 
-| Konfiguration | Median | Schnitt | am Limit | Ende bei Welle 10 |
+| Konfiguration | Läufe | Median | Schnitt | am Limit |
 |---|---|---|---|---|
-| heutiger Stand | 19 | 19,7 | 23 | 9 |
-| ohne Akkubau (`noakku`) | 10 | 13,8 | 7 | — |
+| heutiger Stand | 600 | 19 | 18,8 | 6,8 % |
+| ohne Akkubau (`noakku`) | 200 | 10 | 13,8 | 3,5 % |
 
 Die Trennung von Nachschub und Speicher kostet den Bot rund zwei Wellen im Median (gemessen
 vor der Welle-10-Abstimmung: 12 gegen 10) und halb so viele Läufe am Limit. Spürbar, aber
@@ -518,6 +572,45 @@ Beim Kernmodus ist deshalb weiter offen, was er bringt: Zwischen fester Einspeis
 der Regel „vor dem Boss auf Schild" war kein Unterschied zu sehen, der die Streuung
 überstanden hätte.
 
+### Was das Druckgedächtnis kostet
+
+Die Änderung wurde in zwei Schritten gegen den vorherigen Stand gemessen, je 600 Läufe:
+
+| Konfiguration | Median | Schnitt | am Limit |
+|---|---|---|---|
+| Stand davor (Richtungen reihum) | 20 | 20,0 | 12,0 % |
+| neu, aber ohne Gewichtung (`nodruck`) | 19 | 19,4 | 9,3 % |
+| neu, mit Druckgedächtnis | 19 | 18,8 | 6,8 % |
+
+Zwei Dinge stehen da, und beide sind klein. Der erste Schritt ist gar nicht das Gedächtnis,
+sondern eine Nebenwirkung: Die Richtung des nächsten Pulks wird jetzt **gezogen** statt
+reihum vergeben, und schon das verteilt die Gegner ungleichmäßiger. Der zweite Schritt ist
+die Gewichtung selbst. Zusammen rund **eine Welle im Schnitt** und knapp die Hälfte der
+Läufe, die vorher das Limit erreichten.
+
+Statistisch ist jeder einzelne dieser Schritte für sich **nicht** über der Streuung: Die
+Läufe am Limit unterscheiden sich um etwa anderthalb Standardabweichungen. Belastbar ist
+nur, dass beide Messungen in dieselbe Richtung zeigen — und dass die Größenordnung eine
+halbe bis eine Welle ist und nicht fünf.
+
+Interessanter ist, was **nicht** herauskam. Die Erwartung war, dass das Gedächtnis vor
+allem einen einseitigen Aufbau bestraft. Dafür gibt es den Schalter `schief`: Der Bot
+lässt den Norden absichtlich unbesetzt und spielt sonst wie immer (je 300 Läufe):
+
+| Konfiguration | Median | Schnitt | am Limit |
+|---|---|---|---|
+| schief, ohne Gewichtung | 19 | 17,9 | 6,7 % |
+| schief, mit Druckgedächtnis | 18 | 17,2 | 4,3 % |
+
+Der Abstand ist derselbe wie beim gleichmäßigen Aufbau — die Lücke wird also *nicht*
+härter bestraft als das gleichmäßige Feld. Entweder deckt die Reichweite der Nachbartürme
+das Loch, oder es entscheidet ohnehin die Gesamtfeuerkraft und nicht ihre Verteilung.
+
+Vor allem aber ist der Bot hier ein besonders schlechter Stellvertreter: Er **reagiert
+nicht**. Der ganze Zweck des Gedächtnisses ist, dass man die genannte Seite in der
+nächsten Bauphase verstärkt — und genau das kann der Bot nicht. Er misst deshalb immer nur
+den Preis, nie den Gewinn.
+
 ### Die Wand bei Welle 10
 
 Bis vor Kurzem endete dort gut jeder vierte Lauf (57 von 200). Die Ursache lag zur Hälfte
@@ -530,10 +623,16 @@ Die Kurzfassung in Zahlen:
 | nur mit der Schild-Untergrenze | 18 | 14 | 29 |
 | dazu Titan 880 TP statt 1100, 55 Schaden statt 70 | 19 | 23 | 9 |
 
-Die Verteilung ist um Welle 10 herum jetzt glatt. Der erste sichtbare Prüfstein ist damit
-**Welle 20** — der Moloch, an dem 18 von 200 Läufen enden. Das Spiel ist insgesamt eine
-Spur leichter geworden; ein Teil davon war allerdings kein Schwierigkeitsgrad, sondern
-eine Falle im Schildmodus.
+Die Wand ist damit weg. Vollständig glatt ist die Verteilung um Welle 10 aber nicht, das
+zeigte erst die größere Stichprobe zum Druckgedächtnis: In 600 Läufen des heutigen Standes
+enden dort 6,0 %, auf den Nachbarwellen 9 und 11 dagegen 2,2 % und 1,3 %. Der Titan ist
+eine Stufe geblieben, nur keine Mauer mehr.
+
+Deutlich größer ist der **Moloch auf Welle 20**: Dort enden 13,5 % aller Läufe, gegen 3,8 %
+eine Welle davor und 1,0 % eine danach. Das ist der nächste Kandidat, wenn wieder
+abgestimmt wird — und es lag nicht am Druckgedächtnis, der Stand davor zeigt denselben
+Ausschlag. Eine frühere Notiz hier nannte für Welle 20 nur 9 %; das war ein Fenster von
+200 Läufen.
 
 ### Selbsttest
 
@@ -545,8 +644,8 @@ node tools/pruefen.js
 
 Sie läuft in einer Zehntelsekunde und deckt Leitungslast, die drei Kernbefehle, alle
 sieben Sturmwellen, die getrennten Akkus, die drei Kernmodi samt Anlauf und Schild,
-Spielstand und Bestenliste, Reparatur und Abbau sowie die Sonderfähigkeiten der fünften
-Stufe ab. Der Prüfstand hat dafür einen flüchtigen `localStorage`, der ein erneutes Laden
+Spielstand und Bestenliste, das Druckgedächtnis, Reparatur und Abbau sowie die
+Sonderfähigkeiten der fünften Stufe ab. Der Prüfstand hat dafür einen flüchtigen `localStorage`, der ein erneutes Laden
 des Spiels im selben Prozess übersteht — nur so lässt sich Sichern gegen Laden prüfen.
 Die Prüfungen sind in zwei Sorten aufgeteilt, und der Unterschied ist wichtig:
 
@@ -562,8 +661,9 @@ Die Prüfungen sind in zwei Sorten aufgeteilt, und der Unterschied ist wichtig:
 Beides ist gegengeprüft: Vier verstellte Werte in `config.js` haben fünf Anker umgeworfen,
 zwei ausgehängte Stellen im Feuerpfad zwei Verdrahtungsprüfungen.
 
-Die Schalter `noflow`, `nomod`, `nopower`, `noakku` und `nomode` schalten Leitungslast,
-Sturmwellen, Kernbefehle, den Akkubau und den Moduswechsel des Bots ab. So lässt sich messen, was ein einzelnes System zur Schwierigkeit
+Die Schalter `noflow`, `nomod`, `nopower`, `noakku`, `nomode` und `nodruck` schalten
+Leitungslast, Sturmwellen, Kernbefehle, den Akkubau, den Moduswechsel des Bots und die
+Gewichtung des Druckgedächtnisses ab. So lässt sich messen, was ein einzelnes System zur Schwierigkeit
 beiträgt. Der Prüfstand selbst (`tools/harness.js`) ist auch für schnelle Einzelfragen
 brauchbar:
 
