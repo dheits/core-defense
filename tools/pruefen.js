@@ -1913,6 +1913,144 @@ beschreibe('Balance-Anker (bei gewollter Abstimmung hier nachziehen)', () => {
   gleich('Bosse', h.BOSSES.length, 3);
 });
 
+/* --------------------- Kartentexte -----------------------
+   Eine Karte, die etwas anderes tut, als auf ihr steht, ist der
+   unangenehmste Fehler im Spiel: Man wählt sie bewusst, bekommt etwas
+   anderes und merkt es nie. Deshalb wird hier jede der 62 Karten auf
+   eine Kopie der Grundwerte angewandt, der Unterschied ausgerechnet und
+   nachgesehen, ob die Zahl auch im Text steht.
+---------------------------------------------------------- */
+beschreibe('Jede Karte tut, was auf ihr steht', () => {
+  const h = neu(), g = h.game;
+
+  /* Karten, die ihre Zahl als Wort schreiben („doppelt", „halbe Wucht",
+     „ein Sprung mehr") oder sie bewusst nicht nennen. Für sie prüft die
+     Schleife nur, DASS sie etwas ändern — die Werte selbst stehen
+     darunter einzeln. */
+  const inWorten = new Set(['frostbrand', 'sprengbolzen', 'kettenblitz', 'dornen',
+    'kernstoss', 'inselbetrieb', 'ausschlachten', 'lastverteiler', 'schnellschaltung',
+    'ventil', 'zwitterkern', 'ueberschlag', 'minenfeld', 'werkstatt']);
+
+  /* Die Zahl allein genügt nicht: „+40 % Feuerrate" und „+40 % Reichweite"
+     unterscheiden sich in keiner Ziffer. Zu jedem Wert gehört deshalb ein
+     Wort, das im Text stehen muss — und bei den Karten für einen einzelnen
+     Turmtyp auch dessen Name. */
+  const WORT = {
+    damage: ['Schaden'], dmg: ['Schaden'], range: ['Reichweite'],
+    rate: ['Feuerrate', 'schneller'], energy: ['Energie'], capacity: ['Speicher'],
+    regen: ['Energie'], regenMul: ['Regeneration'], netRadius: ['reichen', 'Zellen'],
+    bounty: ['Materie'], buildCost: ['kosten', 'billiger'], structure: ['Struktur'],
+    repair: ['Struktur'], matterPerWave: ['Materie'], coreRepair: ['Struktur'],
+    splash: ['Wirkungsradius'], flow: ['Last'], akkuCap: ['Akkus'],
+    powerCd: ['Kernbefehle'], powerDrain: ['Kernbefehle'], pierce: ['Panzerung'],
+    vsAir: ['fliegende'], hitSlow: ['bremst'], coreHpMax: ['Kern'],
+    repairSpeed: ['Werkdrohnen'], absorbPlus: ['Schildfelder']
+  };
+  const TYPWORT = { blaster: 'Blaster', cannon: 'Kanone', frost: 'Frost',
+                    arc: 'Lichtbogen', mine: 'Mine' };
+
+  const flach = (o, pfad = '', ziel = {}) => {
+    for (const [k, v] of Object.entries(o)) {
+      const pf = pfad ? pfad + '.' + k : k;
+      if (v && typeof v === 'object' && !Array.isArray(v)) flach(v, pf, ziel);
+      else ziel[pf] = v;
+    }
+    return ziel;
+  };
+  const grund = flach(g.buffs);          // frisches Spiel, also die Grundwerte
+  const kopie = () => JSON.parse(JSON.stringify(g.buffs));
+
+  for (const c of h.CARDS) {
+    const b = kopie();
+    // Ein Spielzustand nur so weit, wie die Karten ihn anfassen
+    const gg = { coreHpMax: g.coreHpMax, coreHp: g.coreHp, buildings: new Map() };
+    c.apply(b, gg);
+    const jetzt = flach(b);
+    const geaendert = [];
+    for (const k of Object.keys(jetzt))
+      if (jetzt[k] !== grund[k]) geaendert.push([k, grund[k], jetzt[k]]);
+    if (gg.coreHpMax !== g.coreHpMax) geaendert.push(['coreHpMax', g.coreHpMax, gg.coreHpMax]);
+    // Die Werkstatt fasst nur bestehende Bauten an, hier steht keiner
+    stimmt(c.name + ' ändert nichts', geaendert.length > 0 || c.id === 'werkstatt');
+    if (inWorten.has(c.id)) continue;
+
+    for (const [k, alt, wert] of geaendert) {
+      if (typeof alt !== 'number' || typeof wert !== 'number') continue;
+      /* Drei Lesarten derselben Änderung: als Prozentsatz vom alten Wert
+         (1,18 → 18 %), als Summand (+55) und als Prozentpunkt (0,15 → 15).
+         Eine davon muss im Text vorkommen. */
+      const kandidaten = new Set();
+      const merke = z => {
+        if (z >= 1) kandidaten.add(String(Math.round(z)));
+        kandidaten.add(String(Math.round(z * 10) / 10).replace('.', ','));
+      };
+      if (alt !== 0) merke(Math.abs(wert / alt - 1) * 100);
+      merke(Math.abs(wert - alt));
+      merke(Math.abs(wert - alt) * 100);
+      stimmt(c.name + ' — „' + c.desc + '" nennt die Änderung an ' + k +
+             ' nicht (' + alt + ' → ' + wert + ')',
+             [...kandidaten].some(z => c.desc.includes(z)));
+
+      // klein verglichen, damit auch das Wort im Kompositum zählt
+      // („Energiespeicher" für Speicher, „Leitungslast" für Last)
+      const text = c.desc.toLowerCase();
+      const teile = k.split('.');
+      const woerter = WORT[teile[teile.length - 1]];
+      if (woerter)
+        stimmt(c.name + ' — „' + c.desc + '" sagt nicht, dass es um ' + teile[teile.length - 1] +
+               ' geht (' + woerter.join(' / ') + ')',
+               woerter.some(w => text.includes(w.toLowerCase())));
+      if (teile[0] === 'type')
+        stimmt(c.name + ' — „' + c.desc + '" nennt den Turmtyp ' + teile[1] + ' nicht',
+               text.includes(TYPWORT[teile[1]].toLowerCase()));
+    }
+  }
+
+  /* Kein Buff ohne Leser: Eine Karte, die einen Wert setzt, den nirgends
+     jemand ausliest, wäre eine tote Wahl — und im Spiel nicht zu erkennen. */
+  const quellen = ['js/game.js', 'js/entities.js']
+    .map(f => require('fs').readFileSync(path.resolve(__dirname, '..', f), 'utf8')).join('\n');
+  for (const k of Object.keys(g.buffs)) {
+    if (k === 'type') continue;
+    stimmt('Buff ' + k + ' wird nirgends gelesen', new RegExp('buffs\\.' + k + '\\b').test(quellen));
+  }
+  for (const k of ['dmg', 'rate', 'range', 'energy'])
+    stimmt('Turmbuff ' + k + ' wird nirgends gelesen',
+           quellen.includes("typeBuff(b, '" + k + "')"));
+
+  // Die Karten, die ihre Zahl als Wort schreiben — hier steht sie als Zahl
+  const karte = id => h.CARDS.find(c => c.id === id);
+  const wirkung = (id, schluessel) => {
+    const b = kopie();
+    karte(id).apply(b, { coreHpMax: 0, coreHp: 0, buildings: new Map() });
+    return schluessel.split('.').reduce((o, t) => o[t], b);
+  };
+  gleich('Kettenblitz: halbe Wucht auf das zweite Ziel', wirkung('kettenblitz', 'chain'), 0.5);
+  gleich('Lastverteiler: doppelte Einspeisung', wirkung('lastverteiler', 'reactorFeed'), 2);
+  gleich('Schnellschaltung: halbe Umschaltzeit', wirkung('schnellschaltung', 'modeSwitch'), 0.5);
+  gleich('Überlastventil: Überladung kostet das Doppelte', wirkung('ventil', 'overloadCost'), 2);
+  gleich('Zwitterkern: halber Nachteil', wirkung('zwitterkern', 'modePenalty'), 0.5);
+  gleich('Inselbetrieb: halbe Rate ohne Netz', wirkung('inselbetrieb', 'unpoweredRate'), 0.5);
+  gleich('Ausschlachten: voller Preis zurück', wirkung('ausschlachten', 'refund'), 1);
+  gleich('Überschlag: ein Sprung mehr', wirkung('ueberschlag', 'arcPlus'), 1);
+  gleich('Minenfeld: zwei Minen mehr', wirkung('minenfeld', 'minenPlus'), 2);
+  gleich('Unterkühlung: bremst um 10 %', wirkung('unterkuehlung', 'hitSlow'), 0.1, 1e-9);
+
+  // Werkstatt: die einzige Karte, die bestehende Bauten anfasst
+  const turm = h.bau('blaster', 22, 12);
+  karte('werkstatt').apply(g.buffs, g);
+  gleich('Werkstatt: Stufe steigt', turm.level, 2);
+  gleich('Werkstatt: Struktur passt zur neuen Stufe', turm.hp, g.structureOf(turm));
+
+  /* Feldharmonie darf nur zweimal kommen: absorbOf deckelt bei 90 %,
+     0,7 + 2 × 0,15 liegt schon darüber. Ein drittes Mal wäre eine Wahl,
+     die nichts bewirkt. */
+  const schild = h.bau('schild', 24, 12);
+  gleich('Feldharmonie: höchstens zweimal', karte('feldharmonie').max, 2);
+  g.buffs.absorbPlus = 0.30;
+  gleich('Schildfeld: Deckel bei 90 %', g.absorbOf(schild), 0.9, 1e-9);
+});
+
 /* ---------------------- Landingpage ----------------------
    Die Seite erklärt dieselben Zahlen, die in config.js stehen — und
    nichts hielt die beiden bisher zusammen. Genau da ist der Stand
@@ -1975,6 +2113,13 @@ beschreibe('Die Landingpage nennt die Werte aus config.js', () => {
   steht('Kern: Versorgungsradius', 'R ' + komma(h.CORE.supply) + ' Zellen');
   steht('Raster', h.GRID.cols + ' × ' + h.GRID.rows + ' Zellen');
   steht('Kartenstapel', 'Aus ' + h.CARDS.length + ' Karten');
+  // Die drei Beispielkarten auf der Seite sind Abschriften echter Karten
+  for (const [, name, desc] of seite.matchAll(
+       /<div class="l-demo-card"><b>([^<]+)<\/b><span>([^<]+)<\/span><\/div>/g)) {
+    const k = h.CARDS.find(c => c.name === name);
+    stimmt('Beispielkarte „' + name + '" gibt es', !!k);
+    if (k) gleich('Beispielkarte ' + name + ': Text', desc, k.desc);
+  }
   steht('Sturmwellen: Prämie', Math.round(h.MOD_BONUS * 100) + ' % mehr Prämie');
 
   // --- Kernbefehle und Kernmodi ---

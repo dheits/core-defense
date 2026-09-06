@@ -44,8 +44,9 @@ zur Wahl, die für den Rest der Partie gelten. Der Pool hat fünf Sorten:
   stößt zurück, Türme ohne Netz feuern mit halber Rate, über 85 % Puffer feuern alle
   Türme überladen zum normalen Preis
 
-Jede Karte lässt sich höchstens viermal nehmen, einige nur einmal; seltene Karten
-erscheinen entsprechend ihrem Gewicht seltener. Beides hält Partien auseinander.
+Jede Karte lässt sich höchstens viermal nehmen, einige nur ein- oder zweimal — dort, wo
+ein weiteres Mal an einem Deckel im Code verpuffen würde; seltene Karten erscheinen
+entsprechend ihrem Gewicht seltener. Beides hält Partien auseinander.
 
 ## Steuerung
 
@@ -978,6 +979,13 @@ Die Prüfungen sind in zwei Sorten aufgeteilt, und der Unterschied ist wichtig:
   Stand festhält. Er fängt die versehentlich verschobene Zahl, die der Verdrahtungsteil
   bauartbedingt nicht sehen kann. Schlägt er fehl, ist beides eine gültige Antwort: das
   Versehen zurücknehmen — oder den Wert dort nachziehen, wenn die Änderung gewollt war.
+- **Kartentexte.** Jede der 62 Karten wird auf eine Kopie der Grundwerte angewandt, der
+  Unterschied ausgerechnet und nachgesehen, ob er im Kartentext steht — als Prozentsatz,
+  als Summand oder als Prozentpunkt. Zur Zahl gehört ein Wort: „+40 % Feuerrate" und
+  „+40 % Reichweite" unterscheiden sich in keiner Ziffer, deshalb muss zu `rate` auch
+  *Feuerrate* im Text stehen und zu `type.cannon.*` das Wort *Kanone*. Karten, die ihre
+  Zahl als Wort schreiben („doppelt so schnell"), stehen in einer kurzen Ausnahmeliste und
+  werden einzeln geprüft.
 - **Landingpage.** Ein Block liest `index.html` und vergleicht jede Zahl, die die Seite
   behauptet, mit der, die gilt: Stückliste (Taste, Materie, Struktur, Schaden), Ausbau,
   Reparatur, Abbau, Verschieben, alle elf Stufe-5-Fähigkeiten, Leitungslast, Kern,

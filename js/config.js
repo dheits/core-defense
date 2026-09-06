@@ -579,7 +579,7 @@ const CARDS = [
     apply:b => b.repair += 2 },
   { id:'lieferung',    name:'Nachschublieferung', desc:'+25 Materie nach jeder Welle',
     apply:b => b.matterPerWave += 25 },
-  { id:'kernwerft',    name:'Kernwerft',          desc:'Der Kern repariert nach jeder Welle 70 Struktur',
+  { id:'kernwerft',    name:'Kernwerft',          desc:'Der Kern setzt sich nach jeder Welle um 70 Struktur instand',
     apply:b => b.coreRepair += 70 },
 
   /* --- Blaster --- */
@@ -591,7 +591,8 @@ const CARDS = [
     apply:b => b.type.blaster.energy *= 0.6 },
 
   /* --- Kanone --- */
-  { id:'streuladung',  name:'Streuladung',        desc:'Kanonen: +45 % Wirkungsradius',
+  // splash sitzt an jeder Explosion — an der Kanone wie an der Mine
+  { id:'streuladung',  name:'Streuladung',        desc:'Kanonen und Minen: +45 % Wirkungsradius',
     apply:b => b.splash *= 1.45 },
   { id:'schwereRohre', name:'Schwere Rohre',      desc:'Kanonen: +50 % Schaden',
     apply:b => b.type.cannon.dmg *= 1.5 },
@@ -617,7 +618,10 @@ const CARDS = [
     apply:b => b.minenPlus += 2 },
   { id:'wartungsnetz', name:'Wartungsnetz',       desc:'Werkdrohnen setzen 60 % schneller instand',
     apply:b => b.repairSpeed *= 1.6 },
-  { id:'feldharmonie', name:'Feldharmonie',       desc:'Schildfelder schlucken 15 Punkte mehr vom Treffer',
+  /* Nur zweimal: absorbOf deckelt bei 90 %, ein drittes Mal täte gar
+     nichts mehr — und eine Karte, die nichts tut, ist eine verlorene Wahl. */
+  { id:'feldharmonie', name:'Feldharmonie', max:2,
+    desc:'Schildfelder schlucken 15 Prozentpunkte mehr, höchstens 90 %',
     apply:b => b.absorbPlus += 0.15 },
 
   /* --- Antworten auf Gegner-Eigenschaften --- */
@@ -629,7 +633,7 @@ const CARDS = [
     apply:b => b.hitSlow += 0.1 },
   { id:'sprengbolzen', name:'Sprengbolzen',       desc:'Getötete Gegner reißen Umstehende mit',
     apply:b => b.deathSpark += 18 },
-  { id:'kettenblitz',  name:'Kettenblitz',        desc:'Geschosse springen auf ein zweites Ziel über',
+  { id:'kettenblitz',  name:'Kettenblitz',        desc:'Geschosse springen mit halber Wucht auf ein zweites Ziel über',
     apply:b => b.chain += 0.5 },
 
   /* --- Regeln statt Zahlen --- */
@@ -658,7 +662,7 @@ const CARDS = [
     apply:b => { b.range *= 1.32; b.damage *= 0.92; } },
   { id:'notstrom',     name:'Notstromkreis',      desc:'+8 Energie pro Sekunde, aber 30 Speicher weniger',
     apply:b => { b.regen += 8; b.capacity -= 30; } },
-  { id:'anzapfung',    name:'Kernanzapfung',      desc:'+55 % Materie, aber Kern −70 Struktur',
+  { id:'anzapfung',    name:'Kernanzapfung',      desc:'+55 % Materie, aber der Kern verliert 70 Struktur',
     apply:(b,g) => { b.bounty *= 1.55; g.coreHpMax -= 70; g.coreHp = Math.min(g.coreHp, g.coreHpMax); } },
   { id:'brennstab',    name:'Brennstab',          desc:'+20 % Schaden, aber Bauten kosten 10 % mehr',
     apply:b => { b.damage *= 1.2; b.buildCost *= 1.1; } },
@@ -684,7 +688,7 @@ const CARDS = [
 
   /* --- Selten und einmalig --- */
   { id:'notreserve',   name:'Notreserve', max:1, weight:0.8,
-    desc:'Kern +150 Struktur, sofort instandgesetzt',
+    desc:'Der Kern bekommt 150 Struktur mehr und steht sofort wieder ganz da',
     apply:(b,g) => { g.coreHpMax += 150; g.coreHp = g.coreHpMax; } },
   { id:'schildbrecher',name:'Schildbrecher', max:1, weight:0.7,
     desc:'Geschosse wirken voll gegen Schilde',
@@ -714,6 +718,6 @@ const CARDS = [
     desc:'Der Kernmodus verliert die Hälfte seines Nachteils',
     apply:b => b.modePenalty *= 0.5 },
   { id:'automatik',    name:'Automatikschaltung', max:1, weight:0.35,
-    desc:'Über 85 % Puffer feuern alle Türme überladen, ohne Aufpreis',
+    desc:'Steht der Puffer über 85 %, feuern alle Türme überladen — ohne Aufpreis',
     apply:b => b.freeOverloadAt = 0.85 }
 ];
