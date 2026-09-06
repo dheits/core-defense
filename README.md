@@ -63,6 +63,7 @@ Farbe, in der das Bauteil auch auf dem Feld gezeichnet wird.
 | Rechtsklick | Auswahl abbrechen / Gebäude abbauen (60 % des Bauwerts zurück) |
 | `U` / `S` | ausgewähltes Gebäude ausbauen / abbauen |
 | `R` | reparieren — ohne Auswahl: alles reparieren |
+| `V` | ausgewähltes Gebäude auf ein freies Feld verschieben (25 % des Bauwerts) |
 | Leertaste | Welle sofort starten (Restzeit gibt Bonus-Materie) |
 | `P` | Pause, Button oben rechts: 1× / 2× / 3× |
 | `M` / Lautsprecher-Button | Ton an/aus (wird gespeichert) |
@@ -520,6 +521,24 @@ instandgesetzt — bei ausgebauten Türmen deutlich billiger als Abbau und Neuba
 Auswahl setzt `R` alles instand, was noch bezahlbar ist, das Kaputteste zuerst.
 Abbau erstattet 60 % des gesamten Bauwerts inklusive aller bezahlten Ausbaustufen.
 
+**Verschieben** (`V`, oder der Knopf im Inspektor): Ein fertiger Bau zieht auf ein freies
+Feld um und behält dabei Stufe, Struktur samt Schaden und alle Einstellungen. Danach
+klebt er am Zeiger — Zielfeld, Reichweite und Netzradius werden dort angezeigt, eine
+Linie führt zum alten Platz zurück, `Esc` oder Rechtsklick bricht ab. Bezahlt wird
+**ein Viertel des Bauwerts**.
+
+Warum ein Viertel und nicht die Hälfte: Abbau und Neubau kosten zusammen netto 40 % des
+Bauwerts (60 % zurück, 100 % wieder hin) — bei „halben Kosten" wäre der Umzug also
+*teurer* als der Umweg und damit sinnlos. Ein Selbsttest hält genau das fest. Wer die
+Karte **Ausschlachten** zieht (Abbau erstattet den vollen Preis), bekommt den Umweg
+umsonst; dann ist Verschieben nur noch Bequemlichkeit.
+
+Der Umzug ist kein Neubau: Das Bauwerk behält seine Identität, ein Saboteur, der es
+angepeilt hat, läuft dem neuen Feld hinterher. Was am *Ort* hing, zählt dagegen neu —
+die Leiterbahn unter einem Pylon und das Netz, das komplett neu gerechnet wird. Genau
+das ist der Reiz: Ein Umzug formt den Versorgungsbaum um, und wer einen Pylon zu weit
+zieht, hängt alles hinter ihm ab.
+
 ## Gegner
 
 Crawler ab Welle 1, Runner ab 2, Brute ab 4, Drohne ab 6, Mender ab 8, Saboteur ab 9,
@@ -745,7 +764,7 @@ node tools/pruefen.js
 Sie läuft in einer Zehntelsekunde und deckt Leitungslast, die drei Kernbefehle, alle
 sieben Sturmwellen, die getrennten Akkus, die drei Kernmodi samt Anlauf und Schild,
 Spielstand und Bestenliste, das Druckgedächtnis, das erzeugte Gelände, das Tagesfeld,
-Reparatur und Abbau sowie die Sonderfähigkeiten der fünften Stufe ab. Der Prüfstand hat dafür einen flüchtigen `localStorage`, der ein erneutes Laden
+Reparatur, Abbau und Verschieben sowie die Sonderfähigkeiten der fünften Stufe ab. Der Prüfstand hat dafür einen flüchtigen `localStorage`, der ein erneutes Laden
 des Spiels im selben Prozess übersteht — nur so lässt sich Sichern gegen Laden prüfen.
 Die Prüfungen sind in zwei Sorten aufgeteilt, und der Unterschied ist wichtig:
 

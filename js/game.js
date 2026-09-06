@@ -151,6 +151,7 @@ const game = {
   // nicht ticken — und vor der Wahl des Feldes gibt es nichts zu rechnen.
   gestartet: false,
   tool: null, selected: null, inView: true,
+  verschieben: null,                // Bau, der gerade ein neues Feld sucht
   buffs: freshBuffs(), takenCards: new Map(),
   draft: null, plannedWave: null, turretsDirty: true,
   // Wird der Kern länger ungestört bearbeitet, ist irgendwo die Deckung offen
@@ -237,6 +238,8 @@ const game = {
       v += Math.round(upgradeSteps(b.def.cost, l) * this.buffs.buildCost);
     return v;
   },
+  // Was ein Umzug kostet — siehe MOVE_SHARE in config.js
+  moveCost(b) { return Math.round(this.buildingValue(b) * MOVE_SHARE); },
   repairCost(b) {
     const fehlt = 1 - b.hp / b.maxHp;
     return Math.ceil(fehlt * this.buildingValue(b) * REPAIR_SHARE);
@@ -360,8 +363,73 @@ const game = {
     this.buildings.delete(key(b.x, b.y));
     this.turretsDirty = true;
     if (this.selected === b) this.select(null);
+    if (this.verschieben === b) this.verschieben = null;
     this.recomputeSupply();
     this.merken();
+  },
+
+  /* --------------------- Verschieben ------------------------
+     Ein fertiger Bau zieht auf ein freies Feld um und behält dabei
+     Stufe, Struktur und alle Einstellungen. Bezahlt wird ein Viertel
+     dessen, was in ihm steckt — der Umweg über Abbau und Neubau kostet
+     netto 40 %, also lohnt der Umzug sich überhaupt erst dadurch.
+
+     Das Bauwerk behält seine Identität: Es wird nicht neu angelegt,
+     sondern umgehängt. Ein Saboteur, der es angepeilt hat, läuft dem
+     neuen Feld hinterher, statt sein Ziel zu verlieren.
+
+     Was am Ort hing, zählt neu: die Leiterbahn unter einem Pylon und
+     das Netz, das ohnehin komplett neu gerechnet wird. Genau das ist
+     der Reiz — ein Umzug formt den Versorgungsbaum um. */
+  verschiebeStart(b) {
+    if (!b || this.over) return false;
+    const c = this.moveCost(b);
+    if (this.matter < c) { SFX.deny(); toast('Zu wenig Materie'); return false; }
+    this.tool = null;
+    this.verschieben = b;
+    this.select(b);
+    toast('Neues Feld für ' + b.def.name + ' wählen  −' + c);
+    return true;
+  },
+  verschiebeAbbrechen() {
+    if (!this.verschieben) return false;
+    this.verschieben = null;
+    updateInspector();
+    return true;
+  },
+  verschiebeZu(x, y) {
+    const b = this.verschieben;
+    if (!b) return false;
+    // Der Bau könnte zwischendurch gefallen sein
+    if (this.buildings.get(key(b.x, b.y)) !== b) { this.verschieben = null; return false; }
+    if (b.x === x && b.y === y) { this.verschiebeAbbrechen(); return false; }
+    if (!this.free(x, y)) {
+      SFX.deny();
+      toast(this.boden(x, y) === BODEN.truemmer ? 'Trümmer — hier geht nichts' : 'Platz belegt');
+      return false;
+    }
+    const c = this.moveCost(b);
+    if (this.matter < c) { SFX.deny(); toast('Zu wenig Materie'); return false; }
+    this.matter -= c;
+    const altPx = b.px, altPy = b.py;
+    this.buildings.delete(key(b.x, b.y));
+    b.x = x; b.y = y;
+    b.px = cellToPx(x); b.py = cellToPx(y);
+    b.leiter = this.boden(x, y) === BODEN.leiter;
+    this.buildings.set(key(x, y), b);
+    this.verschieben = null;
+    this.turretsDirty = true;
+    this.recomputeSupply();
+    SFX.build();
+    // Eine Funkenspur von alt nach neu, damit der Umzug zu sehen ist
+    for (let i = 0; i < 12; i++) {
+      const t = i / 11;
+      this.particles.push(new Particle(altPx + (b.px - altPx) * t, altPy + (b.py - altPy) * t,
+                                       b.def.color, { speed: rand(20, 80), life: .45 }));
+    }
+    updateInspector();
+    this.merken();
+    return true;
   },
 
   upgrade(b) {
@@ -663,6 +731,7 @@ const game = {
       this.druckZuschlag(b.px, b.py, DRUCK.verlust);
       this.turretsDirty = true;
       if (this.selected === b) this.select(null);
+      if (this.verschieben === b) this.verschieben = null;
       this.recomputeSupply();
       this.shake = Math.max(this.shake, 5);
     }
@@ -710,6 +779,7 @@ const game = {
     if (this.coreHp <= 0 && !this.over) {
       this.coreHp = 0;
       this.over = true;
+      this.verschieben = null;
       SFX.gameOver();
       loesche(SAVE_KEY);                       // die Partie ist zu Ende, nicht unterbrochen
       const erg = this.eintragen();
@@ -1411,6 +1481,7 @@ const game = {
       this.neuesGelaende(s.gelaende | 0);
 
       this.buildings.clear();
+      this.verschieben = null;
       for (const d of s.bauten) {
         if (!BUILDINGS[d.t] || !this.free(d.x, d.y)) continue;
         const b = this.makeBuilding(d.t, d.x, d.y);
@@ -2303,7 +2374,33 @@ function drawRange(x, y, cells, color) {
   ctx.setLineDash([]); ctx.globalAlpha = 1;
 }
 
+/* Beim Umzug hängt der Bau am Zeiger: das Zielfeld eingefärbt, seine
+   Reichweiten dort, und eine Linie zurück zum alten Feld — sonst
+   verliert man mitten im Gefecht, wer da gerade umzieht. */
+function drawZugGhost() {
+  const b = game.verschieben;
+  if (!game.hover.inside) return;
+  const { x, y } = game.hover;
+  const px = cellToPx(x), py = cellToPx(y);
+  const ok = game.free(x, y) && game.matter >= game.moveCost(b);
+
+  ctx.globalAlpha = .5;
+  ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(b.px, b.py); ctx.lineTo(px, py); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = ok ? 'rgba(255,209,102,.25)' : 'rgba(255,70,90,.3)';
+  ctx.fillRect(x * GRID.cell, y * GRID.cell, GRID.cell, GRID.cell);
+  ctx.strokeStyle = ok ? '#ffd166' : '#ff5d73'; ctx.lineWidth = 2;
+  ctx.strokeRect(x * GRID.cell + 1, y * GRID.cell + 1, GRID.cell - 2, GRID.cell - 2);
+  ctx.globalAlpha = 1;
+
+  if (b.def.range) drawRange(px, py, game.stat(b, 'range'), b.def.color);
+  if (b.def.supply) drawRange(px, py, b.def.supply + game.buffs.netRadius, '#5fe0ff');
+}
+
 function drawGhost() {
+  if (game.verschieben) return drawZugGhost();
   if (!game.tool || !game.hover.inside) return;
   const def = BUILDINGS[game.tool];
   const { x, y } = game.hover;
@@ -2453,10 +2550,24 @@ function updatePowers() {
   }
 }
 
+function shopHighlight() {
+  for (const c of shopEl.children) c.classList.toggle('active', c.dataset.type === game.tool);
+}
+
 function selectTool(type) {
+  game.verschiebeAbbrechen();
   game.tool = game.tool === type ? null : type;
   game.select(null);
-  for (const c of shopEl.children) c.classList.toggle('active', c.dataset.type === game.tool);
+  shopHighlight();
+}
+
+// Der Umzug ist ein Schalter: einmal an, einmal ab
+function zugSchalten() {
+  if (game.verschieben) return game.verschiebeAbbrechen();
+  if (!game.selected) return;
+  game.verschiebeStart(game.selected);
+  shopHighlight();                     // verschiebeStart legt das Bauteil weg
+  updateInspector();
 }
 
 function updateShopAffordability() {
@@ -2508,6 +2619,12 @@ function updateInspector() {
   el('upgradeBtn').textContent = voll ? 'Ausgebaut' : 'Ausbau ' + game.upgradeCost(b);
   el('upgradeBtn').disabled = voll;
   el('sellBtn').textContent = 'Abbau +' + Math.round(game.buildingValue(b) * game.buffs.refund);
+
+  // Der Umzug-Knopf sagt im laufenden Zug, worauf er wartet
+  const mv = el('moveBtn'), zieht = game.verschieben === b, mk = game.moveCost(b);
+  mv.textContent = zieht ? 'Feld wählen — Esc bricht ab' : 'Verschieben ' + mk;
+  mv.classList.toggle('active', zieht);
+  mv.disabled = !zieht && game.matter < mk;
 
   const rb = el('repairBtn');
   const heil = b.hp >= b.maxHp;
@@ -2797,12 +2914,14 @@ canvas.addEventListener('click', ev => {
   if (game.over) return;
   const c = mouseCell(ev);
   if (!game.inBounds(c.x, c.y)) return;
+  if (game.verschieben) { game.verschiebeZu(c.x, c.y); return; }
   if (game.tool) { game.build(game.tool, c.x, c.y); return; }
   game.select(game.buildings.get(key(c.x, c.y)) || null);
 });
 
 canvas.addEventListener('contextmenu', ev => {
   ev.preventDefault();
+  if (game.verschiebeAbbrechen()) return;
   if (game.tool) { selectTool(game.tool); return; }
   const c = mouseCell(ev);
   const b = game.buildings.get(key(c.x, c.y));
@@ -2822,11 +2941,15 @@ addEventListener('keydown', ev => {
   const power = POWER_LIST.find(p => p.key === k);
   if (power) return game.usePower(power.id);
   if (ev.code === 'Space') { ev.preventDefault(); if (game.phase === 'build') game.startWave(); }
-  else if (k === 'escape') { selectTool(null); game.select(null); }
+  else if (k === 'escape') {
+    if (game.verschiebeAbbrechen()) return;   // erst den Zug, dann die Auswahl
+    selectTool(null); game.select(null);
+  }
   else if (k === 'p') togglePause();
   else if (k === 'm') toggleMute();
   else if (k === 'u' && game.selected) game.upgrade(game.selected);
   else if (k === 's' && game.selected) game.sell(game.selected);
+  else if (k === 'v' && (game.selected || game.verschieben)) zugSchalten();
   else if (k === 'r') { if (game.selected) game.repair(game.selected); else game.repairAll(); }
   else if (k === 'o' && game.selected) game.toggleOverload(game.selected);
   else if (k === 'l' && game.selected && game.selected.def.turret) game.cyclePriority(game.selected);
@@ -2884,6 +3007,7 @@ el('prioBtn').onclick = () => game.selected && game.cyclePriority(game.selected)
 el('zielBtn').onclick = () => game.selected && game.cycleTarget(game.selected);
 el('overloadBtn').onclick = () => game.selected && game.toggleOverload(game.selected);
 el('upgradeBtn').onclick = () => game.selected && game.upgrade(game.selected);
+el('moveBtn').onclick = zugSchalten;
 el('sellBtn').onclick = () => game.selected && game.sell(game.selected);
 el('ovBtn').onclick = () => location.reload();
 

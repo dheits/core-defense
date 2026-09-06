@@ -23,6 +23,12 @@ const START_MATTER = 170;
 const BUILD_TIME = 22;          // Sekunden Bauphase zwischen den Wellen
 const FIRST_BUILD_TIME = 34;    // mehr Ruhe vor der allerersten Welle
 const SELL_REFUND = 0.6;
+/* Verschieben statt Abreißen: Ein fertiger Bau darf auf ein freies Feld
+   umziehen und behält dabei Stufe, Struktur und alle Einstellungen.
+   Der Anteil ist bewusst kleiner als der Umweg über Abbau und Neubau —
+   der kostet netto 1 − SELL_REFUND, also 40 % des Bauwerts. Bei „halben
+   Kosten" wäre Verschieben teurer als der Umweg und damit sinnlos. */
+const MOVE_SHARE = 0.25;
 
 /* ---------------------------------------------------------------
    Gebäude. "supply" = eigener Versorgungsradius (nur Kern/Pylon),

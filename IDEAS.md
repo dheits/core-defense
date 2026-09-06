@@ -165,7 +165,12 @@ Das ist der Grund für die Wertung nach der höchsten begonnenen Welle.
 - ~~Zielpriorität je Turm: nächster, stärkster, schnellster~~ ✅ umgesetzt, Taste `Z` —
   dazu der Kernnächste als Voreinstellung, weil auf diesem Feld alles radial nach innen
   läuft. Kürzel links oben am Turm, Lastpriorität rechts oben.
-- Turm auf leeres Feld verschieben, für halbe Kosten
+- ~~Turm auf leeres Feld verschieben, für halbe Kosten~~ ✅ umgesetzt, Taste `V` — aber
+  für ein **Viertel** des Bauwerts, nicht für die Hälfte. Beim Nachrechnen fiel auf, dass
+  der Umweg über Abbau und Neubau netto nur 40 % kostet (60 % zurück, 100 % wieder hin):
+  Bei halben Kosten wäre der Umzug teurer als das, was er ersetzen soll. Stufe, Struktur
+  samt Schaden und alle Einstellungen ziehen mit um, die Leiterbahn unter einem Pylon
+  zählt am neuen Feld neu.
 - Bauplan kopieren und spiegeln — passt gut, weil das Feld radial symmetrisch ist
 
 ---
@@ -265,8 +270,12 @@ Zuletzt kam das **Tagesfeld** dazu, das auf dem seedbaren Zufall des Geländes a
 Nebenbei fiel dabei eine alte Ungereimtheit auf: Hinter der Startanzeige lief die erste
 Bauphase bereits ab. Jetzt beginnt die Zeit mit dem Knopfdruck.
 
-Bleibt aus der Liste: die beiden Bedienkomfort-Punkte — Turm verschieben und Bauplan
-spiegeln.
+Zuletzt kam das **Verschieben** dazu. Der eigentliche Ertrag war eine Zahl: Der Punkt
+stand mit „halben Kosten" in der Liste, und die wären teurer gewesen als der Umweg über
+Abbau und Neubau, der netto 40 % kostet. Aus der Hälfte wurde ein Viertel, und ein
+Selbsttest hält seither fest, dass der Umzug billiger bleiben muss als der Umweg.
+
+Bleibt aus der Liste: der Bauplan zum Spiegeln.
 
 ## Wenn ich drei Dinge auswählen müsste (ursprüngliche Empfehlung)
 

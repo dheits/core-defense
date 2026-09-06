@@ -316,6 +316,132 @@ beschreibe('Reparatur und Abbau', () => {
          g.matter - m, Math.round(wert * g.buffs.refund), 1);
 });
 
+/* ---------------------- Verschieben ---------------------- */
+beschreibe('Verschieben nimmt alles mit außer dem Ort', () => {
+  const h = neu(), g = h.game;
+  const t = h.bau('blaster', 22, 12);
+  for (let i = 1; i < h.UPGRADE.maxLevel; i++) g.upgrade(t);
+  t.hp = t.maxHp * 0.4; t.prio = 2; t.ziel = 3; t.overload = true;
+  const wert = g.buildingValue(t), hp = t.hp;
+
+  gleich('Kosten: ein Viertel des Bauwerts', g.moveCost(t), Math.round(wert * h.MOVE_SHARE));
+
+  const vorher = g.matter;
+  stimmt('der Zug beginnt', g.verschiebeStart(t));
+  stimmt('und kostet dabei noch nichts', g.matter === vorher);
+  stimmt('der Umzug klappt', g.verschiebeZu(26, 15));
+
+  gleich('bezahlt wird genau der Umzug', vorher - g.matter, g.moveCost(t));
+  gleich('der Bau steht auf dem neuen Feld', g.buildings.get('26,15'), t);
+  stimmt('und nicht mehr auf dem alten', !g.buildings.has('22,12'));
+  gleich('die Zeichenposition wandert mit', t.px, (26 + .5) * h.GRID.cell);
+  gleich('Stufe bleibt', t.level, h.UPGRADE.maxLevel);
+  gleich('Schaden bleibt Schaden', t.hp, hp);
+  stimmt('Einstellungen bleiben', t.prio === 2 && t.ziel === 3 && t.overload === true);
+  stimmt('der Zug ist beendet', g.verschieben === null);
+});
+
+beschreibe('Verschieben ist billiger als Abbau und Neubau', () => {
+  const h = neu();
+  /* Der Umweg kostet netto 1 − Erstattung. Wäre Verschieben teurer,
+     wäre es sinnlos — dann baut man lieber ab und neu. */
+  stimmt('sonst wäre der Umweg der bessere Weg',
+         h.MOVE_SHARE < 1 - h.SELL_REFUND);
+});
+
+beschreibe('Ein Umzug geht nur auf ein freies Feld', () => {
+  const h = neu(), g = h.game;
+  const t = h.bau('blaster', 22, 12);
+  h.bau('wall', 24, 12);
+  g.gelaende[12 * h.GRID.cols + 26] = h.BODEN.truemmer;
+
+  const probe = (was, x, y) => {
+    g.verschiebeStart(t);
+    const m = g.matter;
+    stimmt(was, !g.verschiebeZu(x, y));
+    stimmt(was + ' — und kostet nichts', g.matter === m);
+    stimmt(was + ' — der Bau steht noch da', g.buildings.get('22,12') === t);
+    g.verschiebeAbbrechen();
+  };
+  probe('nicht auf einen belegten Platz', 24, 12);
+  probe('nicht in die Trümmer', 26, 12);
+  probe('nicht auf den Kern', h.CORE.cx, h.CORE.cy);
+  probe('nicht aus dem Feld heraus', -1, 12);
+
+  g.verschiebeStart(t);
+  g.matter = g.moveCost(t) - 1;
+  stimmt('und nicht ohne Materie', !g.verschiebeZu(28, 18));
+  stimmt('der Bau steht immer noch', g.buildings.get('22,12') === t);
+});
+
+beschreibe('Ein Umzug rechnet das Netz und den Boden neu', () => {
+  const h = neu(), g = h.game;
+  /* Ein Turm hängt am Pylon. Zieht der Pylon auf die andere Seite des
+     Kerns, ist der Turm danach getrennt — der Umzug formt den Baum um. */
+  const pylon = h.bau('pylon', 24, 12);
+  const turm = h.bau('blaster', 27, 12);
+  g.recomputeSupply();
+  stimmt('anfangs versorgt', turm.supplied);
+
+  g.verschiebeStart(pylon);
+  g.verschiebeZu(20, 16);
+  stimmt('nach dem Umzug getrennt', !turm.supplied);
+  stimmt('der Pylon selbst hängt noch am Kern', pylon.supplied);
+  const ohne = pylon.node.cap;
+
+  // Die Leiterbahn hängt am Ort, nicht am Bau
+  g.gelaende[17 * h.GRID.cols + 20] = h.BODEN.leiter;
+  g.verschiebeStart(pylon);
+  g.verschiebeZu(20, 17);
+  stimmt('auf der Leiterbahn weiß er es', pylon.leiter === true);
+  gleich('und trägt mehr', pylon.node.cap, ohne * h.GELAENDE.leiter, 1e-9);
+
+  g.verschiebeStart(pylon);
+  g.verschiebeZu(20, 15);
+  stimmt('herunter vom Draht, wieder gewöhnlich', pylon.leiter === false);
+  gleich('und wieder die normale Last', pylon.node.cap, ohne, 1e-9);
+});
+
+beschreibe('Ein Umzug überlebt das Neuladen, ein Abbruch kostet nichts', () => {
+  const h = neu(), g = h.game;
+  g.matter = 400;
+  const t = h.bau('blaster', 22, 12);
+
+  const vorAbbruch = g.matter;
+  g.verschiebeStart(t);
+  stimmt('der Abbruch meldet sich', g.verschiebeAbbrechen());
+  stimmt('ein zweiter Abbruch hat nichts mehr zu tun', !g.verschiebeAbbrechen());
+  gleich('und kostet nichts', g.matter, vorAbbruch);
+  gleich('der Bau steht unverändert', g.buildings.get('22,12'), t);
+
+  g.verschiebeStart(t);
+  g.verschiebeZu(27, 16);
+  const materie = Math.round(g.matter);
+
+  const h2 = weiter();
+  stimmt('der Stand lädt', h2.game.laden(h2.game.gespeicherteRunde()));
+  stimmt('der Bau steht nach dem Neuladen auf dem neuen Feld',
+         !!h2.game.buildings.get('27,16') && !h2.game.buildings.has('22,12'));
+  gleich('und die bezahlte Materie ist weg', Math.round(h2.game.matter), materie);
+  stimmt('geladen wird nie mitten im Zug', h2.game.verschieben === null);
+});
+
+beschreibe('Ein gefallener Bau zieht nicht mehr um', () => {
+  const h = neu(), g = h.game;
+  const t = h.bau('blaster', 22, 12);
+  g.verschiebeStart(t);
+  g.damageBuilding(t, t.hp + 1);
+  stimmt('der Zug ist mit ihm zu Ende', g.verschieben === null);
+  stimmt('und läuft ins Leere', !g.verschiebeZu(26, 16));
+  stimmt('nichts steht auf dem Zielfeld', !g.buildings.has('26,16'));
+
+  // Dasselbe, wenn er zwischendurch verkauft wird
+  const u = h.bau('blaster', 22, 12);
+  g.verschiebeStart(u);
+  g.sell(u);
+  stimmt('auch der Abbau beendet den Zug', g.verschieben === null);
+});
+
 /* ------------------ Sonderfähigkeiten ------------------ */
 beschreibe('Stufe 5: Sonderfähigkeiten', () => {
   const h = neu(), g = h.game;
@@ -1268,6 +1394,7 @@ beschreibe('Balance-Anker (bei gewollter Abstimmung hier nachziehen)', () => {
          [1, 2, 3, 4].map(l => h.upgradeSteps(30, l)).join(','), '39,56,72,89');
   gleich('Reparaturanteil', h.REPAIR_SHARE, 0.35);
   gleich('Erstattung beim Abbau', h.SELL_REFUND, 0.6);
+  gleich('Anteil beim Verschieben', h.MOVE_SHARE, 0.25);
 
   gleich('Entladung: Pufferkosten', g.powerCost(h.POWERS.discharge), 61.05, 1e-9);
   gleich('Entladung: Schaden im Zentrum',
