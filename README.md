@@ -877,7 +877,7 @@ Die Kanone ist die Antwort auf die gepanzerten Brutes ab Welle 4 — und genau d
 im Rahmen des Rauschens durch.
 
 **Die beiden Stützbauten** lassen sich mit dem Bot gar nicht messen, siehe oben. Dafür
-gibt es eine eigene Messung mit festem Aufbau: ein geschlossener Barrierenring, acht
+gibt es eine eigene Messung (`node tools/stuetzen.js 120 8`) mit festem Aufbau: ein geschlossener Barrierenring, acht
 Blaster dahinter, Netz und Nachschub fest, der Kern für die Dauer der Messung
 unverwundbar — und dann viermal derselbe Platz, einmal mit einem weiteren Blaster, einmal
 mit vier Werkdrohnen, einmal mit vier Schildfeldern. 120 **gepaarte** Läufe: Lauf *i*
@@ -926,6 +926,33 @@ eine Welle davor und 1,0 % eine danach. Das ist der nächste Kandidat, wenn wied
 abgestimmt wird — und es lag nicht am Druckgedächtnis, der Stand davor zeigt denselben
 Ausschlag. Eine frühere Notiz hier nannte für Welle 20 nur 9 %; das war ein Fenster von
 200 Läufen.
+
+### Zwei Messungen neben dem Bot
+
+Für zwei Fragen ist der Bot das falsche Werkzeug, weil sein eigenes Verhalten die Antwort
+überdeckt. Dafür liegen zwei kleine Messskripte daneben. Beide bauen selbst auf, spielen
+eine einzelne Welle und geben eine Tabelle aus — sie brauchen weder Browser noch Bot.
+
+```bash
+node tools/stuetzen.js 120 8              # was Werkdrohne und Schildfeld gegen einen Blaster halten
+node tools/stuetzen.js 120 8 ueberschuss  # dasselbe, wenn Energie nicht knapp ist
+node tools/stuetzen.js 120 8 kern         # Prüfplätze am Kern, Kernschaden als Kennzahl
+node tools/schaden.js 30 8                # Schaden je Turmtyp am selben Platz
+node tools/schaden.js 30 16               # dasselbe später, wenn die Gegner zäher sind
+```
+
+`stuetzen.js` misst **gepaart**: Lauf *i* bekommt für alle drei Varianten denselben
+Tagesseed und damit dieselbe Welle, sonst ist das Rauschen zwischen den Wellen größer als
+der Unterschied zwischen den Bauten. Kennzahl ist „besser in *x*/*N*", nicht der
+Mittelwert — einzelne Läufe mit einem verlorenen Bauteil ziehen den zu stark. Der Bot
+taugt hier nicht, weil er zwischen den Wellen ohnehin alles repariert.
+
+`schaden.js` stellt von jedem Turmtyp gleich viele Stück im Wechsel auf denselben Ring,
+gibt Energie im Überfluss und zählt danach `b.schaden`. Der Bot taugt hier nicht, weil
+seine Baureihenfolge mitentscheidet, wer wie oft schießt. Die aussagekräftige Spalte ist
+„Schaden je Energie": Knapp ist im Spiel die Energie, nicht der Bauplatz. Und die Zahl
+misst nur Feuerkraft — was ein Turm daneben leistet (verlangsamen, Pulks treffen, tote
+Winkel decken), steht nicht drin.
 
 ### Selbsttest
 
@@ -982,6 +1009,8 @@ console.log(h.game.sources[1].ratio);      // Auslastung dieser Leitung
 - `tools/harness.js` — lädt das Spiel ohne Browser in node
 - `tools/bot.js` — simulierter Spieler für Balance-Messungen
 - `tools/pruefen.js` — Selbsttest der Mechaniken (`node tools/pruefen.js`)
+- `tools/stuetzen.js` — gepaarte Messung für Werkdrohne und Schildfeld
+- `tools/schaden.js` — Schaden je Turmtyp bei gleichem Platz und freier Energie
 
 Balance-Änderungen brauchen fast immer nur `js/config.js`.
 
