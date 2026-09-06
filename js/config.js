@@ -221,6 +221,24 @@ const PRIORITY = [
   { name: 'Sparlast',   short: 'S', threshold: 0.55, color: '#7b8ea6' }
 ];
 
+/* ---------------------------------------------------------------
+   Zielpriorität je Turm. Voreinstellung ist der Kernnächste: Auf diesem
+   Feld läuft alles radial nach innen, wer dem Kern am nächsten ist, ist
+   die dringendste Gefahr. Die anderen drei sind Antworten auf bestimmte
+   Wellen — Nächster hält den eigenen Abschnitt sauber, Stärkster setzt
+   Kanonen auf Brutes und Bosse an, Schnellster fängt Runner ab, bevor
+   sie durch sind.
+
+   Das Kürzel steht links oben am Turm, sobald er von der Voreinstellung
+   abweicht — die Lastpriorität steht rechts oben und in eigener Farbe.
+---------------------------------------------------------------- */
+const TARGETS = [
+  { id: 'kern',    name: 'Kernnächster', short: '',  desc: 'Wer dem Kern am nächsten ist' },
+  { id: 'nah',     name: 'Nächster',     short: 'N', desc: 'Wer dem Turm am nächsten ist' },
+  { id: 'stark',   name: 'Stärkster',    short: 'S', desc: 'Wer die meiste Struktur übrig hat' },
+  { id: 'schnell', name: 'Schnellster',  short: 'T', desc: 'Wer gerade am schnellsten läuft' }
+];
+
 // Überladung: doppelter Schaden, dreifacher Energiehunger
 const OVERLOAD = { damage: 2, cost: 3 };
 

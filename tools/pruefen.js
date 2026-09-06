@@ -522,6 +522,54 @@ beschreibe('Schildmodus bezahlt Kernschaden aus dem Puffer', () => {
   gleich('und kostet keine Energie', e2 - g.energy, 0, 1e-9);
 });
 
+/* ------------------ Zielpriorität ------------------------- */
+beschreibe('Jeder Turm sucht sein Ziel nach eigener Regel', () => {
+  const h = neu(), g = h.game;
+  const t = h.bau('blaster', 24, 12);
+  g.recomputeSupply();
+  const px = zellen => zellen * h.GRID.cell;
+
+  // Vier Gegner, alle in Reichweite, jeder in einer Eigenschaft vorn
+  const mach = (x, hp, speed) => {
+    const e = ziel(h, px(x), px(12.5));
+    e.hp = hp; e.maxHp = hp; e.speed = speed; e.slowFactor = 1;
+    return e;
+  };
+  const kernNah = mach(22.0, 100, 50);
+  const turmNah = mach(25.0, 100, 50);
+  const stark   = mach(27.5, 5000, 50);
+  const schnell = mach(26.9, 100, 200);
+  g.enemies = [stark, schnell, kernNah, turmNah];
+
+  const wer = i => { t.ziel = i; return g.findTarget(t); };
+  gleich('Kernnächster ist die Voreinstellung', h.TARGETS[0].id, 'kern');
+  stimmt('Kernnächster nimmt den innersten', wer(0) === kernNah);
+  stimmt('Nächster nimmt den am Turm', wer(1) === turmNah);
+  stimmt('Stärkster nimmt den mit der meisten Struktur', wer(2) === stark);
+  stimmt('Schnellster nimmt den flottesten', wer(3) === schnell);
+
+  // Gebremste und eingefrorene Gegner sind nicht mehr die schnellsten
+  schnell.slowFactor = 0.1;
+  stimmt('gebremst zählt das gedrosselte Tempo', wer(3) !== schnell);
+  schnell.slowFactor = 1;
+  schnell.frozenUntil = g.time + 5;
+  stimmt('eingefroren zählt als Stillstand', wer(3) !== schnell);
+});
+
+beschreibe('Zielpriorität wandert durch und wird gesichert', () => {
+  const h = neu(), g = h.game;
+  const t = h.bau('cannon', 24, 12);
+  gleich('frisch gebaut: Kernnächster', t.ziel, 0);
+  g.cycleTarget(t); g.cycleTarget(t);
+  gleich('zweimal weiter', t.ziel, 2);
+  for (let i = 0; i < h.TARGETS.length; i++) g.cycleTarget(t);
+  gleich('eine ganze Runde führt zurück', t.ziel, 2);
+
+  g.merken();
+  const g2 = weiter().game;
+  gleich('der Spielstand kennt die Zielpriorität', g2.buildings.get('24,12').ziel, 2);
+});
+
 /* ------------------ Ziehen zum Bauen ---------------------- */
 beschreibe('Ziehen setzt eine Reihe Barrieren', () => {
   const h = neu(), g = h.game;

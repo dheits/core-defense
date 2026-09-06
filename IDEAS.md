@@ -143,7 +143,9 @@ Das ist der Grund für die Wertung nach der höchsten begonnenen Welle.
   reißt; Belegtes und Unbezahlbares überspringt der Zug still. Nur Bauteile mit `drag` —
   bei einer Kanone je 65 Materie wäre ein verrutschter Zug teuer.
 - ~~Reparieren (Materie gegen Struktur)~~ ✅ umgesetzt, Taste `R`
-- Zielpriorität je Turm: nächster, stärkster, schnellster
+- ~~Zielpriorität je Turm: nächster, stärkster, schnellster~~ ✅ umgesetzt, Taste `Z` —
+  dazu der Kernnächste als Voreinstellung, weil auf diesem Feld alles radial nach innen
+  läuft. Kürzel links oben am Turm, Lastpriorität rechts oben.
 - Turm auf leeres Feld verschieben, für halbe Kosten
 - Bauplan kopieren und spiegeln — passt gut, weil das Feld radial symmetrisch ist
 

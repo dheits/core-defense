@@ -68,6 +68,7 @@ Farbe, in der das Bauteil auch auf dem Feld gezeichnet wird.
 | `M` / Lautsprecher-Button | Ton an/aus (wird gespeichert) |
 | `O` | Überladung des gewählten Turms |
 | `L` | Lastpriorität des gewählten Turms |
+| `Z` | Zielpriorität des gewählten Turms |
 | `Q` / `W` / `E` | Kernbefehle: Entladung, Netzstoß, Notpuls |
 | `K` | Kernmodus wechseln (Einspeisung → Speicher → Schild) |
 | `1`–`3` bei der Kartenwahl | Karte nehmen |
@@ -100,6 +101,25 @@ Türme feuern in dieser Reihenfolge, und die unteren Stufen fassen den Puffer er
 wenn er über ihrer Schwelle steht (Normal ab 20 %, Sparlast ab 55 %). So bleibt im
 Engpass Energie für die Seite, die wirklich halten muss, statt dass alle gleichzeitig
 verstummen. Abweichende Stufen stehen als Buchstabe am Turm.
+
+**Zielpriorität** (`Z`): worauf ein Turm schießt, wenn mehrere in Reichweite stehen.
+
+| Stellung | Kürzel | Nimmt sich |
+|---|---|---|
+| **Kernnächster** | — | wer dem Kern am nächsten ist (Voreinstellung) |
+| **Nächster** | `N` | wer dem Turm am nächsten ist |
+| **Stärkster** | `S` | wer die meiste Struktur übrig hat |
+| **Schnellster** | `T` | wer gerade am schnellsten läuft |
+
+Die Voreinstellung passt zum Feld: Hier läuft alles radial nach innen, wer dem Kern am
+nächsten ist, ist die dringendste Gefahr. *Stärkster* setzt Kanonen auf Brutes und Bosse
+an, statt sie an Crawler zu verschwenden; *Schnellster* fängt Runner ab, bevor sie durch
+sind; *Nächster* hält den eigenen Abschnitt sauber. Gebremste zählen mit ihrem gedrosselten
+Tempo, Eingefrorene als Stillstand — sonst würde ein Frostturm seinen eigenen Nachbarn
+dauernd auf ein stehendes Ziel schicken.
+
+Das Kürzel steht links oben am Turm, sobald er von der Voreinstellung abweicht. Die
+Lastpriorität steht rechts oben und in eigener Farbe.
 
 ## Leitungslast
 

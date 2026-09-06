@@ -259,7 +259,7 @@ const game = {
       type, def, x, y, level: 1,
       hp: 0, maxHp: 0,
       cd: 0, supplied: false, node: null, flow: 1, flash: 0, pulse: 0,
-      prio: 1, overload: false, reserve: true, bornAt: performance.now(),
+      prio: 1, ziel: 0, overload: false, reserve: true, bornAt: performance.now(),
       aim: -Math.PI / 2, scan: rand(0, 6.28),
       px: cellToPx(x), py: cellToPx(y)
     };
@@ -1112,7 +1112,7 @@ const game = {
       karten: [...this.takenCards],
       bauten: [...this.buildings.values()].map(b => ({
         t: b.type, x: b.x, y: b.y, l: b.level, hp: Math.round(b.hp),
-        p: b.prio, o: b.overload ? 1 : 0
+        p: b.prio, z: b.ziel || 0, o: b.overload ? 1 : 0
       })),
       plan: plan ? { queue: plan.queue, angles: plan.angles,
                      mod: plan.mod ? plan.mod.id : null } : null
@@ -1151,6 +1151,7 @@ const game = {
         b.maxHp = this.structureOf(b);
         b.hp = clamp(d.hp, 1, b.maxHp);
         b.prio = PRIORITY[d.p] ? d.p : 1;
+        b.ziel = TARGETS[d.z] ? d.z : 0;
         b.overload = !!d.o;
       }
       this.recomputeSupply();
@@ -1310,15 +1311,38 @@ const game = {
     updateInspector();
   },
 
+  cycleTarget(b) {
+    b.ziel = ((b.ziel || 0) + 1) % TARGETS.length;
+    SFX.select();
+    toast(b.def.name + ' zielt: ' + TARGETS[b.ziel].name);
+    updateInspector();
+    this.merken();
+  },
+
+  // Tempo, mit dem ein Gegner gerade wirklich läuft — eingefroren zählt null
+  tempoVon(e) {
+    if (e.frozenUntil > this.time) return 0;
+    return e.speed * (e.slowFactor === undefined ? 1 : e.slowFactor);
+  },
+  /* Ein Turm sucht sein Ziel nach einem einzigen Vergleichswert: kleiner
+     gewinnt. So bleibt die Suche eine Schleife, egal welche Priorität. */
+  zielWert(id, e, d) {
+    if (id === 'nah') return d;
+    if (id === 'stark') return -(e.hp + (e.shield || 0));
+    if (id === 'schnell') return -this.tempoVon(e);
+    return dist(e.x, e.y, CORE_PX.x, CORE_PX.y);
+  },
+
   findTarget(b, ausser) {
     const r = this.stat(b, 'range') * GRID.cell;
-    let best = null, bestD = Infinity;
+    const modus = TARGETS[b.ziel || 0] || TARGETS[0];
+    let best = null, bestW = Infinity;
     for (const e of this.enemies) {
       if (e === ausser) continue;
       const d = dist(e.x, e.y, b.px, b.py);
       if (d > r + e.radius) continue;
-      const toCore = dist(e.x, e.y, CORE_PX.x, CORE_PX.y);   // Priorität: am nächsten am Kern
-      if (toCore < bestD) { bestD = toCore; best = e; }
+      const w = this.zielWert(modus.id, e, d);
+      if (w < bestW) { bestW = w; best = e; }
     }
     return best;
   }
@@ -1679,6 +1703,13 @@ function drawBuilding(b) {
     ctx.font = '600 9px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(PRIORITY[b.prio].short, x + c * .34, y - c * .28);
+    ctx.textAlign = 'left';
+  }
+  if (b.def.turret && b.ziel) {                  // abweichende Zielpriorität
+    ctx.fillStyle = '#9beeff';
+    ctx.font = '600 9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(TARGETS[b.ziel].short, x - c * .34, y - c * .28);
     ctx.textAlign = 'left';
   }
   if (b.hp < b.maxHp) {
@@ -2109,6 +2140,7 @@ function updateInspector() {
     rows.push(['Reichweite', (Math.round(game.stat(b, 'range') * 10) / 10) + ' Z']);
     rows.push(['Energie/Schuss', Math.round(game.energyOf(b) * 10) / 10]);
     rows.push(['Schuss alle', (Math.round(game.cooldownOf(b) * 100) / 100) + ' s']);
+    rows.push(['Zielpriorität', TARGETS[b.ziel || 0].name]);
     rows.push(['Lastpriorität', PRIORITY[b.prio].name]);
     if (b.boost > 1) rows.push(['Verstärkerfeld', '+' + Math.round((b.boost - 1) * 100) + ' %']);
   }
@@ -2149,7 +2181,14 @@ function updateInspector() {
   const turretBox = el('insTurret');
   turretBox.hidden = !b.def.turret;
   if (b.def.turret) {
-    el('prioBtn').textContent = 'Last: ' + PRIORITY[b.prio].name;
+    // Die Knöpfe sagen nur, was sie umschalten — was gerade eingestellt
+    // ist, steht zwei Zeilen darüber und muss nicht doppelt dastehen.
+    const z = TARGETS[b.ziel || 0];
+    el('zielBtn').textContent = 'Ziel';
+    el('zielBtn').title = 'Zielpriorität: ' + z.name + ' — ' + z.desc + '  (Z)';
+    el('prioBtn').textContent = 'Last';
+    el('prioBtn').title = 'Lastpriorität: ' + PRIORITY[b.prio].name +
+                          ' — wer bei knappem Puffer noch feuert  (L)';
     el('overloadBtn').textContent = b.overload ? 'Überladung an' : 'Überladung';
     el('overloadBtn').classList.toggle('on', !!b.overload);
     el('overloadBtn').title = 'Doppelter Schaden, ' + game.buffs.overloadCost + '-facher Verbrauch (O)';
@@ -2409,6 +2448,7 @@ addEventListener('keydown', ev => {
   else if (k === 'r') { if (game.selected) game.repair(game.selected); else game.repairAll(); }
   else if (k === 'o' && game.selected) game.toggleOverload(game.selected);
   else if (k === 'l' && game.selected && game.selected.def.turret) game.cyclePriority(game.selected);
+  else if (k === 'z' && game.selected && game.selected.def.turret) game.cycleTarget(game.selected);
   else if (k === 'k') game.cycleMode();
 });
 
@@ -2459,6 +2499,7 @@ el('speedBtn').onclick = () => {
 };
 el('repairBtn').onclick = () => game.selected && game.repair(game.selected);
 el('prioBtn').onclick = () => game.selected && game.cyclePriority(game.selected);
+el('zielBtn').onclick = () => game.selected && game.cycleTarget(game.selected);
 el('overloadBtn').onclick = () => game.selected && game.toggleOverload(game.selected);
 el('upgradeBtn').onclick = () => game.selected && game.upgrade(game.selected);
 el('sellBtn').onclick = () => game.selected && game.sell(game.selected);
