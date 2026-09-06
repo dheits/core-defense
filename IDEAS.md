@@ -171,7 +171,12 @@ Das ist der Grund für die Wertung nach der höchsten begonnenen Welle.
   Bei halben Kosten wäre der Umzug teurer als das, was er ersetzen soll. Stufe, Struktur
   samt Schaden und alle Einstellungen ziehen mit um, die Leiterbahn unter einem Pylon
   zählt am neuen Feld neu.
-- Bauplan kopieren und spiegeln — passt gut, weil das Feld radial symmetrisch ist
+- ~~Bauplan kopieren und spiegeln~~ ✅ umgesetzt, Taste `B` — und die Vermutung in dieser
+  Zeile stimmte: 41 × 25 Zellen mit dem Kern in der Mitte heißt, dass jede Zelle einen
+  exakten Partner hat (`x' = 40 − x`, `y' = 24 − y`), ohne Rundung. Der Zeiger wählt die
+  Seite, die gefüllt wird, die Vorschau zeigt Achse, Kästchen und Rechnung. Kopiert wird
+  der Grundriss auf Stufe 1 zum normalen Preis — die Ausbaustufen in einem Klick
+  mitzukaufen wäre kein Bauplan mehr, sondern ein zweites Feld.
 
 ---
 
@@ -275,7 +280,15 @@ stand mit „halben Kosten" in der Liste, und die wären teurer gewesen als der 
 Abbau und Neubau, der netto 40 % kostet. Aus der Hälfte wurde ein Viertel, und ein
 Selbsttest hält seither fest, dass der Umzug billiger bleiben muss als der Umweg.
 
-Bleibt aus der Liste: der Bauplan zum Spiegeln.
+Zuletzt kam der **Bauplan** dazu, und damit ist die Liste unter „Bedienung" leer. Die
+Entscheidung, die dabei zu treffen war, betraf nicht die Spiegelung selbst — die ist auf
+diesem Feld reine Arithmetik — sondern den Preis: Stufe 1 zum Neubaupreis, nicht der
+volle Bauwert. Damit ist Spiegeln nie billiger als Bauen von Hand, nur schneller, und
+kann die Bilanz gar nicht verschieben.
+
+Aus den Abschnitten 1 bis 4 offen geblieben: mehr Turmtypen mit klarer Rolle
+(Kettenblitz, Minenleger, Reparaturdrohne, Schildgenerator), Schadenszahlen beim
+Überfahren und die dauerhaften Freischaltungen zwischen den Partien.
 
 ## Wenn ich drei Dinge auswählen müsste (ursprüngliche Empfehlung)
 

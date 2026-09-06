@@ -64,6 +64,7 @@ Farbe, in der das Bauteil auch auf dem Feld gezeichnet wird.
 | `U` / `S` | ausgewähltes Gebäude ausbauen / abbauen |
 | `R` | reparieren — ohne Auswahl: alles reparieren |
 | `V` | ausgewähltes Gebäude auf ein freies Feld verschieben (25 % des Bauwerts) |
+| `B` | Bauplan: eine Hälfte des Feldes auf die andere spiegeln |
 | Leertaste | Welle sofort starten (Restzeit gibt Bonus-Materie) |
 | `P` | Pause, Button oben rechts: 1× / 2× / 3× |
 | `M` / Lautsprecher-Button | Ton an/aus (wird gespeichert) |
@@ -539,6 +540,35 @@ die Leiterbahn unter einem Pylon und das Netz, das komplett neu gerechnet wird. 
 das ist der Reiz: Ein Umzug formt den Versorgungsbaum um, und wer einen Pylon zu weit
 zieht, hängt alles hinter ihm ab.
 
+## Bauplan spiegeln
+
+Das Feld ist 41 × 25 Zellen groß, mit dem Kern genau in der Mitte. Das ist kein Zufall:
+Beide Kantenlängen sind ungerade, also hat **jede Zelle einen exakten Partner** auf der
+anderen Seite — `x' = 40 − x`, `y' = 24 − y`, ohne Rundung und ohne Rest. Wer eine Seite
+fertig hat, spiegelt sie mit `B` (oder dem Knopf **Bauplan** in der Taskleiste) auf eine
+andere.
+
+Der Zeiger wählt dabei die Seite, die gefüllt werden soll: Maus nach rechts, und die
+linke Hälfte wird nach rechts gespiegelt; Maus nach oben, und die untere klappt nach
+oben. Die Vorschau zeigt die Achse durch den Kern, ein Kästchen an jeder Stelle, an der
+etwas entstünde, und die Rechnung dazu — „9 Bauten für 240 Materie". Was die Materie
+nicht mehr trägt, steht blass daneben. Klick baut, `Esc` bricht ab.
+
+Kopiert wird der **Grundriss, nicht der Bestand**: Jeder Bau entsteht auf Stufe 1 zum
+normalen Neubaupreis. Die Ausbaustufen sind die Arbeit einer ganzen Partie, und sie in
+einem Klick mitzukaufen wäre kein Bauplan mehr, sondern ein zweites Feld. Billiger als
+von Hand ist das Spiegeln also nicht — es ist nur schneller und genauer.
+
+Drei Regeln, die man beim Spielen sofort bemerkt:
+
+- **Was auf der Achse steht, wird nicht kopiert.** Es ist sein eigener Spiegel und steht
+  bereits richtig.
+- **Belegte Zellen und Trümmer werden still übersprungen** — wie beim Ziehen einer
+  Barrierenreihe. Ein Feld, das schon symmetrisch ist, meldet ehrlich „nichts zu
+  spiegeln".
+- **Reicht die Materie nicht, wächst der Plan von innen nach außen.** So entsteht ein
+  zusammenhängender Anfang, der am Netz hängt, statt verstreuter Inseln am Rand.
+
 ## Gegner
 
 Crawler ab Welle 1, Runner ab 2, Brute ab 4, Drohne ab 6, Mender ab 8, Saboteur ab 9,
@@ -764,7 +794,8 @@ node tools/pruefen.js
 Sie läuft in einer Zehntelsekunde und deckt Leitungslast, die drei Kernbefehle, alle
 sieben Sturmwellen, die getrennten Akkus, die drei Kernmodi samt Anlauf und Schild,
 Spielstand und Bestenliste, das Druckgedächtnis, das erzeugte Gelände, das Tagesfeld,
-Reparatur, Abbau und Verschieben sowie die Sonderfähigkeiten der fünften Stufe ab. Der Prüfstand hat dafür einen flüchtigen `localStorage`, der ein erneutes Laden
+Reparatur, Abbau, Verschieben und den gespiegelten Bauplan sowie die Sonderfähigkeiten
+der fünften Stufe ab. Der Prüfstand hat dafür einen flüchtigen `localStorage`, der ein erneutes Laden
 des Spiels im selben Prozess übersteht — nur so lässt sich Sichern gegen Laden prüfen.
 Die Prüfungen sind in zwei Sorten aufgeteilt, und der Unterschied ist wichtig:
 

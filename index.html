@@ -188,6 +188,12 @@
 
       <div id="taskbar">
         <div id="shop" class="tb-group"></div>
+        <div class="tb-group">
+          <button id="planBtn" class="plan"
+                  title="Eine Hälfte des Feldes auf die andere spiegeln — Grundriss auf Stufe 1, zum normalen Preis  (Taste B)">
+            <span class="pk">B</span><span class="pn">Bauplan</span><span class="pc" id="planCost"></span>
+          </button>
+        </div>
         <span class="tb-sep"></span>
         <div id="powers" class="tb-group"></div>
         <span class="tb-sep"></span>
@@ -406,7 +412,10 @@
     Verstärkerfeld, Materiekonverter, Reaktivpanzerung. Reparieren kostet 35 % des Bauwerts
     anteilig zum Schaden, Abbau erstattet 60 % davon zurück. Wer nur den Platz falsch gewählt
     hat, <b>verschiebt</b> (<span class="l-key">V</span>) für 25 % des Bauwerts auf ein freies
-    Feld — Stufe, Struktur und Einstellungen ziehen mit um.
+    Feld — Stufe, Struktur und Einstellungen ziehen mit um. Und weil der Kern genau in der
+    Mitte eines Feldes mit ungeraden Kantenlängen sitzt, hat jede Zelle einen exakten
+    Partner gegenüber: Der <b>Bauplan</b> (<span class="l-key">B</span>) spiegelt eine
+    fertige Hälfte auf eine andere — den Grundriss auf Stufe 1, zum normalen Preis.
   </p>
 </section>
 
@@ -541,6 +550,7 @@
     <div><dt><kbd>U</kbd> / <kbd>S</kbd></dt><dd>ausbauen / abbauen</dd></div>
     <div><dt><kbd>R</kbd></dt><dd>reparieren</dd></div>
     <div><dt><kbd>V</kbd></dt><dd>auf ein freies Feld verschieben</dd></div>
+    <div><dt><kbd>B</kbd></dt><dd>Bauplan auf die andere Seite spiegeln</dd></div>
     <div><dt><kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd></dt><dd>Kernbefehle</dd></div>
     <div><dt><kbd>O</kbd> / <kbd>L</kbd></dt><dd>Überladung / Lastpriorität</dd></div>
     <div><dt><kbd>Z</kbd></dt><dd>Zielpriorität des Turms</dd></div>

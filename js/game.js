@@ -152,6 +152,7 @@ const game = {
   gestartet: false,
   tool: null, selected: null, inView: true,
   verschieben: null,                // Bau, der gerade ein neues Feld sucht
+  bauplan: null,                    // { achse, ziel } — welche Hälfte gespiegelt wird
   buffs: freshBuffs(), takenCards: new Map(),
   draft: null, plannedWave: null, turretsDirty: true,
   // Wird der Kern länger ungestört bearbeitet, ist irgendwo die Deckung offen
@@ -386,6 +387,7 @@ const game = {
     const c = this.moveCost(b);
     if (this.matter < c) { SFX.deny(); toast('Zu wenig Materie'); return false; }
     this.tool = null;
+    this.bauplan = null;
     this.verschieben = b;
     this.select(b);
     toast('Neues Feld für ' + b.def.name + ' wählen  −' + c);
@@ -430,6 +432,95 @@ const game = {
     updateInspector();
     this.merken();
     return true;
+  },
+
+  /* ----------------------- Bauplan --------------------------
+     Das Feld ist um den Kern herum symmetrisch: 41 × 25 Zellen mit dem
+     Kern genau in der Mitte, also hat jede Zelle einen exakten Partner
+     auf der anderen Seite — x' = 40 − x, y' = 24 − y, ohne Rundung.
+     Wer eine Seite fertig hat, spiegelt sie damit auf eine andere.
+
+     Kopiert wird der Grundriss, nicht der Bestand: Jeder Bau entsteht
+     auf Stufe 1 zum normalen Preis. Die Ausbaustufen sind die Arbeit
+     einer ganzen Partie; sie in einem Klick mitzukaufen wäre kein
+     Bauplan mehr, sondern ein zweites Feld. Billiger als von Hand ist
+     das Spiegeln also nicht — es ist nur schneller. */
+  bauplanStart() {
+    if (this.over) return false;
+    if (!this.buildings.size) { SFX.deny(); toast('Noch nichts gebaut'); return false; }
+    this.tool = null;
+    this.verschieben = null;
+    this.bauplan = { achse: 'x', ziel: 1 };
+    if (this.hover.inside) this.bauplanRichtung(this.hover.x, this.hover.y);
+    this.select(null);
+    toast('Auf welche Seite? Zeiger bewegen, Klick setzt, Esc bricht ab');
+    return true;
+  },
+  bauplanAbbrechen() {
+    if (!this.bauplan) return false;
+    this.bauplan = null;
+    return true;
+  },
+  // Der Zeiger wählt die Seite, die gefüllt werden soll — die längere
+  // der beiden Abweichungen vom Kern entscheidet, welche Achse gilt.
+  bauplanRichtung(x, y) {
+    const p = this.bauplan;
+    if (!p) return false;
+    const dx = x - CORE.cx, dy = y - CORE.cy;
+    if (!dx && !dy) return false;              // genau auf dem Kern bleibt alles
+    if (Math.abs(dx) >= Math.abs(dy)) { p.achse = 'x'; p.ziel = Math.sign(dx); }
+    else { p.achse = 'y'; p.ziel = Math.sign(dy); }
+    return true;
+  },
+  bauplanZiele() {
+    const p = this.bauplan;
+    if (!p) return [];
+    const ziele = [];
+    for (const b of this.buildings.values()) {
+      // Nur die Hälfte gegenüber der Zielseite wird kopiert. Was genau
+      // auf der Achse steht, ist sein eigener Spiegel und fällt raus.
+      const seite = Math.sign(p.achse === 'x' ? b.x - CORE.cx : b.y - CORE.cy);
+      if (seite !== -p.ziel) continue;
+      const x = p.achse === 'x' ? 2 * CORE.cx - b.x : b.x;
+      const y = p.achse === 'y' ? 2 * CORE.cy - b.y : b.y;
+      if (!this.free(x, y)) continue;
+      ziele.push({ type: b.type, x, y, cost: this.costOf(b.type) });
+    }
+    /* Von innen nach außen: Reicht die Materie nicht für alles, soll
+       ein zusammenhängender Anfang entstehen und keine verstreuten
+       Inseln am Rand. */
+    const weit = z => Math.hypot(z.x - CORE.cx, z.y - CORE.cy);
+    ziele.sort((a, b) => weit(a) - weit(b));
+    return ziele;
+  },
+  // Was davon bezahlbar ist — dieselbe Rechnung für Vorschau und Bau,
+  // damit die Vorschau nicht mehr verspricht, als danach entsteht.
+  bauplanRechnung() {
+    const ziele = this.bauplanZiele();
+    let rest = this.matter, summe = 0, n = 0;
+    for (const z of ziele) {
+      z.zahlbar = z.cost <= rest;
+      if (z.zahlbar) { rest -= z.cost; summe += z.cost; n++; }
+    }
+    return { ziele, summe, n };
+  },
+  bauplanBauen() {
+    if (!this.bauplan) return 0;
+    const { ziele, summe, n } = this.bauplanRechnung();
+    this.bauplan = null;
+    if (!n) { SFX.deny(); toast('Hier ist nichts zu spiegeln'); return 0; }
+    for (const z of ziele) {
+      if (!z.zahlbar) continue;
+      this.matter -= z.cost;
+      const b = this.makeBuilding(z.type, z.x, z.y);
+      for (let i = 0; i < 6; i++)
+        this.particles.push(new Particle(b.px, b.py, b.def.color, { speed: rand(40, 120), life: .4 }));
+    }
+    this.recomputeSupply();
+    SFX.build();
+    toast('Bauplan gespiegelt: ' + n + (n === 1 ? ' Bau' : ' Bauten') + '  −' + summe);
+    this.merken();
+    return n;
   },
 
   upgrade(b) {
@@ -780,6 +871,7 @@ const game = {
       this.coreHp = 0;
       this.over = true;
       this.verschieben = null;
+      this.bauplan = null;
       SFX.gameOver();
       loesche(SAVE_KEY);                       // die Partie ist zu Ende, nicht unterbrochen
       const erg = this.eintragen();
@@ -1482,6 +1574,7 @@ const game = {
 
       this.buildings.clear();
       this.verschieben = null;
+      this.bauplan = null;
       for (const d of s.bauten) {
         if (!BUILDINGS[d.t] || !this.free(d.x, d.y)) continue;
         const b = this.makeBuilding(d.t, d.x, d.y);
@@ -2399,7 +2492,50 @@ function drawZugGhost() {
   if (b.def.supply) drawRange(px, py, b.def.supply + game.buffs.netRadius, '#5fe0ff');
 }
 
+/* Vorschau auf den gespiegelten Bauplan: die Achse durch den Kern,
+   die Kästchen dort, wo etwas entstünde — voll für das, was bezahlt
+   ist, blass für den Rest — und eine Zeile, die beides beziffert. */
+function drawBauplanGhost() {
+  const p = game.bauplan;
+  const { ziele, summe, n } = game.bauplanRechnung();
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(95,224,255,.45)'; ctx.lineWidth = 1.5;
+  ctx.setLineDash([6, 6]);
+  ctx.beginPath();
+  if (p.achse === 'x') { ctx.moveTo(CORE_PX.x, 0); ctx.lineTo(CORE_PX.x, H); }
+  else { ctx.moveTo(0, CORE_PX.y); ctx.lineTo(W, CORE_PX.y); }
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  for (const z of ziele) {
+    const def = BUILDINGS[z.type];
+    ctx.globalAlpha = z.zahlbar ? .5 : .16;
+    ctx.fillStyle = def.color;
+    ctx.fillRect(z.x * GRID.cell + 3, z.y * GRID.cell + 3, GRID.cell - 6, GRID.cell - 6);
+  }
+  ctx.globalAlpha = 1;
+
+  /* Die Zeile steht mitten in der Hälfte, die gefüllt würde — aber mit
+     Abstand zur Kopfleiste oben und zur Taskleiste unten, die beide
+     über dem Feld liegen. */
+  const tx = p.achse === 'x' ? CORE_PX.x + p.ziel * W * .26 : W / 2;
+  const ty = p.achse === 'y' ? CORE_PX.y + p.ziel * H * .32 : 150;
+  ctx.textAlign = 'center';
+  ctx.font = '13px sans-serif';
+  ctx.fillStyle = n ? '#ffd166' : '#ff5d73';
+  ctx.fillText(n ? 'Bauplan spiegeln: ' + n + (n === 1 ? ' Bau' : ' Bauten') + ' für ' + summe + ' Materie'
+                 : 'Hier ist nichts zu spiegeln', tx, ty);
+  ctx.font = '11px sans-serif';
+  ctx.fillStyle = '#9fb3c8';
+  ctx.fillText(ziele.length > n ? (ziele.length - n) + ' weitere sind zu teuer  ·  Klick spiegelt, Esc bricht ab'
+                                : 'Klick spiegelt, Esc bricht ab', tx, ty + 17);
+  ctx.textAlign = 'left';
+  ctx.restore();
+}
+
 function drawGhost() {
+  if (game.bauplan) return drawBauplanGhost();
   if (game.verschieben) return drawZugGhost();
   if (!game.tool || !game.hover.inside) return;
   const def = BUILDINGS[game.tool];
@@ -2556,9 +2692,25 @@ function shopHighlight() {
 
 function selectTool(type) {
   game.verschiebeAbbrechen();
+  game.bauplanAbbrechen();
   game.tool = game.tool === type ? null : type;
   game.select(null);
   shopHighlight();
+}
+
+// Auch der Bauplan ist ein Schalter: einmal an, einmal ab
+function bauplanSchalten() {
+  if (game.bauplan) { game.bauplanAbbrechen(); return; }
+  game.bauplanStart();
+  shopHighlight();                     // bauplanStart legt das Bauteil weg
+}
+
+function updatePlanBtn() {
+  const btn = el('planBtn');
+  btn.classList.toggle('active', !!game.bauplan);
+  const zahl = el('planCost');
+  const txt = game.bauplan ? game.bauplanRechnung().n + ' × ' : '';
+  if (zahl.textContent !== txt) zahl.textContent = txt;
 }
 
 // Der Umzug ist ein Schalter: einmal an, einmal ab
@@ -2852,6 +3004,7 @@ function updateHud() {
 
   updatePowers();
   updateModes();
+  updatePlanBtn();
 
   const prev = el('preview');
   if (build && !game.draft && game.plannedWave) {
@@ -2877,6 +3030,7 @@ canvas.addEventListener('mousemove', ev => {
   const c = mouseCell(ev);
   game.hover.x = c.x; game.hover.y = c.y;
   game.hover.inside = game.inBounds(c.x, c.y);
+  if (game.bauplan && game.hover.inside) game.bauplanRichtung(c.x, c.y);
 });
 canvas.addEventListener('mouseleave', () => game.hover.inside = false);
 
@@ -2914,6 +3068,7 @@ canvas.addEventListener('click', ev => {
   if (game.over) return;
   const c = mouseCell(ev);
   if (!game.inBounds(c.x, c.y)) return;
+  if (game.bauplan) { game.bauplanBauen(); return; }
   if (game.verschieben) { game.verschiebeZu(c.x, c.y); return; }
   if (game.tool) { game.build(game.tool, c.x, c.y); return; }
   game.select(game.buildings.get(key(c.x, c.y)) || null);
@@ -2921,6 +3076,7 @@ canvas.addEventListener('click', ev => {
 
 canvas.addEventListener('contextmenu', ev => {
   ev.preventDefault();
+  if (game.bauplanAbbrechen()) return;
   if (game.verschiebeAbbrechen()) return;
   if (game.tool) { selectTool(game.tool); return; }
   const c = mouseCell(ev);
@@ -2942,7 +3098,8 @@ addEventListener('keydown', ev => {
   if (power) return game.usePower(power.id);
   if (ev.code === 'Space') { ev.preventDefault(); if (game.phase === 'build') game.startWave(); }
   else if (k === 'escape') {
-    if (game.verschiebeAbbrechen()) return;   // erst den Zug, dann die Auswahl
+    if (game.bauplanAbbrechen()) return;      // erst die Vorschau …
+    if (game.verschiebeAbbrechen()) return;   // … dann der Zug, dann die Auswahl
     selectTool(null); game.select(null);
   }
   else if (k === 'p') togglePause();
@@ -2950,6 +3107,7 @@ addEventListener('keydown', ev => {
   else if (k === 'u' && game.selected) game.upgrade(game.selected);
   else if (k === 's' && game.selected) game.sell(game.selected);
   else if (k === 'v' && (game.selected || game.verschieben)) zugSchalten();
+  else if (k === 'b') bauplanSchalten();
   else if (k === 'r') { if (game.selected) game.repair(game.selected); else game.repairAll(); }
   else if (k === 'o' && game.selected) game.toggleOverload(game.selected);
   else if (k === 'l' && game.selected && game.selected.def.turret) game.cyclePriority(game.selected);
@@ -3008,6 +3166,7 @@ el('zielBtn').onclick = () => game.selected && game.cycleTarget(game.selected);
 el('overloadBtn').onclick = () => game.selected && game.toggleOverload(game.selected);
 el('upgradeBtn').onclick = () => game.selected && game.upgrade(game.selected);
 el('moveBtn').onclick = zugSchalten;
+el('planBtn').onclick = bauplanSchalten;
 el('sellBtn').onclick = () => game.selected && game.sell(game.selected);
 el('ovBtn').onclick = () => location.reload();
 

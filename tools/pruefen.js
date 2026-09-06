@@ -442,6 +442,144 @@ beschreibe('Ein gefallener Bau zieht nicht mehr um', () => {
   stimmt('auch der Abbau beendet den Zug', g.verschieben === null);
 });
 
+/* ------------------------ Bauplan ------------------------ */
+beschreibe('Der Bauplan spiegelt an der Kernachse', () => {
+  const h = neu(), g = h.game;
+  h.bau('blaster', 14, 8);
+  h.bau('wall', 16, 12);
+  g.bauplan = { achse: 'x', ziel: 1 };
+
+  const r = g.bauplanRechnung();
+  gleich('beide Bauten haben einen Partner', r.n, 2);
+  gleich('bezahlt wird der normale Neubaupreis',
+         r.summe, g.costOf('blaster') + g.costOf('wall'));
+
+  const m0 = g.matter;
+  gleich('und beide entstehen', g.bauplanBauen(), 2);
+  stimmt('an der gespiegelten Zelle',
+         !!g.buildings.get('26,8') && !!g.buildings.get('24,12'));
+  gleich('die Höhe bleibt, wie sie war', g.buildings.get('26,8').y, 8);
+  gleich('abgezogen wird genau die Summe', m0 - g.matter, r.summe);
+  stimmt('die Vorlage steht unverändert da', !!g.buildings.get('14,8'));
+  stimmt('die Vorschau ist danach weg', g.bauplan === null);
+});
+
+beschreibe('Gespiegelt wird der Grundriss, nicht der Ausbau', () => {
+  const h = neu(), g = h.game;
+  const t = h.bau('cannon', 14, 12);
+  for (let i = 1; i < h.UPGRADE.maxLevel; i++) g.upgrade(t);
+  gleich('die Vorlage ist ausgebaut', t.level, h.UPGRADE.maxLevel);
+
+  g.bauplan = { achse: 'x', ziel: 1 };
+  const m0 = g.matter;
+  g.bauplanBauen();
+  const kopie = g.buildings.get('26,12');
+  gleich('die Kopie fängt auf Stufe 1 an', kopie.level, 1);
+  gleich('und kostet auch nur den Neubau', m0 - g.matter, g.costOf('cannon'));
+  stimmt('deutlich weniger als die Vorlage wert ist', g.buildingValue(t) > g.costOf('cannon') * 3);
+});
+
+beschreibe('Der Bauplan lässt liegen, was nicht geht', () => {
+  const h = neu(), g = h.game;
+  h.bau('wall', 20, 5);                    // genau auf der Achse
+  h.bau('wall', 26, 7);                    // steht schon auf der Zielseite
+  h.bau('wall', 14, 9); h.bau('wall', 26, 9);   // Ziel belegt
+  h.bau('wall', 14, 11);                   // Ziel liegt in Trümmern
+  g.gelaende[11 * h.GRID.cols + 26] = h.BODEN.truemmer;
+  h.bau('wall', 14, 13);                   // der einzige, der durchkommt
+
+  g.bauplan = { achse: 'x', ziel: 1 };
+  const ziele = g.bauplanZiele();
+  gleich('genau ein Ziel bleibt übrig', ziele.length, 1);
+  gleich('und zwar dieses', ziele[0].x + ',' + ziele[0].y, '26,13');
+});
+
+beschreibe('Reicht die Materie nicht, wächst der Plan von innen nach außen', () => {
+  const h = neu(), g = h.game;
+  h.bau('wall', 14, 12); h.bau('wall', 10, 12); h.bau('wall', 6, 12);
+  g.bauplan = { achse: 'x', ziel: 1 };
+  g.matter = g.costOf('wall') * 2 + 1;
+
+  const r = g.bauplanRechnung();
+  gleich('zwei von drei sind bezahlbar', r.n, 2);
+  stimmt('und zwar die beiden inneren',
+         r.ziele[0].x === 26 && r.ziele[1].x === 30 && r.ziele[2].zahlbar === false);
+
+  g.bauplanBauen();
+  stimmt('genau die stehen da',
+         g.buildings.has('26,12') && g.buildings.has('30,12') && !g.buildings.has('34,12'));
+  gleich('und die Materie reicht bis zum Rest', Math.round(g.matter), 1);
+});
+
+beschreibe('Der Zeiger wählt die Seite', () => {
+  const h = neu(), g = h.game;
+  h.bau('wall', 14, 12);
+  g.bauplan = { achse: 'x', ziel: 1 };
+  const richtung = (x, y) => { g.bauplanRichtung(x, y); return g.bauplan.achse + g.bauplan.ziel; };
+
+  gleich('rechts vom Kern füllt rechts', richtung(34, 12), 'x1');
+  gleich('links füllt links', richtung(4, 12), 'x-1');
+  gleich('oben füllt oben', richtung(20, 2), 'y-1');
+  gleich('unten füllt unten', richtung(20, 22), 'y1');
+  // Bei Gleichstand gewinnt die Waagerechte — irgendeine Regel braucht es
+  gleich('genau auf der Diagonale entscheidet die Waagerechte', richtung(24, 16), 'x1');
+  stimmt('genau auf dem Kern ändert sich nichts', !g.bauplanRichtung(h.CORE.cx, h.CORE.cy));
+  gleich('und die Wahl von vorhin steht noch', g.bauplan.achse + g.bauplan.ziel, 'x1');
+
+  // Nach oben gespiegelt bleibt die Spalte, die Zeile klappt um
+  h.bau('wall', 14, 20);
+  g.bauplanRichtung(20, 2);
+  const ziele = g.bauplanZiele();
+  stimmt('die Waagerechte spiegelt die Zeile',
+         ziele.some(z => z.x === 14 && z.y === 4));
+});
+
+beschreibe('Nach dem Spiegeln hängt die Kopie am Netz', () => {
+  const h = neu(), g = h.game;
+  h.bau('pylon', 16, 12);
+  h.bau('blaster', 13, 12);
+  g.bauplan = { achse: 'x', ziel: 1 };
+  g.bauplanBauen();
+
+  const pylon = g.buildings.get('24,12'), turm = g.buildings.get('27,12');
+  stimmt('beide stehen', !!pylon && !!turm);
+  stimmt('der Pylon hängt am Kern', pylon.supplied);
+  stimmt('und der Turm am Pylon', turm.supplied);
+});
+
+beschreibe('Ein Bauplan ohne Klick kostet nichts', () => {
+  const h = neu(), g = h.game;
+  h.bau('wall', 14, 12);
+  g.matter = 300;
+
+  stimmt('ohne Vorschau baut nichts', g.bauplanBauen() === 0);
+  stimmt('die Vorschau startet', g.bauplanStart());
+  stimmt('der Abbruch meldet sich', g.bauplanAbbrechen());
+  stimmt('ein zweiter Abbruch hat nichts mehr zu tun', !g.bauplanAbbrechen());
+  gleich('und alles ist, wie es war', g.matter, 300);
+  gleich('nur der eine Bau steht', g.buildings.size, 1);
+
+  // Auf einem leeren Feld gibt es nichts zu spiegeln
+  const leer = neu();
+  stimmt('ohne Bauten fängt es gar nicht erst an', !leer.game.bauplanStart());
+});
+
+beschreibe('Der gespiegelte Plan steht im Spielstand', () => {
+  const h = neu(), g = h.game;
+  g.matter = 500;
+  h.bau('blaster', 14, 8);
+  g.bauplan = { achse: 'x', ziel: 1 };
+  g.bauplanBauen();
+  const zahl = g.buildings.size, materie = Math.round(g.matter);
+
+  const h2 = weiter();
+  stimmt('der Stand lädt', h2.game.laden(h2.game.gespeicherteRunde()));
+  gleich('mit allen Bauten', h2.game.buildings.size, zahl);
+  stimmt('auch der gespiegelten', h2.game.buildings.has('26,8'));
+  gleich('und der bezahlten Materie', Math.round(h2.game.matter), materie);
+  stimmt('geladen wird nie mitten in der Vorschau', h2.game.bauplan === null);
+});
+
 /* ------------------ Sonderfähigkeiten ------------------ */
 beschreibe('Stufe 5: Sonderfähigkeiten', () => {
   const h = neu(), g = h.game;

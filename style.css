@@ -67,15 +67,15 @@ button.danger:hover{background:rgba(190,50,70,.5);border-color:var(--red)}
 .tb-sep{width:1px;margin:3px 2px;background:var(--line);flex:0 0 auto}
 
 /* gemeinsame Grundform aller drei Sorten */
-.card,.power,.mode{
+.card,.power,.mode,.plan{
   position:relative;overflow:hidden;cursor:pointer;transition:.14s;
   display:flex;align-items:center;gap:5px;
   height:28px;padding:0 7px;border-radius:5px;line-height:1;
   background:var(--panel);border:1px solid var(--line);
   font:inherit;font-size:11.5px;color:var(--text);white-space:nowrap;
 }
-.card:hover,.power:hover,.mode:hover{border-color:var(--cyan)}
-.card .k,.power .pk,.mode .mk{
+.card:hover,.power:hover,.mode:hover,.plan:hover{border-color:var(--cyan)}
+.card .k,.power .pk,.mode .mk,.plan .pk{
   flex:0 0 auto;min-width:15px;height:15px;line-height:14px;text-align:center;padding:0 3px;
   border:1px solid var(--line);border-radius:3px;font-size:9px;color:var(--dim);
 }
@@ -92,6 +92,15 @@ button.danger:hover{background:rgba(190,50,70,.5);border-color:var(--red)}
 .card.active .k{color:var(--cyan);border-color:rgba(95,224,255,.5)}
 .card.poor{opacity:.42}
 .card.poor.active{opacity:.7}      /* gewählt und zu teuer: erkennbar bleiben */
+
+/* ---- Bauplan ----
+   Sitzt bei den Bauteilen, weil es eines ist: ein Klick, der baut. */
+.plan .pn{letter-spacing:.02em}
+.plan .pc{color:var(--gold);font-size:11px;font-variant-numeric:tabular-nums}
+.plan .pc:empty{display:none}
+.plan.active{background:rgba(60,150,220,.32);border-color:var(--cyan)}
+.plan.active .pn{color:#fff}
+.plan.active .pk{color:var(--cyan);border-color:rgba(95,224,255,.5)}
 
 /* ---- Kernbefehle ---- */
 .power .pn{letter-spacing:.02em}
