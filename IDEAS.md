@@ -82,6 +82,17 @@ eine Eigenschaft mitbringen (Störnebel, EMP-Front, Magnetsturm, Schwarm, Kälte
 Panzerkonvoi, Hetzjagd), angekündigt in der Vorschau und mit 50 % höherer Prämie belohnt.
 Jeder Sturm zielt auf eine Einseitigkeit im Aufbau. *Klein, weil nur Multiplikatoren.*
 
+**Druckgedächtnis der Gegner.** Die Einfallsrichtungen liegen heute gleichmäßig auf dem
+Kreis und werden nur zufällig gedreht (`planWave`, `js/game.js:686`). Deshalb ist der
+symmetrische Igel der beste Aufbau, und deshalb sieht jede Partie ab Welle 10 gleich aus.
+Stattdessen merkt sich das Spiel je Sektor, wie weit die letzte Welle gekommen ist — engste
+Annäherung an den Kern, Kernschaden, verlorene Bauten — und verschiebt die Gewichte der
+nächsten Richtungen dorthin: Wer eine Seite vernachlässigt, bekommt sie zurück. Nötig ist
+ein Deckel auf die Verschiebung, sonst schlägt die Rückmeldung immer auf dieselbe Seite und
+der Lauf endet an einer Ecke statt an einer Entscheidung. Lesbar ist es sofort, weil die
+Wellenvorschau die Himmelsrichtungen ohnehin nennt. *Klein bis mittel — die Auswertung nach
+der Welle gibt es schon, die Statistik je Sektor noch nicht.*
+
 **Mehr Turmtypen mit klarer Rolle** statt mehr Zahlen: Kettenblitz gegen Pulks,
 Minenleger für tote Winkel, Reparaturdrohne, Schildgenerator für Nachbarbauten.
 *Je Turm klein, weil das Turmgerüst steht.*
@@ -107,6 +118,19 @@ schönrechnet.
 **Tagesseed.** Alle spielen dieselbe Wellenfolge, weil der Zufallsgenerator vom Datum
 abhängt. Braucht nur einen seedbaren PRNG statt `Math.random()` — und macht das Teilen
 von Ergebnissen erst sinnvoll. *Klein.*
+
+**Erzeugtes Gelände.** Das Feld startet nicht leer. Pro Partie — oder pro Tagesseed, dann
+spielen alle auf demselben Gelände — werden Zellen vorbelegt: Trümmer, auf denen nicht
+gebaut werden kann und die Netzäste zu Umwegen zwingen; alte Leiterbahnen, auf denen ein
+Pylon billiger ist oder mehr trägt; Schneisen, in denen Gegner schneller laufen. Der Gewinn
+ist nicht die Deko, sondern das Brechen der radialen Symmetrie: Heute ist jede
+Himmelsrichtung gleich, also ist auch jeder Aufbau gleich, und die Karten sind das Einzige,
+was zwei Partien unterscheidet. Eine Wegfindung braucht es dafür nicht — Gegner laufen
+geradeaus auf ihr Ziel zu und weichen Blockaden seitlich aus (`js/entities.js:292`), das
+Gelände muss also nur in `free()` und `buildingAt()` auftauchen. Zwei Fallstricke: Der
+Speicherstand muss das Gelände mitschreiben, sonst steht die fortgesetzte Partie auf einem
+anderen Feld, und der Bot muss damit umgehen, sonst ist jede Messung danach mit einer
+zusätzlichen Streuquelle belastet. *Mittel.*
 
 **Dauerhafte Freischaltungen** (Türme, Startboni) über Partien hinweg. Ist der
 Standard-Weg des Genres, lohnt aber erst, wenn oben genug Inhalt zum Freischalten da
