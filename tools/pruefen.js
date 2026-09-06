@@ -2152,6 +2152,113 @@ beschreibe('Die Landingpage nennt die Werte aus config.js', () => {
   steht('Lastpriorität: Sparlast', 'erst ab ' + Math.round(h.PRIORITY[2].threshold * 100) + ' % Ladung');
 });
 
+/* ----------------------- README --------------------------
+   Dieselbe Frage wie bei der Landingpage, nur für die lange Fassung:
+   Die README erklärt jede Zahl des Spiels, und niemand hielt beide
+   zusammen. Geprüft wird, was sich als Zeichenkette aus config.js
+   ableiten lässt — Preise, Tabellen, Schwellen. Prosa bleibt Prosa.
+---------------------------------------------------------- */
+beschreibe('Die README nennt die Werte aus config.js', () => {
+  const h = frisch();
+  const text = require('fs').readFileSync(path.resolve(__dirname, '..', 'README.md'), 'utf8');
+  const eng = text.replace(/\s+/g, ' ');      // für Sätze, die über Zeilen laufen
+  const komma = z => String(z).replace('.', ',');
+  const steht = (was, s, wo = text) =>
+    stimmt(was + ' — „' + s + '" fehlt in der README', wo.includes(s));
+  /* Die README schreibt kleine Zahlen als Wort und den Deckel als „2,0".
+     Beide Schreibweisen sind richtig, also zählt jede davon. */
+  const eines = (was, liste, wo = text) =>
+    stimmt(was + ' — keine dieser Schreibweisen steht in der README: ' + liste.join(' / '),
+           liste.some(s => wo.includes(s)));
+  const WORT = ['null', 'ein', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben',
+                'acht', 'neun', 'zehn', 'elf', 'zwölf'];
+
+  // --- Gebäude: Preis und Stufe-5-Zeile ---
+  for (const def of Object.values(h.BUILDINGS))
+    steht('Preis ' + def.name, '**' + def.name + '** (' + def.cost + ')');
+  for (const [typ, sp] of Object.entries(h.SPECIALS))
+    steht('Stufe 5 ' + typ, '| ' + h.BUILDINGS[typ].name + ' | **' + sp.name + '**');
+
+  // --- Netz und Ausbau ---
+  steht('Pylon: Radius', 'Radius ' + komma(h.BUILDINGS.pylon.supply) + ' Zellen');
+  steht('Pylon: Leitungslast', 'Leitungslast ' + h.FLOW.pylon + '/s (+' + h.FLOW.perLevel + '/s je Stufe)');
+  steht('Kern: Leitungslast', 'der Kern ' + h.FLOW.core + '/s');
+  steht('Pylon Stufe 5: Leitungslast', (h.FLOW.pylon + 4 * h.FLOW.perLevel) + '/s');
+  steht('Akku: Speicher', '+' + h.BUILDINGS.akku.capacity + ' Speicher je Stufe');
+  steht('Akku: Leitung', h.FLOW.akku + '/s je Stufe');
+  steht('Reaktor: Nachschub', '+' + h.BUILDINGS.reactor.regen + ' Energie/s je Stufe');
+  steht('Ausbau', 'je +' + Math.round((h.UPGRADE.damage - 1) * 100) + ' % Schaden, +' +
+        Math.round((h.UPGRADE.range - 1) * 100) + ' % Reichweite, +' +
+        Math.round((h.UPGRADE.hp - 1) * 100) + ' % Struktur');
+  steht('Reparatur', 'für ' + Math.round(h.REPAIR_SHARE * 100) + ' % seines Werts');
+  steht('Abbau', 'erstattet ' + Math.round(h.SELL_REFUND * 100) + ' %');
+  steht('Verschieben', '(' + Math.round(h.MOVE_SHARE * 100) + ' % des Bauwerts)');
+
+  // --- Kernbefehle und Kernmodi ---
+  for (const p of Object.values(h.POWERS))
+    steht(p.name + ': Tabellenzeile',
+          '| **' + p.name + '** | `' + p.key.toUpperCase() + '` | ' +
+          Math.round(p.drain * 100) + ' % | ' + p.cd + ' s |');
+  const [ein, spe, sch] = h.CORE_MODES;
+  steht('Einspeisung', '+' + Math.round((ein.regen - 1) * 100) + ' % Regeneration');
+  steht('Speicher', '+' + Math.round((spe.cap - 1) * 100) + ' % Speicher');
+  steht('Schild: Anteil', Math.round(sch.absorb * 100) + ' % des Kernschadens');
+  steht('Schild: Preis', komma(sch.perDamage) + ' Energie je Schadenspunkt');
+  steht('Schild: Untergrenze', 'über **' + Math.round(sch.floor * 100) + ' %** steht');
+  steht('Moduswechsel: Anlauf', '**' + komma(h.CORE_SWITCH.time) + ' Sekunden Anlauf**');
+  steht('Moduswechsel: Drosselung', 'fällt auf ' + Math.round(h.CORE_SWITCH.regen * 100) + ' %');
+
+  // --- Wellen, Stürme, Gegner ---
+  steht('Sturm: erste Welle', 'Ab Welle ' + h.MOD_FROM_WAVE);
+  steht('Sturm: Prämie', '**' + Math.round(h.MOD_BONUS * 100) + ' % mehr Prämie**');
+  for (const m of h.MODIFIERS) steht('Sturm ' + m.id, '| ' + m.name + ' | ');
+  for (const [typ, welle] of Object.entries(h.UNLOCK)) {
+    const n = h.ENEMIES[typ].name;
+    stimmt('Startwelle ' + n + ' (' + welle + ') fehlt in der README',
+           eng.includes(n + ' ab Welle ' + welle) || eng.includes(n + ' ab ' + welle));
+  }
+  steht('Höchstzahlen je Welle',
+        'Wächter ' + h.TYPE_CAP.warden + ', Mender und Zapfer ' + h.TYPE_CAP.mender +
+        ', Saboteure ' + h.TYPE_CAP.sabot + ', Splitter ' + h.TYPE_CAP.splitter, eng);
+  steht('Titan: Panzerung und Heilung',
+        'Panzerung ' + h.ENEMIES.titan.armor + ', heilt sich ' + h.ENEMIES.titan.regen);
+  steht('Moloch: Restschaden', 'nur ' + Math.round(h.GUARD_REDUCTION * 100) + ' % des Schadens');
+  steht('Nexus: Zapfen', 'aus ' + h.ENEMIES.nexus.drainRange + ' Zellen Entfernung ' +
+        h.ENEMIES.nexus.drain + ' Energie pro Sekunde');
+  steht('Nexus: Brut', 'alle ' + komma(h.ENEMIES.nexus.spawnEvery) + ' Sekunden');
+  steht('Zapfer', 'aus ' + h.ENEMIES.drainer.drainRange + ' Zellen Entfernung ' +
+        h.ENEMIES.drainer.drain + ' Energie pro Sekunde');
+  steht('Wächter: Schild', 'Schild von ' + h.ENEMIES.warden.shieldAura + ' über alles in ' +
+        komma(h.ENEMIES.warden.auraRange) + ' Zellen');
+  steht('Brute: Panzerung', 'Panzerung ' + h.ENEMIES.brute.armor);
+
+  // --- Anfang, Karten, Feld ---
+  steht('Einstieg', h.START_MATTER + ' Startmaterie, ' + h.FIRST_BUILD_TIME +
+        ' Sekunden erste Bauphase (danach ' + h.BUILD_TIME + ')', eng);
+  steht('Kartenstapel', 'vier von ' + h.CARDS.length + ' Karten');
+  steht('Kartenwahl: Tasten', '`1`–`' + h.DRAFT_SIZE + '` bei der Kartenwahl');
+  steht('Feldgröße', h.GRID.cols + ' × ' + h.GRID.rows + ' Zellen');
+  steht('Spiegelachse', "x' = " + (h.GRID.cols - 1) + ' − x');
+  steht('Gelände: freier Ring', '(' + komma(h.GELAENDE.frei) + ' Zellen)');
+  steht('Gelände: Reichweite', 'jenseits von ' + h.GELAENDE.weit + ' Zellen');
+  steht('Gelände: Leiterbahn', '**' + Math.round((h.GELAENDE.leiter - 1) * 100) + ' % mehr** Last (' +
+        komma(h.FLOW.pylon * h.GELAENDE.leiter) + ' statt ' + h.FLOW.pylon + '/s');
+  steht('Gelände: Schneise', '**' + Math.round((h.GELAENDE.tempo - 1) * 100) + ' % schneller**');
+  const truemmer = h.GELAENDE.proSektor * h.GELAENDE.nest[1];
+  eines('Trümmer je Sektor', ['höchstens ' + truemmer + ' Trümmerzellen',
+                              'höchstens ' + WORT[truemmer] + ' Trümmerzellen'], eng);
+
+  // --- Prioritäten ---
+  steht('Lastpriorität: Schwellen', 'Normal ab ' + Math.round(h.PRIORITY[1].threshold * 100) +
+        ' %, Sparlast ab ' + Math.round(h.PRIORITY[2].threshold * 100) + ' %');
+  for (const z of h.TARGETS) steht('Zielpriorität ' + z.id, '**' + z.name + '**');
+  eines('Druck: Deckel oben', ['**' + komma(h.DRUCK.max) + '**',
+                               '**' + komma(h.DRUCK.max.toFixed(1)) + '**']);
+  eines('Druck: Deckel unten', ['**' + komma(h.DRUCK.min) + '**',
+                                '**' + komma(h.DRUCK.min.toFixed(1)) + '**']);
+  steht('Bestenliste: Länge', 'acht besten Läufe');
+});
+
 /* ------------------------ Ausgabe ------------------------ */
 console.log('');
 if (fehler.length) {

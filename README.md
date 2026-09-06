@@ -52,7 +52,7 @@ entsprechend ihrem Gewicht seltener. Beides hält Partien auseinander.
 
 Alles Anwählbare sitzt in einer **Taskleiste** am unteren Rand: links die Bauteile,
 dann der Bauplan, die Kernbefehle und rechts die Kernmodi. Die Bauteile stehen seit dem
-achten in zwei Reihen — elf Flächen passen nicht mehr in eine Zeile, und die Leiste
+siebten in zwei Reihen zu sechs und fünf — elf Flächen passen nicht mehr in eine Zeile, und die Leiste
 kostet dadurch rund eine Zellenreihe Spielfeld mehr. Die Erklärungen stehen im Tooltip,
 die Werte eines gebauten Turms im Inspektor rechts. Ein schmaler Farbbalken am linken Rand jeder Fläche trägt die
 Farbe, in der das Bauteil auch auf dem Feld gezeichnet wird.
@@ -75,7 +75,7 @@ Farbe, in der das Bauteil auch auf dem Feld gezeichnet wird.
 | `Z` | Zielpriorität des gewählten Turms |
 | `Q` / `W` / `E` | Kernbefehle: Entladung, Netzstoß, Notpuls |
 | `K` | Kernmodus wechseln (Einspeisung → Speicher → Schild) |
-| `1`–`3` bei der Kartenwahl | Karte nehmen |
+| `1`–`4` bei der Kartenwahl | Karte nehmen |
 | `Esc` | alles abwählen |
 
 ## Wenn der Kern ungedeckt ist
@@ -127,7 +127,7 @@ Lastpriorität steht rechts oben und in eigener Farbe.
 
 ## Leitungslast
 
-Versorgung ist nicht binär. Jeder Knoten trägt nur eine begrenzte Menge Energie pro
+Angeschlossen zu sein ist nicht die ganze Antwort. Jeder Knoten trägt nur eine begrenzte Menge Energie pro
 Sekunde weiter: der Kern 58/s, ein Pylon 15/s und je Ausbaustufe 6/s mehr — Stufe 5
 also 39/s. Was ein Turm an Dauerlast anfordert (Energie je Schuss geteilt durch die
 Schussfolge), fließt durch **alle** Knoten zwischen ihm und dem Kern.
@@ -222,7 +222,7 @@ paar Sekunden dünnes Feuer.
 | Befehl | Taste | Puffer | Bereit nach | Wirkung |
 |---|---|---|---|---|
 | **Entladung** | `Q` | 55 % | 26 s | Druckwelle im Umkreis von 5,6 Zellen, 2,9 Schaden je Energie, nach außen abnehmend. Zählt als Energieschaden — Schilde nehmen ihn voll. |
-| **Netzstoß** | `W` | 40 % | 34 s | 6 s lang doppelter Schaden bei 55 % Verbrauch. Liegt über der Überladung. |
+| **Netzstoß** | `W` | 40 % | 34 s | 6 s lang doppelter Schaden, und jeder Schuss kostet nur 55 %. Liegt über der Überladung. |
 | **Notpuls** | `E` | 45 % | 40 s | Setzt jeden versorgten Bau um ein Drittel instand, ohne Materie. Kalte Türme bleiben kaputt. |
 
 Die Karten *Kondensatorbank* (−28 % Abklingzeit) und *Schwungrad* (−35 % Pufferkosten)
@@ -437,8 +437,9 @@ ungedeckt getroffen wird.
 
 ### Schadensbild
 
-Ab 72 % Struktur bekommt ein Bau Sprünge, ab 55 % mehr davon, ab 35 % glühen sie und
-eine Bruchstelle glimmt. Der Rissverlauf wird aus der Position des Baus abgeleitet und
+Ab 72 % Struktur bekommt ein Bau zwei Sprünge, ab 55 % drei, ab 35 % fünf; die Risse
+glühen umso heller, je schwerer der Schaden ist, und unter 40 % glimmt zusätzlich eine
+Bruchstelle. Der Rissverlauf wird aus der Position des Baus abgeleitet und
 liegt damit fest — ein zitterndes Rissbild wäre unruhig. Beschädigte Bauten rauchen,
 schwer getroffene sprühen zusätzlich Funken. Damit ist auf einen Blick zu sehen, wo die
 Reparatur (`R`) hingehört.
@@ -508,7 +509,7 @@ ab. Bei stumm geschaltetem Ton werden gar keine Audio-Nodes erzeugt.
 - **Schildfeld** (60) — lädt aus Überschuss vor und fängt Treffer auf Nachbarn und Kern ab
 
 Jedes Gebäude hat **fünf Ausbaustufen**: je +42 % Schaden, +7 % Reichweite, +28 % Struktur.
-Der Ausbau kostet mit jeder Stufe mehr (Blaster: 39, 56, 72, 89 — zusammen 286 gegenüber
+Der Ausbau kostet mit jeder Stufe mehr (Blaster: 39, 56, 72, 89 — zusammen 256 gegenüber
 30 für den Neubau), dafür schaltet **Stufe 5 eine eigene Fähigkeit** frei:
 
 | Bauteil | Stufe 5 |
@@ -711,7 +712,8 @@ im selben Fenster, in dem man ohnehin einen Moment innehält:
 | **Druck der nächsten Welle** | wohin das Druckgedächtnis zieht — die einzige Zeile, die nach vorn schaut |
 
 Angezeigt wird nur, was passiert ist: Wer keinen Bau verlor, liest dazu auch keine Null.
-Die ersten vier Zahlen stehen immer, der Rest erscheint, wenn er etwas zu sagen hat.
+Gegner, verschossene Energie und Materie stehen immer, der Rest erscheint, wenn er etwas
+zu sagen hat.
 
 Zwei Feinheiten, die die Zahlen ehrlich halten. Beim *besten Turm* zählt nur Schaden, der
 wirklich ankam — der Überschuss des tödlichen Treffers würde eine Kanone sonst
@@ -963,13 +965,14 @@ Neben der Messung liegt eine Prüfdatei, die das nachrechnet, was sich nicht ans
 node tools/pruefen.js
 ```
 
-Sie läuft in einer Zehntelsekunde und deckt Leitungslast, die drei Kernbefehle, alle
+Sie läuft in einer fünftel Sekunde und deckt Leitungslast, die drei Kernbefehle, alle
 sieben Sturmwellen, die getrennten Akkus, die drei Kernmodi samt Anlauf und Schild,
 Spielstand und Bestenliste, das Druckgedächtnis, das erzeugte Gelände, das Tagesfeld,
-Reparatur, Abbau, Verschieben, den gespiegelten Bauplan und die vier späten Bauteile
-sowie die Sonderfähigkeiten der fünften Stufe ab. Der Prüfstand hat dafür einen flüchtigen `localStorage`, der ein erneutes Laden
+Reparatur, Abbau, Verschieben, den gespiegelten Bauplan, die vier späten Bauteile und
+die Sonderfähigkeiten der fünften Stufe ab — dazu die Texte: jede Karte gegen ihre eigene
+Wirkung, die Landingpage und diese Datei gegen `config.js`. Der Prüfstand hat dafür einen flüchtigen `localStorage`, der ein erneutes Laden
 des Spiels im selben Prozess übersteht — nur so lässt sich Sichern gegen Laden prüfen.
-Die Prüfungen sind in zwei Sorten aufgeteilt, und der Unterschied ist wichtig:
+Die Prüfungen sind in vier Sorten aufgeteilt, und der Unterschied ist wichtig:
 
 - **Verdrahtung.** Der Erwartungswert wird aus `js/config.js` abgeleitet. Diese Prüfungen
   fragen, ob eine Konstante überhaupt an der richtigen Stelle wirkt — sie schlagen bei
@@ -986,6 +989,10 @@ Die Prüfungen sind in zwei Sorten aufgeteilt, und der Unterschied ist wichtig:
   *Feuerrate* im Text stehen und zu `type.cannon.*` das Wort *Kanone*. Karten, die ihre
   Zahl als Wort schreiben („doppelt so schnell"), stehen in einer kurzen Ausnahmeliste und
   werden einzeln geprüft.
+- **README.** Derselbe Gedanke für diese Datei: Preise, Stufe-5-Tabelle, Kernbefehle,
+  Kernmodi, Sturmnamen, Startwellen der Gegner, Gelände-, Netz- und Prioritätsschwellen
+  werden als Zeichenkette aus `config.js` gebaut und hier gesucht. Prosa bleibt Prosa —
+  geprüft wird nur, was sich ableiten lässt. Kleine Zahlen dürfen als Wort dastehen.
 - **Landingpage.** Ein Block liest `index.html` und vergleicht jede Zahl, die die Seite
   behauptet, mit der, die gilt: Stückliste (Taste, Materie, Struktur, Schaden), Ausbau,
   Reparatur, Abbau, Verschieben, alle elf Stufe-5-Fähigkeiten, Leitungslast, Kern,
@@ -994,9 +1001,11 @@ Die Prüfungen sind in zwei Sorten aufgeteilt, und der Unterschied ist wichtig:
   Schaden, Minenleger 46 statt 62, ein Kartenstapel von 57 statt 62 und fünf fehlende
   Fähigkeiten.
 
-Alle drei sind gegengeprüft: Vier verstellte Werte in `config.js` haben fünf Anker
-umgeworfen, zwei ausgehängte Stellen im Feuerpfad zwei Verdrahtungsprüfungen, und sechs
-zurückgedrehte Zahlen auf der Landingpage sechs Seitenprüfungen.
+Alle Sorten sind gegengeprüft: Vier verstellte Werte in `config.js` haben fünf Anker
+umgeworfen, zwei ausgehängte Stellen im Feuerpfad zwei Verdrahtungsprüfungen, sechs
+zurückgedrehte Zahlen auf der Landingpage sechs Seitenprüfungen, sieben verfälschte
+Kartentexte sieben Kartenprüfungen und fünf verstellte Zahlen in dieser Datei fünf
+README-Prüfungen.
 
 Die Schalter `noflow`, `nomod`, `nopower`, `noakku`, `nomode`, `nodruck` und `nogelaende`
 schalten Leitungslast, Sturmwellen, Kernbefehle, den Akkubau, den Moduswechsel des Bots,
