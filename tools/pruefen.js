@@ -1913,6 +1913,94 @@ beschreibe('Balance-Anker (bei gewollter Abstimmung hier nachziehen)', () => {
   gleich('Bosse', h.BOSSES.length, 3);
 });
 
+/* ---------------------- Landingpage ----------------------
+   Die Seite erklärt dieselben Zahlen, die in config.js stehen — und
+   nichts hielt die beiden bisher zusammen. Genau da ist der Stand
+   auseinandergelaufen: Der Lichtbogen stand mit 12 Schaden statt 14 in
+   der Stückliste, der Minenleger mit 46 statt 62, und der Kartenstapel
+   war noch der von vor fünf Karten. Diese Prüfungen lesen die HTML-Datei
+   und vergleichen, was dort behauptet wird, mit dem, was gilt.
+---------------------------------------------------------- */
+beschreibe('Die Landingpage nennt die Werte aus config.js', () => {
+  const fs = require('fs');
+  const h = frisch();
+  const seite = fs.readFileSync(path.resolve(__dirname, '..', 'index.html'), 'utf8');
+  const komma = z => String(z).replace('.', ',');
+  const steht = (was, text) => stimmt(was + ' — „' + text + '" fehlt auf der Seite',
+                                      seite.includes(text));
+
+  // --- Stückliste: eine Zeile je Bauteil, Kosten, Struktur, Taste ---
+  const liste = seite.slice(seite.indexOf('id="bauteile"'),
+                            seite.indexOf('</table>', seite.indexOf('id="bauteile"')));
+  const zeilen = [...liste.matchAll(
+    /<tr><td>\d+<\/td><td><span class="l-key">(.)<\/span> ([^<]+)<\/td><td>(\d+)<\/td><td>(\d+)<\/td><td>([^<]*)<\/td>/g)];
+  gleich('Stückliste: Zeilen', zeilen.length, Object.keys(h.BUILDINGS).length);
+  for (const [typ, def] of Object.entries(h.BUILDINGS)) {
+    const z = zeilen.find(z => z[2] === def.name);
+    if (!z) { stimmt('Stückliste: Zeile für ' + def.name, false); continue; }
+    gleich(def.name + ': Taste', z[1].toLowerCase(), def.key);
+    gleich(def.name + ': Materie', +z[3], def.cost);
+    gleich(def.name + ': Struktur', +z[4], def.hp);
+    // Steht in der Leistungsspalte eine Schadenszahl, muss sie stimmen
+    const dmg = z[5].match(/(\d+) Schaden/);
+    if (dmg) gleich(def.name + ': Schaden', +dmg[1], def.damage);
+  }
+  // Was sonst noch in der Leistungsspalte behauptet wird
+  steht('Pylon: Radius', 'Radius ' + komma(h.BUILDINGS.pylon.supply) + ' Z');
+  steht('Reaktor: Nachschub', '+' + h.BUILDINGS.reactor.regen + '/s Nachschub');
+  steht('Akku: Speicher und Leitung',
+        '+' + h.BUILDINGS.akku.capacity + ' Speicher, +' + h.FLOW.akku + '/s Leitung');
+  steht('Frostturm: Bremswirkung', '50 % Tempo');
+  steht('Werkdrohne: Reparaturrate', h.BUILDINGS.drohne.repair + ' Struktur/s');
+  steht('Schildfeld: Vorrat und Anteil',
+        'Vorrat ' + h.BUILDINGS.schild.pool + ', schluckt ' +
+        Math.round(h.BUILDINGS.schild.absorb * 100) + ' %');
+
+  // --- Ausbau, Reparatur, Abbau, Verschieben ---
+  steht('Ausbau: Schaden', '+' + Math.round((h.UPGRADE.damage - 1) * 100) + ' % Schaden');
+  steht('Ausbau: Reichweite', '+' + Math.round((h.UPGRADE.range - 1) * 100) + ' % Reichweite');
+  steht('Ausbau: Struktur', '+' + Math.round((h.UPGRADE.hp - 1) * 100) + ' % Struktur');
+  steht('Reparatur: Anteil', 'Reparieren kostet ' + Math.round(h.REPAIR_SHARE * 100) + ' %');
+  steht('Abbau: Erstattung', 'erstattet ' + Math.round(h.SELL_REFUND * 100) + ' %');
+  steht('Verschieben: Anteil', 'für ' + Math.round(h.MOVE_SHARE * 100) + ' % des Bauwerts');
+  // Jede Stufe-5-Fähigkeit ist genannt — sonst fehlt die des nächsten Bauteils
+  for (const [typ, sp] of Object.entries(h.SPECIALS))
+    steht('Stufe 5: ' + typ, sp.name);
+
+  // --- Leitungslast, Kern, Karten ---
+  steht('Leitungslast: Kern', 'Kern gibt ' + h.FLOW.core + ' Energie pro Sekunde');
+  steht('Leitungslast: Pylon', 'ein Pylon ' + h.FLOW.pylon);
+  steht('Leitungslast: je Stufe', 'je Ausbaustufe ' + h.FLOW.perLevel + ' mehr');
+  steht('Kern: Struktur', 'Energiequelle, ' + h.CORE.hp + ' HP');
+  steht('Kern: Versorgungsradius', 'R ' + komma(h.CORE.supply) + ' Zellen');
+  steht('Raster', h.GRID.cols + ' × ' + h.GRID.rows + ' Zellen');
+  steht('Kartenstapel', 'Aus ' + h.CARDS.length + ' Karten');
+  steht('Sturmwellen: Prämie', Math.round(h.MOD_BONUS * 100) + ' % mehr Prämie');
+
+  // --- Kernbefehle und Kernmodi ---
+  for (const p of Object.values(h.POWERS)) {
+    steht(p.name + ': Name', p.name);
+    steht(p.name + ': Pufferkosten', '<td>' + Math.round(p.drain * 100) + ' %</td>');
+    steht(p.name + ': Abklingzeit', '<td>' + p.cd + ' s</td>');
+  }
+  const schild = h.CORE_MODES.find(m => m.id === 'schild');
+  steht('Kernmodus Schild: Anteil', Math.round(schild.absorb * 100) + ' % des Kernschadens');
+  steht('Kernmodus Schild: Preis', komma(schild.perDamage) + ' Energie');
+  steht('Kernmodus Schild: Untergrenze', Math.round(schild.floor * 100) + ' % Ladung');
+  steht('Moduswechsel: Anlauf', komma(h.CORE_SWITCH.time) + ' Sekunden Anlauf');
+  steht('Moduswechsel: Drosselung', Math.round(h.CORE_SWITCH.regen * 100) + ' % fällt');
+
+  // --- Gegner: ab welcher Welle steht auf der Seite ---
+  for (const [typ, welle] of Object.entries(h.UNLOCK)) {
+    const name = h.ENEMIES[typ].name;
+    if (!seite.includes('<h3>' + name + '</h3>')) continue;   // Sammelzeilen prüft die nächste Zeile
+    steht(name + ': Startwelle', 'ab Welle ' + welle + '</span><h3>' + name + '</h3>');
+  }
+  steht('Bosse: Abstand', 'alle ' + h.BOSS_EVERY + ' Wellen');
+  steht('Lastpriorität: Normal', 'ab ' + Math.round(h.PRIORITY[1].threshold * 100) + ' %');
+  steht('Lastpriorität: Sparlast', 'erst ab ' + Math.round(h.PRIORITY[2].threshold * 100) + ' % Ladung');
+});
+
 /* ------------------------ Ausgabe ------------------------ */
 console.log('');
 if (fehler.length) {

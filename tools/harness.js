@@ -93,7 +93,7 @@ const quelle = ['js/config.js', 'js/entities.js', 'js/audio.js', 'js/game.js']
 module.exports = (0, eval)(quelle + `
 ;({
   game, CARDS, BUILDINGS, ENEMIES, MODIFIERS, POWERS, POWER_LIST, BOSSES,
-  CORE, GRID, FLOW, UPGRADE, SPECIALS, PRIORITY, TARGETS, OVERLOAD,
+  CORE, GRID, FLOW, UPGRADE, SPECIALS, PRIORITY, TARGETS, OVERLOAD, UNLOCK, BOSS_EVERY,
   CORE_MODES, CORE_SWITCH, DRUCK, GELAENDE, BODEN,
   sektorVon, sektorMitte, compass, pickGewichtet, heute, seedVon, datumKurz, ergebnisText,
   REPAIR_SHARE, MOD_FROM_WAVE, MOD_BONUS, SELL_REFUND, MOVE_SHARE,

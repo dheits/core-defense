@@ -978,9 +978,17 @@ Die Prüfungen sind in zwei Sorten aufgeteilt, und der Unterschied ist wichtig:
   Stand festhält. Er fängt die versehentlich verschobene Zahl, die der Verdrahtungsteil
   bauartbedingt nicht sehen kann. Schlägt er fehl, ist beides eine gültige Antwort: das
   Versehen zurücknehmen — oder den Wert dort nachziehen, wenn die Änderung gewollt war.
+- **Landingpage.** Ein Block liest `index.html` und vergleicht jede Zahl, die die Seite
+  behauptet, mit der, die gilt: Stückliste (Taste, Materie, Struktur, Schaden), Ausbau,
+  Reparatur, Abbau, Verschieben, alle elf Stufe-5-Fähigkeiten, Leitungslast, Kern,
+  Kartenzahl, Kernbefehle, Kernmodi und ab welcher Welle ein Gegnertyp kommt. Ohne ihn
+  läuft die Erklärung still vom Spiel weg — genau das war passiert: Lichtbogen 12 statt 14
+  Schaden, Minenleger 46 statt 62, ein Kartenstapel von 57 statt 62 und fünf fehlende
+  Fähigkeiten.
 
-Beides ist gegengeprüft: Vier verstellte Werte in `config.js` haben fünf Anker umgeworfen,
-zwei ausgehängte Stellen im Feuerpfad zwei Verdrahtungsprüfungen.
+Alle drei sind gegengeprüft: Vier verstellte Werte in `config.js` haben fünf Anker
+umgeworfen, zwei ausgehängte Stellen im Feuerpfad zwei Verdrahtungsprüfungen, und sechs
+zurückgedrehte Zahlen auf der Landingpage sechs Seitenprüfungen.
 
 Die Schalter `noflow`, `nomod`, `nopower`, `noakku`, `nomode`, `nodruck` und `nogelaende`
 schalten Leitungslast, Sturmwellen, Kernbefehle, den Akkubau, den Moduswechsel des Bots,

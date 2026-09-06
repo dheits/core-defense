@@ -180,7 +180,7 @@ const SPECIALS = {
      armor      zieht von JEDEM Treffer ab. Schnellfeuer wird wertlos,
                 Einzelschaden (Kanone) bleibt wirksam.
      shield     schluckt Schaden vorweg und lädt nach Ruhe wieder auf.
-                Geschosse richten daran nur die Hälfte aus, der Strahl
+                Geschosse richten daran nur 65 % aus, der Strahl
                 des Frostturms das Anderthalbfache.
      slowResist verkürzt Verlangsamung.
      heal       heilt andere Gegner in Reichweite (in Zellen: healRange).

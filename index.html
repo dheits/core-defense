@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CORE DEFENSE — Tower Defense von innen nach außen</title>
-<meta name="description" content="Browser-Tower-Defense: Die Wellen kommen von außen, der Strom kommt aus der Mitte. Ohne Installation im Browser spielbar.">
+<meta name="description" content="Tower Defense von innen nach außen: Die Wellen kommen von außen, der Strom aus der Mitte. Läuft ohne Installation im Browser.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Saira:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -39,13 +39,14 @@
       <span class="l-line l-accent">Der Strom kommt<br>aus der Mitte.</span>
     </h1>
     <p class="l-sub">
-      Kein Pfad, keine Karte, kein Ende: Gegner strömen aus jeder Richtung auf den Kern zu.
+      Kein vorgezeichneter Weg, keine Karte, keine letzte Welle: Die Gegner strömen aus jeder
+      Richtung auf den Kern zu.
       Der Kern hält deine Türme am Netz — und jeder Schuss zehrt an demselben Puffer,
       aus dem sie alle leben.
     </p>
     <div class="l-cta">
       <a class="l-btn l-btn-primary" href="#spielen">Spielen</a>
-      <a class="l-btn" href="#aufbau">So funktioniert es</a>
+      <a class="l-btn" href="#aufbau">So funktioniert's</a>
     </div>
   </div>
 
@@ -290,7 +291,7 @@
       </svg>
       <h3>Jeder Schuss kostet Strom</h3>
       <p>
-        Türme feuern aus demselben Puffer, der auch den Kern speist. Ein Blaster nimmt 1,2,
+        Türme feuern aus demselben Puffer, aus dem auch die Kernbefehle bezahlt werden. Ein Blaster nimmt 1,2,
         die Kanone 7 pro Schuss. Nachschub und Speicher sind dabei getrennt: Der Reaktor
         liefert Energie pro Sekunde, der Akku fasst sie nur. Viele Reaktoren tragen langes
         Dauerfeuer, viele Akkus einen kurzen, harten Stoß — und der leere Puffer meldet sich
@@ -312,11 +313,12 @@
       </svg>
       <h3>Keine Wege, nur Richtungen</h3>
       <p>
-        Gegner erscheinen rundum am Rand und laufen radial auf den Kern zu. Barrieren blocken
-        sie nicht, sie lenken: Solange eine Lücke bleibt, fließen die Angreifer daran vorbei —
+        Gegner erscheinen rundum am Rand und laufen radial auf den Kern zu. Barrieren halten sie
+        nicht auf, sie lenken sie um: Solange eine Lücke bleibt, fließen die Angreifer daran vorbei —
         steht keine offen, schlagen sie zu. Drohnen ab Welle 6 fliegen ohnehin darüber hinweg.
         Und die Richtungen sind nicht beliebig: Wo eine Welle am weitesten kam, kommt die
-        nächste verstärkt wieder — die Bilanz nennt die Seite, bevor du sie startest.
+        nächste verstärkt wieder. Sticht eine Seite heraus, nennt die Bilanz nach der Welle sie
+        beim Namen.
       </p>
     </article>
 
@@ -400,11 +402,11 @@
         <tr><td>3</td><td><span class="l-key">3</span> Akku</td><td>30</td><td>85</td><td>+52 Speicher, +4/s Leitung</td><td>Fängt Feuerstöße auf, erzeugt nichts.</td></tr>
         <tr><td>4</td><td><span class="l-key">4</span> Blaster</td><td>30</td><td>80</td><td>7 Schaden, 3,6/s</td><td>Grundlast gegen alles Schnelle.</td></tr>
         <tr><td>5</td><td><span class="l-key">5</span> Kanone</td><td>65</td><td>110</td><td>34 Schaden, Fläche</td><td>Räumt Pulks, frisst 7 Energie je Schuss.</td></tr>
-        <tr><td>6</td><td><span class="l-key">6</span> Frostturm</td><td>45</td><td>80</td><td>&minus;50 % Tempo</td><td>Kauft den anderen Türmen Zeit.</td></tr>
-        <tr><td>7</td><td><span class="l-key">7</span> Barriere</td><td>10</td><td>260</td><td>ohne Strom</td><td>Lenkt Bodentruppen in dein Feuer, in Reihen ziehbar.</td></tr>
-        <tr><td>8</td><td><span class="l-key">8</span> Lichtbogen</td><td>55</td><td>80</td><td>12 Schaden, 3 Sprünge</td><td>Gegen Pulks. Gegen Panzerung nutzlos.</td></tr>
-        <tr><td>9</td><td><span class="l-key">9</span> Minenleger</td><td>40</td><td>75</td><td>46 Schaden je Mine</td><td>Legt Minen in die toten Winkel, wo kein Turm hinreicht.</td></tr>
-        <tr><td>10</td><td><span class="l-key">0</span> Werkdrohne</td><td>45</td><td>85</td><td>14 Struktur/s</td><td>Setzt instand, während gekämpft wird.</td></tr>
+        <tr><td>6</td><td><span class="l-key">6</span> Frostturm</td><td>45</td><td>80</td><td>&minus;50 % Tempo</td><td>Verschafft den anderen Türmen Zeit.</td></tr>
+        <tr><td>7</td><td><span class="l-key">7</span> Barriere</td><td>10</td><td>260</td><td>ohne Strom</td><td>Lenkt Bodentruppen in dein Feuer, lässt sich in Reihen ziehen.</td></tr>
+        <tr><td>8</td><td><span class="l-key">8</span> Lichtbogen</td><td>55</td><td>80</td><td>14 Schaden, 3 Sprünge</td><td>Gegen Pulks. Gegen Panzerung nutzlos.</td></tr>
+        <tr><td>9</td><td><span class="l-key">9</span> Minenleger</td><td>40</td><td>75</td><td>62 Schaden je Mine</td><td>Legt Minen in die toten Winkel, wo kein Turm hinreicht.</td></tr>
+        <tr><td>10</td><td><span class="l-key">0</span> Werkdrohne</td><td>45</td><td>85</td><td>14 Struktur/s</td><td>Repariert mitten im Gefecht.</td></tr>
         <tr><td>11</td><td><span class="l-key">G</span> Schildfeld</td><td>60</td><td>90</td><td>Vorrat 170, schluckt 70 %</td><td>Lädt aus Überschuss vor, deckt Nachbarn und Kern.</td></tr>
       </tbody>
     </table>
@@ -412,8 +414,9 @@
   <p class="l-parts-note">
     Jedes Bauteil lässt sich auf Stufe 5 ausbauen — je Stufe +42 % Schaden, +7 % Reichweite
     und +28 % Struktur, zu steigenden Kosten. Die letzte Stufe schaltet eine Fähigkeit frei,
-    die den Bau verändert statt ihn nur zu vergrößern: Zwillingssalve, Brandsatz, Vereisung,
-    Verstärkerfeld, Materiekonverter, Reaktivpanzerung. Reparieren kostet 35 % des Bauwerts
+    die den Bau verändert statt ihn nur zu vergrößern — je Bauteil eine eigene:
+    Zwillingssalve, Brandsatz, Vereisung, Verstärkerfeld, Materiekonverter, Spitzenlast,
+    Reaktivpanzerung, Kettenreaktion, Näherungszünder, Notfallschweißung, Rückkopplung. Reparieren kostet 35 % des Bauwerts
     anteilig zum Schaden, Abbau erstattet 60 % davon zurück. Wer nur den Platz falsch gewählt
     hat, <b>verschiebt</b> (<span class="l-key">V</span>) für 25 % des Bauwerts auf ein freies
     Feld — Stufe, Struktur und Einstellungen ziehen mit um. Und weil der Kern genau in der
@@ -429,7 +432,7 @@
   <ul class="l-load-grid">
     <li><span class="l-load-when">ab Welle 1</span><h3>Crawler</h3><p>Zäh genug, um in Masse zu stören. Der Grundton jeder Welle.</p></li>
     <li><span class="l-load-when">ab Welle 2</span><h3>Runner</h3><p>Doppelt so schnell und kaum zu bremsen. Kommt durch, wo Feuerkraft fehlt.</p></li>
-    <li><span class="l-load-when">ab Welle 4</span><h3>Brute</h3><p>150 Struktur und 6 Panzerung, die jeder Treffer einzeln abziehen muss. Eine Aufgabe für die Kanone, nicht für Blaster.</p></li>
+    <li><span class="l-load-when">ab Welle 4</span><h3>Brute</h3><p>150 Struktur und 6 Panzerung, die von jedem einzelnen Treffer abgeht. Eine Aufgabe für die Kanone, nicht für Blaster.</p></li>
     <li><span class="l-load-when">ab Welle 6</span><h3>Drohne</h3><p>Fliegt über Barrieren hinweg und trägt einen Schild: Geschosse richten daran nur 65 % aus, der Strahl des Frostturms das Anderthalbfache.</p></li>
     <li><span class="l-load-when">ab Welle 8</span><h3>Mender</h3><p>Heilt alles um sich herum. Muss zuerst fallen, sonst fällt gar nichts.</p></li>
     <li><span class="l-load-when">ab Welle 9</span><h3>Saboteur</h3><p>Will nicht den Kern, sondern den nächsten Pylon. Trifft er, wird ein ganzer Ast kalt.</p></li>
@@ -450,13 +453,19 @@
       <span class="l-mark">Nach jeder gehaltenen Welle</span>
       <h3>Vier Karten zur Wahl</h3>
       <p>
-        Aus 57 Karten werden vier gezogen; die gewählte gilt für den Rest der Partie.
-        Jede lässt sich höchstens viermal nehmen, manche nur einmal, seltene erscheinen
-        seltener — und nach einem Boss ist eine seltene Karte sicher dabei. Deshalb steht
+        Aus 62 Karten werden vier gezogen; die gewählte gilt für den Rest der Partie.
+        Jede lässt sich höchstens viermal nehmen, manche nur einmal, seltene kommen
+        entsprechend selten — und nach einem Boss ist eine seltene Karte sicher dabei. Deshalb steht
         am Ende jeder Partie ein anderer Aufbau.
       </p>
+      <p>
+        Im selben Fenster steht darüber die <b>Bilanz</b> der Welle: wie viele Gegner kamen,
+        was das eigene Feuer an Energie gekostet hat, wie lange der Puffer leer stand, was die
+        Kernbefehle genommen haben und welcher Turm am meisten getroffen hat. Sticht eine
+        Himmelsrichtung heraus, wird auch sie genannt — dorthin zieht der Druck der nächsten Welle.
+      </p>
       <ul class="l-chips">
-        <li>Grundwerte</li><li>je Turmart</li><li>Antworten auf Gegner</li>
+        <li>Grundwerte</li><li>einzelne Turmarten</li><li>Antworten auf Gegner</li>
         <li>Zielkonflikte</li><li>Regeländerungen</li>
       </ul>
       <div class="l-cards-demo" aria-hidden="true">
@@ -470,13 +479,13 @@
       <span class="l-mark">Ab Welle 5, nie auf Bosswellen</span>
       <h3>Sturmwellen</h3>
       <p>
-        Etwa jede dritte Welle bringt eine Eigenschaft mit. Sie steht in der Vorschau,
-        bevor du startest, und wer sie hält, bekommt <b>50 % mehr Prämie</b>. Jede zielt
-        auf eine Einseitigkeit: <i>Kältefest</i> trifft den reinen Frost-Aufbau,
-        <i>Störnebel</i> den auf Reichweite gebauten, <i>EMP-Front</i> den ohne Reserve.
+        Etwa jede dritte Welle hat eine Besonderheit. Sie steht in der Vorschau,
+        bevor du startest, und wer sie hält, bekommt <b>50 % mehr Prämie</b>. Jede trifft
+        eine Einseitigkeit: <i>Kältefest</i> den reinen Frost-Aufbau, <i>Störnebel</i> den,
+        der auf Reichweite baut, die <i>EMP-Front</i> den ohne Reserve im Puffer.
       </p>
       <dl class="l-storms">
-        <div><dt>Störnebel</dt><dd>Türme sehen 25 % kürzer</dd></div>
+        <div><dt>Störnebel</dt><dd>Türme reichen 25 % weniger weit</dd></div>
         <div><dt>EMP-Front</dt><dd>Der Puffer lädt kaum noch nach</dd></div>
         <div><dt>Magnetsturm</dt><dd>Geschosse 40 % langsamer, Strahlen nicht</dd></div>
         <div><dt>Schwarm</dt><dd>Weit mehr Gegner, dafür dünnhäutig</dd></div>
@@ -502,7 +511,7 @@
         <tr><td><span class="l-key">Q</span></td><td>Entladung</td><td>55 %</td><td>26 s</td>
             <td>Druckwelle im Umkreis von 5,6 Zellen — der Schaden wächst mit der Ladung.</td></tr>
         <tr><td><span class="l-key">W</span></td><td>Netzstoß</td><td>40 %</td><td>34 s</td>
-            <td>6 s doppelter Schaden bei 55 % Verbrauch. Danach ist der Puffer leer.</td></tr>
+            <td>6 s doppelter Schaden, und jeder Schuss kostet nur 55 %. Danach ist der Puffer leer.</td></tr>
         <tr><td><span class="l-key">E</span></td><td>Notpuls</td><td>45 %</td><td>40 s</td>
             <td>Setzt jeden versorgten Bau um ein Drittel instand, ohne Materie.</td></tr>
       </tbody>
@@ -532,27 +541,33 @@
   </div>
 
   <p class="l-parts-note">
-    Dazu drei Schalter an jedem Turm: <b>Überladung</b> (<span class="l-key">O</span>) gibt
-    doppelten Schaden für den dreifachen Energiehunger, die <b>Lastpriorität</b>
+    Dazu drei Schalter an jedem Turm: <b>Überladung</b> (<span class="l-key">O</span>) verdoppelt
+    den Schaden und verdreifacht den Verbrauch, die <b>Lastpriorität</b>
     (<span class="l-key">L</span>) legt fest, wer bei knappem Puffer noch feuern darf —
     <i>Vorrang</i> immer, <i>Normal</i> ab 20 %, <i>Sparlast</i> erst ab 55 % Ladung.
     So verstummt im Engpass die ruhige Seite und nicht die, die halten muss.
     Die <b>Zielpriorität</b> (<span class="l-key">Z</span>) bestimmt, worauf er schießt:
     auf den <i>Kernnächsten</i>, den <i>Nächsten</i>, den <i>Stärksten</i> oder den
-    <i>Schnellsten</i> — so wandern Kanonen auf Brutes statt auf Crawler.
+    <i>Schnellsten</i> — so schießen Kanonen auf Brutes statt auf Crawler.
   </p>
 </section>
 
 <!-- ============ Bedienung ============ -->
 <section id="bedienung" class="l-controls l-reveal">
   <div class="l-sec-head"><h2>Bedienung</h2></div>
+  <p class="l-run-lead">
+    Alles Anwählbare sitzt in einer Leiste am unteren Rand: links die elf Bauteile in zwei
+    Reihen, daneben der Bauplan, dann die drei Kernbefehle und rechts die Kernmodi. Was ein
+    Bauteil tut, steht im Tooltip; die Werte eines gebauten Turms stehen im Inspektor rechts.
+    Über die Tastatur geht dasselbe schneller:
+  </p>
   <dl class="l-keys">
     <div><dt><kbd>1</kbd>&ndash;<kbd>9</kbd> <kbd>0</kbd> <kbd>G</kbd></dt><dd>Bauteil wählen</dd></div>
     <div><dt>Linksklick</dt><dd>bauen, auswählen</dd></div>
     <div><dt>Ziehen</dt><dd>Barrieren in Reihen setzen</dd></div>
     <div><dt>Rechtsklick</dt><dd>abbrechen oder abbauen</dd></div>
     <div><dt><kbd>U</kbd> / <kbd>S</kbd></dt><dd>ausbauen / abbauen</dd></div>
-    <div><dt><kbd>R</kbd></dt><dd>reparieren</dd></div>
+    <div><dt><kbd>R</kbd></dt><dd>reparieren — ohne Auswahl alles auf einmal</dd></div>
     <div><dt><kbd>V</kbd></dt><dd>auf ein freies Feld verschieben</dd></div>
     <div><dt><kbd>B</kbd></dt><dd>Bauplan auf die andere Seite spiegeln</dd></div>
     <div><dt><kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd></dt><dd>Kernbefehle</dd></div>
@@ -562,7 +577,7 @@
     <div><dt><kbd>Leertaste</kbd></dt><dd>Welle sofort starten</dd></div>
     <div><dt><kbd>P</kbd></dt><dd>Pause</dd></div>
     <div><dt><kbd>M</kbd></dt><dd>Ton an und aus</dd></div>
-    <div><dt><kbd>Esc</kbd></dt><dd>Auswahl aufheben</dd></div>
+    <div><dt><kbd>Esc</kbd></dt><dd>Bauplan, Zug oder Auswahl abbrechen</dd></div>
   </dl>
   <p class="l-parts-note">
     Eine laufende Partie wird in der Bauphase im Browser gesichert — beim nächsten Öffnen
@@ -578,7 +593,7 @@
 
 <footer class="l-foot">
   <span>CD-001 · Core Defense</span>
-  <span>HTML, CSS, Canvas. Kein Build, keine Abhängigkeiten, Sound zur Laufzeit erzeugt.</span>
+  <span>HTML, CSS, Canvas. Kein Build, keine Abhängigkeiten, Klang zur Laufzeit erzeugt.</span>
 </footer>
 
 <script src="js/config.js"></script>
