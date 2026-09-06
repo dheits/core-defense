@@ -397,17 +397,17 @@
         <tr><th>Pos</th><th>Bauteil</th><th>Materie</th><th>Struktur</th><th>Leistung</th><th>Aufgabe</th></tr>
       </thead>
       <tbody>
-        <tr><td>1</td><td><span class="l-key">1</span> Pylon</td><td>20</td><td>70</td><td>Radius 4,2 Z</td><td>Verlängert das Netz nach außen.</td></tr>
-        <tr><td>2</td><td><span class="l-key">2</span> Reaktor</td><td>50</td><td>90</td><td>+6/s Nachschub</td><td>Liefert Energie und entlastet seinen Ast.</td></tr>
-        <tr><td>3</td><td><span class="l-key">3</span> Akku</td><td>30</td><td>85</td><td>+52 Speicher, +4/s Leitung</td><td>Fängt Feuerstöße auf, erzeugt nichts.</td></tr>
-        <tr><td>4</td><td><span class="l-key">4</span> Blaster</td><td>30</td><td>80</td><td>7 Schaden, 3,6/s</td><td>Grundlast gegen alles Schnelle.</td></tr>
-        <tr><td>5</td><td><span class="l-key">5</span> Kanone</td><td>65</td><td>110</td><td>34 Schaden, Fläche</td><td>Räumt Pulks, frisst 7 Energie je Schuss.</td></tr>
-        <tr><td>6</td><td><span class="l-key">6</span> Frostturm</td><td>45</td><td>80</td><td>&minus;50 % Tempo</td><td>Verschafft den anderen Türmen Zeit.</td></tr>
-        <tr><td>7</td><td><span class="l-key">7</span> Barriere</td><td>10</td><td>260</td><td>ohne Strom</td><td>Lenkt Bodentruppen in dein Feuer, lässt sich in Reihen ziehen.</td></tr>
-        <tr><td>8</td><td><span class="l-key">8</span> Lichtbogen</td><td>55</td><td>80</td><td>14 Schaden, 3 Sprünge</td><td>Gegen Pulks. Gegen Panzerung nutzlos.</td></tr>
-        <tr><td>9</td><td><span class="l-key">9</span> Minenleger</td><td>40</td><td>75</td><td>62 Schaden je Mine</td><td>Legt Minen in die toten Winkel, wo kein Turm hinreicht.</td></tr>
-        <tr><td>10</td><td><span class="l-key">0</span> Werkdrohne</td><td>45</td><td>85</td><td>14 Struktur/s</td><td>Repariert mitten im Gefecht.</td></tr>
-        <tr><td>11</td><td><span class="l-key">G</span> Schildfeld</td><td>60</td><td>90</td><td>Vorrat 170, schluckt 70 %</td><td>Lädt aus Überschuss vor, deckt Nachbarn und Kern.</td></tr>
+        <tr><td>1</td><td><span class="l-key">1</span> Pylon</td><td>20</td><td>70</td><td>Radius 4,2 Z</td><td>Ohne ihn endet das Netz am Kern.</td></tr>
+        <tr><td>2</td><td><span class="l-key">2</span> Reaktor</td><td>50</td><td>90</td><td>+6/s Nachschub</td><td>Er liefert Strom und entlastet dabei den Ast, an dem er hängt.</td></tr>
+        <tr><td>3</td><td><span class="l-key">3</span> Akku</td><td>30</td><td>85</td><td>+52 Speicher, +4/s Leitung</td><td>Er erzeugt nichts, er fängt nur die Stöße auf.</td></tr>
+        <tr><td>4</td><td><span class="l-key">4</span> Blaster</td><td>30</td><td>80</td><td>7 Schaden, 3,6/s</td><td>Er ist die Grundlast: Was schnell ist, hält er klein.</td></tr>
+        <tr><td>5</td><td><span class="l-key">5</span> Kanone</td><td>65</td><td>110</td><td>34 Schaden, Fläche</td><td>Sie räumt Pulks und frisst dafür 7 Energie je Schuss.</td></tr>
+        <tr><td>6</td><td><span class="l-key">6</span> Frostturm</td><td>45</td><td>80</td><td>&minus;50 % Tempo</td><td>Er verschafft den anderen Türmen Zeit.</td></tr>
+        <tr><td>7</td><td><span class="l-key">7</span> Barriere</td><td>10</td><td>260</td><td>ohne Strom</td><td>Sie lenkt Bodentruppen in dein Feuer; mit gedrückter Maustaste entsteht eine ganze Reihe.</td></tr>
+        <tr><td>8</td><td><span class="l-key">8</span> Lichtbogen</td><td>55</td><td>80</td><td>14 Schaden, 3 Sprünge</td><td>Gegen Pulks ist er stark, gegen Panzerung nutzlos.</td></tr>
+        <tr><td>9</td><td><span class="l-key">9</span> Minenleger</td><td>40</td><td>75</td><td>62 Schaden je Mine</td><td>Er legt Minen dorthin, wo kein Turm mehr hinreicht.</td></tr>
+        <tr><td>10</td><td><span class="l-key">0</span> Werkdrohne</td><td>45</td><td>85</td><td>14 Struktur/s</td><td>Sie repariert, während der Rest kämpft.</td></tr>
+        <tr><td>11</td><td><span class="l-key">G</span> Schildfeld</td><td>60</td><td>90</td><td>Vorrat 170, schluckt 70 %</td><td>Es lädt aus Überschuss vor und deckt damit Nachbarn und Kern.</td></tr>
       </tbody>
     </table>
   </div>
@@ -430,14 +430,14 @@
 <section class="l-loads l-reveal">
   <div class="l-sec-head"><h2>Was auf den Kern zuläuft</h2></div>
   <ul class="l-load-grid">
-    <li><span class="l-load-when">ab Welle 1</span><h3>Crawler</h3><p>Zäh genug, um in Masse zu stören. Der Grundton jeder Welle.</p></li>
-    <li><span class="l-load-when">ab Welle 2</span><h3>Runner</h3><p>Doppelt so schnell und kaum zu bremsen. Kommt durch, wo Feuerkraft fehlt.</p></li>
-    <li><span class="l-load-when">ab Welle 4</span><h3>Brute</h3><p>150 Struktur und 6 Panzerung, die von jedem einzelnen Treffer abgeht. Eine Aufgabe für die Kanone, nicht für Blaster.</p></li>
-    <li><span class="l-load-when">ab Welle 6</span><h3>Drohne</h3><p>Fliegt über Barrieren hinweg und trägt einen Schild: Geschosse richten daran nur 65 % aus, der Strahl des Frostturms das Anderthalbfache.</p></li>
-    <li><span class="l-load-when">ab Welle 8</span><h3>Mender</h3><p>Heilt alles um sich herum. Muss zuerst fallen, sonst fällt gar nichts.</p></li>
-    <li><span class="l-load-when">ab Welle 9</span><h3>Saboteur</h3><p>Will nicht den Kern, sondern den nächsten Pylon. Trifft er, wird ein ganzer Ast kalt.</p></li>
-    <li><span class="l-load-when">Welle 11, 13, 15</span><h3>Splitter, Zapfer, Wächter</h3><p>Aus einem werden drei; einer saugt am Puffer; einer legt Schilde über seine Nachbarn.</p></li>
-    <li class="l-load-boss"><span class="l-load-when">alle 10 Wellen</span><h3>Titan · Moloch · Nexus</h3><p>Im Wechsel, jeder mit eigener Regel: gepanzert und selbstheilend, unverwundbar hinter Wächtern, oder am Puffer zapfend. Dafür sparst du.</p></li>
+    <li><span class="l-load-when">ab Welle 1</span><h3>Crawler</h3><p>Einzeln ist er harmlos, in Masse zäh — er ist der Grundton jeder Welle.</p></li>
+    <li><span class="l-load-when">ab Welle 2</span><h3>Runner</h3><p>Er läuft doppelt so schnell und lässt sich kaum bremsen. Wo Feuerkraft fehlt, ist er durch.</p></li>
+    <li><span class="l-load-when">ab Welle 4</span><h3>Brute</h3><p>Er trägt 150 Struktur und 6 Panzerung, die von jedem einzelnen Treffer abgeht. Das ist eine Aufgabe für die Kanone, nicht für Blaster.</p></li>
+    <li><span class="l-load-when">ab Welle 6</span><h3>Drohne</h3><p>Sie fliegt über Barrieren hinweg und trägt einen Schild: Geschosse richten daran nur 65 % aus, der Strahl des Frostturms das Anderthalbfache.</p></li>
+    <li><span class="l-load-when">ab Welle 8</span><h3>Mender</h3><p>Er heilt alles um sich herum. Solange er steht, fällt nichts anderes.</p></li>
+    <li><span class="l-load-when">ab Welle 9</span><h3>Saboteur</h3><p>Er will nicht den Kern, sondern den nächsten Pylon. Trifft er ihn, wird ein ganzer Ast kalt.</p></li>
+    <li><span class="l-load-when">Welle 11, 13, 15</span><h3>Splitter, Zapfer, Wächter</h3><p>Aus dem Splitter werden drei, der Zapfer saugt am Puffer, der Wächter legt Schilde über seine Nachbarn.</p></li>
+    <li class="l-load-boss"><span class="l-load-when">alle 10 Wellen</span><h3>Titan · Moloch · Nexus</h3><p>Sie kommen im Wechsel, jeder mit eigener Regel: gepanzert und selbstheilend, unverwundbar hinter seinen Wächtern, oder am Puffer zapfend. Auf sie sparst du.</p></li>
   </ul>
 </section>
 
@@ -487,8 +487,8 @@
       <dl class="l-storms">
         <div><dt>Störnebel</dt><dd>Türme reichen 25 % weniger weit</dd></div>
         <div><dt>EMP-Front</dt><dd>Der Puffer lädt kaum noch nach</dd></div>
-        <div><dt>Magnetsturm</dt><dd>Geschosse 40 % langsamer, Strahlen nicht</dd></div>
-        <div><dt>Schwarm</dt><dd>Weit mehr Gegner, dafür dünnhäutig</dd></div>
+        <div><dt>Magnetsturm</dt><dd>Geschosse fliegen 40 % langsamer, Strahlen nicht</dd></div>
+        <div><dt>Schwarm</dt><dd>Es kommen weit mehr Gegner, dafür dünnhäutige</dd></div>
         <div><dt>Kältefest</dt><dd>Gegner lassen sich nicht bremsen</dd></div>
         <div><dt>Panzerkonvoi</dt><dd>Jeder Gegner trägt 4 Panzerung mehr</dd></div>
         <div><dt>Hetzjagd</dt><dd>Gegner laufen 30 % schneller</dd></div>
@@ -509,7 +509,7 @@
       </thead>
       <tbody>
         <tr><td><span class="l-key">Q</span></td><td>Entladung</td><td>55 %</td><td>26 s</td>
-            <td>Druckwelle im Umkreis von 5,6 Zellen — der Schaden wächst mit der Ladung.</td></tr>
+            <td>Eine Druckwelle im Umkreis von 5,6 Zellen; ihr Schaden wächst mit der Ladung.</td></tr>
         <tr><td><span class="l-key">W</span></td><td>Netzstoß</td><td>40 %</td><td>34 s</td>
             <td>6 s doppelter Schaden, und jeder Schuss kostet nur 55 %. Danach ist der Puffer leer.</td></tr>
         <tr><td><span class="l-key">E</span></td><td>Notpuls</td><td>45 %</td><td>40 s</td>
@@ -531,11 +531,11 @@
       </thead>
       <tbody>
         <tr><td>Einspeisung</td><td>+25 % Nachschub</td><td>&minus;15 % Speicher</td>
-            <td>Der Standard: langes, gleichmäßiges Feuer.</td></tr>
+            <td>Die Voreinstellung: Sie trägt langes, gleichmäßiges Feuer.</td></tr>
         <tr><td>Speicher</td><td>+40 % Speicher</td><td>&minus;15 % Nachschub</td>
-            <td>Kurze, harte Stöße — und stärkere Kernbefehle, denn die kosten einen Anteil des Puffers.</td></tr>
+            <td>Für kurze, harte Stöße — und für stärkere Kernbefehle, denn die kosten einen Anteil des Puffers.</td></tr>
         <tr><td>Schild</td><td>60 % des Kernschadens zahlt der Puffer</td><td>je Schadenspunkt 2,2 Energie, dazu &minus;10 % auf beides</td>
-            <td>Wenn die Deckung reißt oder ein Boss kommt. Er greift nur über 35 % Ladung und zieht den Puffer nie darunter &mdash; sonst nähme er den Türmen den Strom.</td></tr>
+            <td>Für den Fall, dass die Deckung reißt oder ein Boss kommt. Er greift nur über 35 % Ladung und zieht den Puffer nie darunter &mdash; sonst nähme er den Türmen den Strom.</td></tr>
       </tbody>
     </table>
   </div>

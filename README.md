@@ -235,7 +235,7 @@ sie hält, bekommt **50 % mehr Prämie**.
 
 | Sturm | Wirkung |
 |---|---|
-| Störnebel | Alle Türme sehen 25 % kürzer |
+| Störnebel | Alle Türme reichen 25 % weniger weit |
 | EMP-Front | Der Puffer lädt kaum noch nach |
 | Magnetsturm | Geschosse fliegen 40 % langsamer — Strahlen nicht |
 | Schwarm | 70 % mehr Wellenbudget, dafür 45 % weniger Struktur je Gegner |
@@ -500,7 +500,7 @@ ab. Bei stumm geschaltetem Ton werden gar keine Audio-Nodes erzeugt.
 - **Blaster** (30) — schnelles, billiges Dauerfeuer
 - **Kanone** (65) — langsam, hoher Flächenschaden
 - **Frostturm** (45) — Sofortstrahl, bremst Gegner um 50 %
-- **Barriere** (10) — braucht keinen Strom, lenkt Bodentruppen um, in Reihen ziehbar
+- **Barriere** (10) — braucht keinen Strom, lenkt Bodentruppen um, lässt sich in Reihen ziehen
 - **Lichtbogen** (55) — Strahl, der auf drei weitere Gegner überspringt
 - **Minenleger** (40) — legt Minen in Zellen, die kein Turm deckt
 - **Werkdrohne** (45) — setzt Bauten in Reichweite instand, mitten im Gefecht

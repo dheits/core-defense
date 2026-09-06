@@ -60,13 +60,13 @@ const BUILDINGS = {
     name: 'Blaster', key: '4', cost: 30, hp: 80, color: '#8affc1',
     needsPower: true, turret: true,
     range: 3.7, cooldown: 0.28, damage: 7, energy: 1.2, projSpeed: 620,
-    desc: 'Schnelles Dauerfeuer, günstig.'
+    desc: 'Feuert schnell und dauerhaft, und er ist billig.'
   },
   cannon: {
     name: 'Kanone', key: '5', cost: 65, hp: 110, color: '#ff9f5a',
     needsPower: true, turret: true,
     range: 5.2, cooldown: 1.15, damage: 34, splash: 1.3, energy: 7, projSpeed: 340,
-    desc: 'Langsam, hoher Flächenschaden.'
+    desc: 'Schießt langsam, trifft dafür eine ganze Fläche.'
   },
   frost: {
     name: 'Frostturm', key: '6', cost: 45, hp: 80, color: '#7fb4ff',
@@ -77,7 +77,7 @@ const BUILDINGS = {
   wall: {
     name: 'Barriere', key: '7', cost: 10, hp: 260, color: '#8892a6',
     needsPower: false, drag: true,        // lässt sich in einem Zug reihenweise setzen
-    desc: 'Lenkt Bodentruppen um, braucht keinen Strom. Mit gedrückter Maustaste in Reihen ziehbar.'
+    desc: 'Lenkt Bodentruppen um und braucht keinen Strom. Mit gedrückter Maustaste entsteht eine ganze Reihe.'
   },
 
   /* Die vier folgenden füllen Rollen, die die ersten sieben offenlassen.
@@ -403,10 +403,10 @@ const POWER_LIST = [POWERS.discharge, POWERS.surge, POWERS.pulse];
    höhere Prämie.
 ---------------------------------------------------------------- */
 const MODIFIERS = [
-  { id: 'nebel',    name: 'Störnebel',     desc: 'Alle Türme sehen 25 % kürzer',            range: 0.75 },
+  { id: 'nebel',    name: 'Störnebel',     desc: 'Alle Türme reichen 25 % weniger weit',            range: 0.75 },
   { id: 'emp',      name: 'EMP-Front',     desc: 'Der Puffer lädt kaum noch nach',          regen: 0.2 },
   { id: 'magnet',   name: 'Magnetsturm',   desc: 'Geschosse fliegen 40 % langsamer',        projSpeed: 0.6 },
-  { id: 'schwarm',  name: 'Schwarm',       desc: 'Weit mehr Gegner, dafür dünnhäutig',      budget: 1.7, hp: 0.55 },
+  { id: 'schwarm',  name: 'Schwarm',       desc: 'Es kommen weit mehr Gegner, dafür dünnhäutige',      budget: 1.7, hp: 0.55 },
   { id: 'kaeltefest',name:'Kältefest',     desc: 'Gegner lassen sich nicht bremsen',        noSlow: true },
   { id: 'konvoi',   name: 'Panzerkonvoi',  desc: 'Jeder Gegner trägt 4 Panzerung mehr',     armor: 4 },
   { id: 'hetzjagd', name: 'Hetzjagd',      desc: 'Gegner laufen 30 % schneller',            speed: 1.3 }

@@ -1996,6 +1996,12 @@ beschreibe('Die Landingpage nennt die Werte aus config.js', () => {
     if (!seite.includes('<h3>' + name + '</h3>')) continue;   // Sammelzeilen prüft die nächste Zeile
     steht(name + ': Startwelle', 'ab Welle ' + welle + '</span><h3>' + name + '</h3>');
   }
+  // Jeder Gegner, jeder Sturm, jeder Kernmodus wird auf der Seite genannt —
+  // sonst erklärt sie beim nächsten neuen Typ eine Fassung, die es nicht mehr gibt
+  for (const typ of Object.keys(h.UNLOCK)) steht('Gegner genannt', h.ENEMIES[typ].name);
+  for (const b of h.BOSSES) steht('Boss genannt', h.ENEMIES[b.type].name);
+  for (const m of h.MODIFIERS) steht('Sturmwelle genannt', '<dt>' + m.name + '</dt>');
+  for (const m of h.CORE_MODES) steht('Kernmodus genannt', '<td>' + m.name + '</td>');
   steht('Bosse: Abstand', 'alle ' + h.BOSS_EVERY + ' Wellen');
   steht('Lastpriorität: Normal', 'ab ' + Math.round(h.PRIORITY[1].threshold * 100) + ' %');
   steht('Lastpriorität: Sparlast', 'erst ab ' + Math.round(h.PRIORITY[2].threshold * 100) + ' % Ladung');

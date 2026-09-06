@@ -222,8 +222,15 @@ section:first-child{border-bottom:none}
 .l-table tr:last-child td{border-bottom:none}
 .l-table tbody tr:hover{background:rgba(95,224,255,.05)}
 .l-table td:first-child{font-family:var(--f-mono);color:var(--bp-mark);width:48px}
-.l-table td:nth-child(2){font-family:var(--f-display);font-size:1.06rem;letter-spacing:.02em;white-space:nowrap}
-.l-table td:nth-child(3),.l-table td:nth-child(4),.l-table td:nth-child(5){font-family:var(--f-mono);font-size:.84rem;color:var(--bp-ink-dim);white-space:nowrap}
+.l-table td:nth-child(2){font-family:var(--f-display);font-size:1.06rem;letter-spacing:.02em}
+.l-table td:nth-child(3),.l-table td:nth-child(4),.l-table td:nth-child(5){font-family:var(--f-mono);font-size:.84rem;color:var(--bp-ink-dim)}
+/* Nur in der Stückliste stehen in diesen Spalten Messwerte — die sollen nicht
+   umbrechen. In den Tabellen darunter steht dort ganzer Text, und der zwang die
+   Tabelle sonst auf die doppelte Breite ihres Rahmens. */
+.l-parts .l-table td:nth-child(2),
+.l-parts .l-table td:nth-child(3),
+.l-parts .l-table td:nth-child(4),
+.l-parts .l-table td:nth-child(5){white-space:nowrap}
 .l-table td:last-child{color:var(--bp-ink-dim)}
 .l-key{
   display:inline-block;min-width:19px;margin-right:8px;padding:1px 0;
