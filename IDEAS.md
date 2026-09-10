@@ -155,8 +155,12 @@ Gegner, verschossene Energie, Materie, Kernschaden, verlorene Bauten, Sekunden m
 Puffer, die mittlere Netzdrossel und der Turm, der den Schaden tatsächlich gemacht hat.
 Angezeigt wird nur, was passiert ist — wer keinen Bau verlor, liest dazu auch keine Null.
 
-**Schadenszahlen und Reichweitenkreis beim Überfahren**, nicht erst nach Auswahl.
-*Sehr klein.*
+**Schadenszahlen und Reichweitenkreis beim Überfahren.** ✅ *umgesetzt* — das Überfahren
+zeigt den Reichweitenkreis, einen Rahmen um das Feld und eine kleine Karte mit den vier
+bis fünf Zahlen, die beim Bauen zählen; die vollständige Liste bleibt dem Inspektor. Beim
+Umsetzen kam heraus, dass der Bauzeiger die Reichweite aus `config.js` zeichnete statt der,
+die der Bau nach den genommenen Karten wirklich hätte — nach *Fokussierte Optik* also einen
+zu kleinen Kreis. Dieselbe Zahl stand auch im Inspektor falsch (`Netzradius`).
 
 **Speicherstand.** ✅ *umgesetzt* — gesichert wird in der Bauphase, beim nächsten Öffnen
 fragt die Startanzeige, ob fortgesetzt werden soll. Bewusst nicht mitgeschrieben werden
@@ -300,8 +304,8 @@ Zuletzt kamen die **vier späten Bauteile** dazu — Lichtbogen, Minenleger, Wer
 Schildfeld. Damit stehen elf Bauteile in der Taskleiste, die dafür in zwei Reihen
 umbrechen musste; die Leiste kostet jetzt rund eine Zellenreihe Spielfeld mehr.
 
-Aus den Abschnitten 1 bis 4 offen geblieben: Schadenszahlen beim Überfahren und die
-dauerhaften Freischaltungen zwischen den Partien.
+Aus den Abschnitten 1 bis 4 offen geblieben: nur noch die dauerhaften Freischaltungen
+zwischen den Partien.
 
 ## Wenn ich drei Dinge auswählen müsste (ursprüngliche Empfehlung)
 

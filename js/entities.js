@@ -18,6 +18,14 @@ const pxToCell = p => Math.floor(p / GRID.cell);
 
 function dist(ax, ay, bx, by) { return Math.hypot(ax - bx, ay - by); }
 
+/* Zahlen für die Anzeige: gerundet und mit Komma. Der Punkt, den
+   JavaScript liefert, liest sich in einem deutschen HUD wie ein
+   Tausendertrennzeichen — „3.7 Z" sieht aus wie siebenunddreißig. */
+const dez = (v, stellen = 1) => {
+  const f = Math.pow(10, stellen);
+  return String(Math.round(v * f) / f).replace('.', ',');
+};
+
 // Farbe abdunkeln — Gliedmaßen brauchen einen eigenen, sichtbaren Ton
 function shade(hex, f) {
   const n = parseInt(hex.slice(1), 16);

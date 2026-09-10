@@ -60,6 +60,7 @@ Farbe, in der das Bauteil auch auf dem Feld gezeichnet wird.
 | Eingabe | Wirkung |
 |---|---|
 | `1`–`9`, `0`, `G` / Klick auf Karte | Gebäude wählen |
+| Maus über einen Bau | Reichweitenkreis und die wichtigsten Werte, ohne Klick |
 | Linksklick | bauen bzw. bestehendes Gebäude auswählen |
 | Ziehen mit gedrückter Maustaste | Barrieren reihenweise setzen — Lücken beim schnellen Ziehen wachsen zu, Belegtes und Unbezahlbares wird still übersprungen |
 | Rechtsklick | Auswahl abbrechen / Gebäude abbauen (60 % des Bauwerts zurück) |
@@ -77,6 +78,20 @@ Farbe, in der das Bauteil auch auf dem Feld gezeichnet wird.
 | `K` | Kernmodus wechseln (Einspeisung → Speicher → Schild) |
 | `1`–`4` bei der Kartenwahl | Karte nehmen |
 | `Esc` | alles abwählen |
+
+**Werte beim Überfahren.** Wer wissen wollte, was ein Bau leistet, musste ihn bisher
+erst anklicken — beim Bauen ist das die falsche Reihenfolge, denn entschieden wird vor dem
+Klick. Jetzt zeigt schon das Überfahren den Reichweitenkreis und daneben eine kleine Karte
+mit vier bis fünf Zahlen: Struktur, Schaden, Reichweite, Schussfolge, Dauerlast — beim
+Pylon stattdessen Netzradius und Leitungslast, beim Akku Speicher und was er mitträgt.
+Eine Netzdrossel steht dabei, sobald es eine gibt; ein Bau ohne Strom sagt es. Die Karte
+weicht dem Inspektor aus, statt sich unter ihn zu schieben, und liegt außerhalb der
+Bilderschütterung — eine Tabelle, die bei jedem Einschlag wackelt, liest sich nicht. Ist
+der Bau bereits ausgewählt, bleibt sie weg: Dann steht alles Ausführliche schon rechts.
+
+Der Bauzeiger zeigt seither ebenfalls die Reichweite, die der Bau *bekommt*, nicht die aus
+`config.js`: Nach einer Karte wie *Fokussierte Optik* oder *Netzausbau* war der Kreis
+vorher zu klein. Dasselbe galt für die Zeile „Netzradius" im Inspektor.
 
 ## Wenn der Kern ungedeckt ist
 

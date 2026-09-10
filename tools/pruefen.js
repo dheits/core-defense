@@ -52,6 +52,11 @@ function stimmt(was, bedingung) {
   fehler.push(gruppe + ' — ' + was);
 }
 const runde = z => typeof z === 'number' ? Math.round(z * 1e4) / 1e4 : String(z);
+// So schreibt das HUD eine Zahl: gerundet, mit Komma (siehe dez())
+const dezErwartet = (v, stellen = 1) => {
+  const f = Math.pow(10, stellen);
+  return String(Math.round(v * f) / f).replace('.', ',');
+};
 
 /* Baut ein Spiel mit Materie im Überfluss und liefert einen Baukürzel.
    Das erzeugte Gelände wird dabei abgeräumt (Seed 0): Jede Prüfung
@@ -1911,6 +1916,87 @@ beschreibe('Balance-Anker (bei gewollter Abstimmung hier nachziehen)', () => {
   gleich('Gegnertypen', Object.keys(h.ENEMIES).length, 13);
   gleich('Sturmwellen', h.MODIFIERS.length, 7);
   gleich('Bosse', h.BOSSES.length, 3);
+});
+
+/* ------------------ Auskunft beim Überfahren --------------
+   Die Zahlen sollen vor dem Klick dastehen, nicht danach — und sie
+   sollen dieselben sein wie im Inspektor. Geprüft wird beides: wann die
+   Karte erscheint und was auf ihr steht.
+---------------------------------------------------------- */
+beschreibe('Karte beim Überfahren zeigt dieselben Werte wie der Inspektor', () => {
+  const h = neu(), g = h.game;
+  const turm = h.bau('blaster', 22, 12);
+  g.recomputeSupply();
+  g.hover = { x: 22, y: 12, inside: true };
+
+  stimmt('der Bau unter dem Zeiger wird gefunden', g.hoverBau() === turm);
+  const werte = new Map(g.hoverWerte(turm));
+  gleich('Schaden wie berechnet', werte.get('Schaden'), dezErwartet(g.stat(turm, 'damage')));
+  gleich('Reichweite wie berechnet', werte.get('Reichweite'),
+         dezErwartet(g.stat(turm, 'range')) + ' Z');
+  gleich('Dauerlast wie berechnet', werte.get('Dauerlast'),
+         dezErwartet(g.drawOf(turm)) + '/s');
+  gleich('Struktur', werte.get('Struktur'), Math.ceil(turm.hp) + '/' + turm.maxHp);
+
+  // Karten wirken auf die Karte am Zeiger genauso wie auf den Turm
+  h.CARDS.find(c => c.id === 'ladung').apply(g.buffs, g);
+  gleich('Schaden folgt der Karte', new Map(g.hoverWerte(turm)).get('Schaden'),
+         dezErwartet(g.stat(turm, 'damage')));
+
+  /* Wo schon eine Vorschau am Zeiger hängt, schweigt die Karte —
+     zwei Auskünfte übereinander sind keine. */
+  g.tool = 'pylon';
+  stimmt('beim Bauen keine Karte', g.hoverBau() === null);
+  g.tool = null;
+  g.verschieben = turm;
+  stimmt('beim Verschieben keine Karte', g.hoverBau() === null);
+  g.verschieben = null;
+  g.bauplan = { achse: 'x', ziel: 1 };
+  stimmt('beim Bauplan keine Karte', g.hoverBau() === null);
+  g.bauplan = null;
+  g.draft = [{ id: 'x' }];
+  stimmt('während der Kartenwahl keine Karte', g.hoverBau() === null);
+  g.draft = null;
+  g.hover.inside = false;
+  stimmt('außerhalb des Feldes keine Karte', g.hoverBau() === null);
+  g.hover = { x: 22, y: 12, inside: true };
+  stimmt('danach wieder da', g.hoverBau() === turm);
+
+  // Eine Drosselung sieht man dem Bau sonst nicht an
+  const pylon = h.bau('pylon', 25, 12);      // gerade noch im Kernradius
+  for (const [x, y] of [[28, 10], [28, 11], [28, 13], [28, 14], [29, 12]]) h.bau('blaster', x, y);
+  g.recomputeSupply();
+  const gedrosselt = g.buildings.get('28,10');
+  stimmt('der gedrosselte Turm ist wirklich gedrosselt', gedrosselt.flow < 0.995);
+  g.hover = { x: 28, y: 10, inside: true };
+  stimmt('Netzdrossel steht auf der Karte',
+         g.hoverWerte(gedrosselt).some(z => z[0] === 'Netzdrossel'));
+  g.hover = { x: 25, y: 12, inside: true };
+  stimmt('am Pylon steht seine Leitungslast',
+         g.hoverWerte(pylon).some(z => z[0] === 'Leitungslast'));
+});
+
+beschreibe('Der Bauzeiger zeigt die Reichweite, die der Bau bekommt', () => {
+  const h = neu(), g = h.game;
+  const vorher = g.vorschau('blaster').range;
+  gleich('ohne Karten der Grundwert', vorher, h.BUILDINGS.blaster.range);
+  gleich('Netzradius eines Pylons', g.vorschau('pylon').supply, h.BUILDINGS.pylon.supply);
+
+  /* Vor dieser Prüfung zeichnete der Bauzeiger den Grundwert aus
+     config.js — nach einer Reichweitenkarte also einen kleineren Kreis,
+     als der Turm gleich hätte. */
+  h.CARDS.find(c => c.id === 'optik').apply(g.buffs, g);
+  h.CARDS.find(c => c.id === 'netzausbau').apply(g.buffs, g);
+  gleich('Turmreichweite folgt der Karte', g.vorschau('blaster').range,
+         h.BUILDINGS.blaster.range * 1.14, 1e-9);
+  gleich('Netzradius folgt der Karte', g.vorschau('pylon').supply,
+         h.BUILDINGS.pylon.supply + 0.7, 1e-9);
+
+  // Dieselbe Zahl, mit der das Netz gerechnet wird
+  const p = h.bau('pylon', 25, 12);
+  g.recomputeSupply();
+  const knoten = (g.sources || []).find(s => s.x === 25 && s.y === 12);
+  gleich('Netz und Anzeige sind sich einig', knoten.r, g.netzRadius(h.BUILDINGS.pylon), 1e-9);
 });
 
 /* --------------------- Kartentexte -----------------------

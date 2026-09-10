@@ -190,6 +190,72 @@ const game = {
     return this.buildings.get(key(x, y)) || null;
   },
 
+  /* ---------------- Auskunft beim Überfahren ------------------
+     Wer wissen will, was ein Bau leistet, musste ihn bisher erst
+     anklicken. Beim Bauen ist das die falsche Reihenfolge: Man
+     entscheidet vor dem Klick, nicht danach. */
+
+  // Der Bau unter dem Zeiger — aber nur, wenn nicht ohnehin schon eine
+  // Vorschau daran hängt. Zwei Auskünfte übereinander sind keine.
+  hoverBau() {
+    if (this.tool || this.bauplan || this.verschieben) return null;
+    if (this.over || this.draft || !this.hover.inside) return null;
+    return this.buildings.get(key(this.hover.x, this.hover.y)) || null;
+  },
+
+  // Netzradius samt Kartenzuwachs: dieselbe Zahl, mit der
+  // recomputeSupply rechnet, nicht der Grundwert aus config.js
+  netzRadius(def) { return def.supply + this.buffs.netRadius; },
+
+  /* Was ein Bau an dieser Stelle könnte, bevor er steht. Der Bauzeiger
+     zeigte dafür die Grundwerte — nach einer Reichweitenkarte also
+     einen Kreis, der kleiner ist als der, den man gleich bekommt. */
+  vorschau(typ) {
+    const def = BUILDINGS[typ];
+    const wie = { def, type: typ, level: 1, boost: 1 };
+    return { range: def.range ? this.stat(wie, 'range') : 0,
+             supply: def.supply ? this.netzRadius(def) : 0 };
+  },
+
+  /* Die kurze Fassung der Werte: vier bis fünf Zeilen, die beim Bauen
+     zählen. Die lange steht im Inspektor, sobald der Bau gewählt ist. */
+  hoverWerte(b) {
+    const d = b.def, ab = dez;
+    const rows = [['Struktur', Math.ceil(b.hp) + '/' + b.maxHp]];
+    if (d.turret) {
+      const legt = !!d.minen;                    // der Minenleger zielt nicht
+      rows.push([legt ? 'Schaden je Mine' : 'Schaden', ab(this.stat(b, 'damage'))]);
+      rows.push([legt ? 'Legeradius' : 'Reichweite', ab(this.stat(b, 'range')) + ' Z']);
+      rows.push([legt ? 'Mine alle' : 'Schuss alle', dez(this.cooldownOf(b), 2) + ' s']);
+      rows.push(['Dauerlast', ab(this.drawOf(b)) + '/s']);
+    }
+    if (d.repair) {
+      rows.push(['Instandsetzung', ab(this.repairRate(b)) + '/s']);
+      rows.push(['Reichweite', ab(this.stat(b, 'range')) + ' Z']);
+      rows.push(['Dauerlast', ab(this.drawOf(b)) + '/s']);
+    }
+    if (d.absorb) {
+      rows.push(['Schluckt', Math.round(this.absorbOf(b) * 100) + ' %']);
+      rows.push(['Vorrat', Math.round(b.puffer || 0) + '/' + this.schildPool(b)]);
+      rows.push(['Reichweite', ab(this.stat(b, 'range')) + ' Z']);
+    }
+    if (d.regen) rows.push(['Ertrag', '+' + d.regen * b.level + '/s']);
+    if (d.capacity) {
+      rows.push(['Speicher', '+' + Math.round(this.capOf(b))]);
+      rows.push(['Trägt mit', '+' + akkuFlow(b) + '/s']);
+    }
+    if (d.supply) {
+      rows.push(['Netzradius', ab(this.netzRadius(d)) + ' Z']);
+      if (b.supplied && b.node)
+        rows.push(['Leitungslast', ab(Math.max(0, b.node.through)) +
+                                   ' / ' + Math.round(b.node.cap) + '/s']);
+    }
+    // Eine Drosselung sieht man dem Bau sonst nicht an
+    if (d.turret && b.supplied && b.flow < 0.995)
+      rows.push(['Netzdrossel', '−' + Math.round((1 - b.flow) * 100) + ' %']);
+    return rows;
+  },
+
   /* ------------------- Bauen / Verkaufen -------------------- */
   // Karten wirken teils global, teils nur auf einen Turmtyp
   typeBuff(b, key) {
@@ -1911,7 +1977,7 @@ const game = {
     this.modeTimer = this.modeSwitchTime();
     this.recomputeSupply();                   // Anlauf drosselt sofort
     SFX.modeSwitch();
-    toast(m.name + ' — ' + (Math.round(this.modeTimer * 10) / 10) + ' s Anlauf');
+    toast(m.name + ' — ' + dez(this.modeTimer) + ' s Anlauf');
     updateInspector();
   },
   cycleMode() { this.setMode((this.coreMode + 1) % CORE_MODES.length); },
@@ -2057,6 +2123,7 @@ function render() {
   drawMinen();
   for (const b of game.buildings.values()) drawBuilding(b);
   if (game.selected) drawRange(game.selected.px, game.selected.py, game.stat(game.selected, 'range'), '#5fe0ff');
+  drawHoverRange();
   if (game.alarm.on) drawAlarmBelow();
 
   drawRisse();
@@ -2076,6 +2143,7 @@ function render() {
   drawLichter();
   drawGhost();
   ctx.restore();
+  drawHoverKarte();
   drawVignette();
 }
 
@@ -2861,9 +2929,9 @@ function drawWall(b, s, hpF) {
   }
 }
 
-function drawRange(x, y, cells, color) {
+function drawRange(x, y, cells, color, alpha = .35) {
   if (!cells) return;
-  ctx.strokeStyle = color; ctx.globalAlpha = .35;
+  ctx.strokeStyle = color; ctx.globalAlpha = alpha;
   ctx.setLineDash([5, 5]);
   ctx.beginPath(); ctx.arc(x, y, cells * GRID.cell, 0, 7); ctx.stroke();
   ctx.setLineDash([]); ctx.globalAlpha = 1;
@@ -2936,6 +3004,85 @@ function drawBauplanGhost() {
   ctx.restore();
 }
 
+/* Reichweite des Baus unter dem Zeiger — schwächer gezeichnet als die
+   des ausgewählten, damit beide nebeneinander lesbar bleiben. */
+function drawHoverRange() {
+  const b = game.hoverBau();
+  if (!b || b === game.selected) return;
+  /* Ein dünner Rahmen um das Feld: Bei Barriere, Akku und Reaktor gibt
+     es keinen Kreis, und ohne ihn stünde die Karte neben nichts. */
+  ctx.save();
+  ctx.strokeStyle = b.def.color; ctx.globalAlpha = .5; ctx.lineWidth = 1;
+  ctx.strokeRect(b.x * GRID.cell + 1.5, b.y * GRID.cell + 1.5, GRID.cell - 3, GRID.cell - 3);
+  ctx.restore();
+  if (b.def.range) drawRange(b.px, b.py, game.stat(b, 'range'), b.def.color, .22);
+  if (b.def.supply) drawRange(b.px, b.py, game.netzRadius(b.def), '#5fe0ff', .22);
+}
+
+/* Die Zahlen dazu als kleine Karte neben dem Feld. Sie liegt außerhalb
+   der Bilderschütterung — eine Tabelle, die bei jedem Einschlag wackelt,
+   liest sich nicht. */
+function drawHoverKarte() {
+  const b = game.hoverBau();
+  if (!b || b === game.selected) return;      // dann steht alles im Inspektor
+  const rows = game.hoverWerte(b);
+  const kalt = b.def.needsPower && !b.supplied;
+  const titel = b.def.name + '  Stufe ' + b.level;
+
+  const PAD = 9, ZEILE = 15, KOPF = 19, LUECKE = 16;
+  ctx.font = '12px sans-serif';
+  let breite = ctx.measureText(titel).width;
+  ctx.font = '11px sans-serif';
+  for (const [k, v] of rows)
+    breite = Math.max(breite, ctx.measureText(k).width + ctx.measureText(String(v)).width + LUECKE);
+  if (kalt) breite = Math.max(breite, ctx.measureText('ohne Netz — feuert nicht').width);
+  const w = Math.ceil(breite) + PAD * 2;
+  const h = KOPF + rows.length * ZEILE + (kalt ? ZEILE : 0) + PAD * 2 - 4;
+
+  /* Rechts vom Feld, außer es wird eng — dann links. Der Inspektor ist
+     eine eigene Fläche über dem Feld und würde die Karte sonst
+     verdecken; seine Maße stehen im DOM, also fragen wir sie ab, statt
+     eine Breite zu raten, die sich mit dem nächsten Knopf ändert. */
+  const ins = el('inspector');
+  const sperre = ins.hidden ? null
+    : { x: W - 12 - ins.offsetWidth, o: 64, u: 64 + ins.offsetHeight };
+  const y = clamp(game.hover.y * GRID.cell - 8, 62, H - h - 84);  // zwischen Kopf- und Taskleiste
+  let x = (game.hover.x + 1) * GRID.cell + 12;
+  const stoert = () => sperre && x + w > sperre.x && y < sperre.u && y + h > sperre.o;
+  if (x + w > W - 14 || stoert()) x = game.hover.x * GRID.cell - w - 12;   // links vom Feld
+  if (stoert()) x = sperre.x - w - 10;                                     // links vom Inspektor
+  x = clamp(x, 12, W - w - 12);
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(9,15,26,.94)';
+  ctx.strokeStyle = b.def.color; ctx.globalAlpha = .75; ctx.lineWidth = 1;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x + .5, y + .5, w, h, 6);
+  else ctx.rect(x + .5, y + .5, w, h);
+  ctx.globalAlpha = 1; ctx.fill();
+  ctx.globalAlpha = .75; ctx.stroke(); ctx.globalAlpha = 1;
+
+  ctx.font = '12px sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(titel, x + PAD, y + PAD + 11);
+  ctx.font = '11px sans-serif';
+  let zy = y + PAD + KOPF + 8;
+  for (const [k, v] of rows) {
+    ctx.fillStyle = '#9fb3c8';
+    ctx.fillText(k, x + PAD, zy);
+    ctx.fillStyle = '#e8f0f8';
+    ctx.textAlign = 'right';
+    ctx.fillText(String(v), x + w - PAD, zy);
+    ctx.textAlign = 'left';
+    zy += ZEILE;
+  }
+  if (kalt) {
+    ctx.fillStyle = '#ffa14a';
+    ctx.fillText('ohne Netz — feuert nicht', x + PAD, zy);
+  }
+  ctx.restore();
+}
+
 function drawGhost() {
   if (game.bauplan) return drawBauplanGhost();
   if (game.verschieben) return drawZugGhost();
@@ -2955,8 +3102,9 @@ function drawGhost() {
   ctx.strokeRect(x * GRID.cell + 1, y * GRID.cell + 1, GRID.cell - 2, GRID.cell - 2);
   ctx.globalAlpha = 1;
 
-  if (def.range) drawRange(px, py, def.range, def.color);
-  if (def.supply) drawRange(px, py, def.supply, '#5fe0ff');
+  const v = game.vorschau(game.tool);
+  if (v.range) drawRange(px, py, v.range, def.color);
+  if (v.supply) drawRange(px, py, v.supply, '#5fe0ff');
   if (!powered && def.needsPower) {
     ctx.fillStyle = '#ffa14a'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
     ctx.fillText('kein Netz', px, py - GRID.cell * .8);
@@ -3035,7 +3183,7 @@ function buildModes() {
     d.dataset.i = i;
     d.title = 'Kernmodus ' + m.name + ' — ' + m.desc +
               '  (Taste K wechselt weiter, ' +
-              (Math.round(CORE_SWITCH.time * 10) / 10) + ' s Anlauf)';
+              dez(CORE_SWITCH.time) + ' s Anlauf)';
     d.innerHTML = `<span class="mk">${m.short}</span>
                    <span class="mn"></span><span class="mh"></span>
                    <i class="mcd"></i>`;
@@ -3059,7 +3207,7 @@ function updateModes() {
     const name = an || zielt ? m.name : '';
     // Was der Modus kostet und bringt, steht im title — in der Leiste
     // stünde es nur im Weg. Sichtbar bleibt der Anlauf, der drängt.
-    const hinweis = zielt ? (Math.ceil(game.modeTimer * 10) / 10).toFixed(1) + ' s' : '';
+    const hinweis = zielt ? dez(Math.ceil(game.modeTimer * 10) / 10) + ' s' : '';
     const nEl = d.querySelector('.mn'), hEl = d.querySelector('.mh');
     if (nEl.textContent !== name) nEl.textContent = name;
     if (hEl.textContent !== hinweis) hEl.textContent = hinweis;
@@ -3143,10 +3291,10 @@ function updateInspector() {
   const rows = [['Struktur', Math.ceil(b.hp) + '/' + b.maxHp]];
   if (b.def.turret) {
     const legt = !!b.def.minen;                  // der Minenleger zielt nicht
-    rows.push([legt ? 'Schaden je Mine' : 'Schaden', Math.round(game.stat(b, 'damage') * 10) / 10]);
-    rows.push([legt ? 'Legeradius' : 'Reichweite', (Math.round(game.stat(b, 'range') * 10) / 10) + ' Z']);
-    rows.push([legt ? 'Energie je Mine' : 'Energie/Schuss', Math.round(game.energyOf(b) * 10) / 10]);
-    rows.push([legt ? 'Mine alle' : 'Schuss alle', (Math.round(game.cooldownOf(b) * 100) / 100) + ' s']);
+    rows.push([legt ? 'Schaden je Mine' : 'Schaden', dez(game.stat(b, 'damage'))]);
+    rows.push([legt ? 'Legeradius' : 'Reichweite', dez(game.stat(b, 'range')) + ' Z']);
+    rows.push([legt ? 'Energie je Mine' : 'Energie/Schuss', dez(game.energyOf(b))]);
+    rows.push([legt ? 'Mine alle' : 'Schuss alle', dez(game.cooldownOf(b), 2) + ' s']);
     if (b.def.arc) rows.push(['Sprünge', b.def.arc + game.buffs.arcPlus]);
     if (legt) {
       let liegen = 0;
@@ -3160,19 +3308,19 @@ function updateInspector() {
     rows.push(['Netzdrossel', '−' + Math.round((1 - b.flow) * 100) + ' %']);
   // Werkdrohne und Schildfeld: was sie leisten und was sie dafür ziehen
   if (b.def.repair) {
-    rows.push(['Instandsetzung', (Math.round(game.repairRate(b) * 10) / 10) + '/s']);
-    rows.push(['Reichweite', (Math.round(game.stat(b, 'range') * 10) / 10) + ' Z']);
-    rows.push(['Energie je Struktur', b.def.perHp]);
-    rows.push(['Dauerlast', (Math.round(game.drawOf(b) * 10) / 10) + '/s']);
+    rows.push(['Instandsetzung', dez(game.repairRate(b)) + '/s']);
+    rows.push(['Reichweite', dez(game.stat(b, 'range')) + ' Z']);
+    rows.push(['Energie je Struktur', dez(b.def.perHp)]);
+    rows.push(['Dauerlast', dez(game.drawOf(b)) + '/s']);
     if (b.level >= UPGRADE.maxLevel)
       rows.push(['Notfallschweißung', b.reserve ? 'bereit' : 'verbraucht']);
   }
   if (b.def.absorb) {
     rows.push(['Schluckt', Math.round(game.absorbOf(b) * 100) + ' %']);
     rows.push(['Vorrat', Math.round(b.puffer || 0) + '/' + game.schildPool(b)]);
-    rows.push(['Reichweite', (Math.round(game.stat(b, 'range') * 10) / 10) + ' Z']);
+    rows.push(['Reichweite', dez(game.stat(b, 'range')) + ' Z']);
     rows.push(['Lädt', b.def.laden + '/s']);
-    rows.push(['Energie je Punkt', b.def.perPoint]);
+    rows.push(['Energie je Punkt', dez(b.def.perPoint)]);
     rows.push(['Lädt ab', Math.round(b.def.ab * 100) + ' % Puffer']);
     rows.push(['Feld', !b.supplied ? 'ohne Strom'
                        : ((b.puffer || 0) > 0 ? 'geladen' : 'leer')]);
@@ -3184,13 +3332,14 @@ function updateInspector() {
     if (b.level >= UPGRADE.maxLevel)
       rows.push(['Spitzenlast', b.reserve ? 'geladen' : 'verbraucht']);
   }
-  if (b.def.supply) rows.push(['Netzradius', b.def.supply + ' Z']);
+  if (b.def.supply)
+    rows.push(['Netzradius', dez(game.netzRadius(b.def)) + ' Z']);
   // Steht der Pylon auf einer alten Leiterbahn, sagt er es auch
   if (b.type === 'pylon' && b.leiter)
     rows.push(['Leiterbahn', '+' + Math.round((GELAENDE.leiter - 1) * 100) + ' % Last']);
   // Am Pylon hängt die eigene Leitung, an allem anderen die des Knotens davor
   if (b.type === 'pylon' && b.supplied && b.node)
-    rows.push(['Leitungslast', (Math.round(Math.max(0, b.node.through) * 10) / 10) +
+    rows.push(['Leitungslast', dez(Math.max(0, b.node.through)) +
                                ' / ' + Math.round(b.node.cap) + '/s']);
   rows.push(['Strom', b.def.needsPower ? (b.supplied ? 'verbunden' : 'GETRENNT') : '—']);
   el('insStats').innerHTML = rows.map(r => `<span>${r[0]}</span><span>${r[1]}</span>`).join('');
@@ -3253,7 +3402,7 @@ function bilanzHtml(b) {
   if (b.schild) zeig(b.schild, 'Energie als Schild');
   if (b.verluste) zeig(b.verluste, b.verluste === 1 ? 'Bau verloren' : 'Bauten verloren', 'schlecht');
   if (b.leer >= 0.3)
-    zeig((Math.round(b.leer * 10) / 10).toFixed(1).replace('.', ',') + ' s', 'Puffer leer', 'schlecht');
+    zeig(dez(b.leer) + ' s', 'Puffer leer', 'schlecht');
   if (b.drossel > 0.02) zeig(Math.round(b.drossel * 100) + ' %', 'Netzdrossel', 'schlecht');
   if (b.bester)
     zeig(b.bester.schaden, 'Schaden · ' + b.bester.name + ' Stufe ' + b.bester.level);
