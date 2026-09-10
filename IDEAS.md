@@ -229,6 +229,57 @@ Das ist der Grund für die Wertung nach der höchsten begonnenen Welle.
 
 ---
 
+## 6 · Vier Punkte aus dem Code, nicht aus der Recherche
+
+Die Abschnitte 1 bis 4 sind abgearbeitet, die Bedienungsliste ist leer. Die folgenden vier
+stehen in keiner der Quellen unten — sie kommen aus dem Stand des Spiels im September 2026.
+Jeder ist gegen den Quelltext geprüft: Keiner ist versehentlich längst gebaut.
+
+**Parallelschaltung — das Netz darf Maschen haben.** Heute ist das Netz ein *Baum*:
+`nearestSource()` in `recomputeSupply()` sucht genau einen Elternknoten, den
+nächstgelegenen. Jeder Pylon hat damit genau einen Weg zum Kern, und der trägt, was
+`flowCap()` hergibt — mehr nicht. Wer eine Richtung verstärken will, muss einen zweiten Ast
+vom Kern aus ziehen; zwei Pylone nebeneinander im selben Korridor bringen für den Durchsatz
+gar nichts. Der Vorschlag: Liegt ein Knoten im Radius von zwei versorgten Knoten, teilt sich
+die Last nach freier Kapazität auf beide auf. Damit gilt „zwei kurze Äste tragen doppelt so
+viel wie ein langer" auch *innerhalb* eines Korridors — eine Leitung verdoppeln, statt außen
+herum zu bauen. Der Saboteur wird dadurch auf eine neue Art gefährlich: Er trifft dann nicht
+mehr nur die Erreichbarkeit, die der neu gerechnete Baum ohnehin sofort wiederherstellt,
+sondern die Kapazität. *Mittel: aus der Baumsummierung werden zwei, drei Iterationen einer
+Flussrechnung; die Leitungszeichnung kann bleiben.* **Risiko: Lesbarkeit.** Der Baum lässt
+sich heute im Kopf nachrechnen, ein Netz nicht mehr — das gehört vor dem Bauen entschieden.
+Und ohne Messung vorher und nachher weiß hinterher niemand, ob die Maschen das Spiel besser
+oder nur weicher gemacht haben.
+
+**Ein Gegner, der von außen schießt.** Alle Bodengegner laufen bis zum Ziel und schlagen zu.
+Auf Entfernung wirkt bisher nur, wer Energie zieht (Zapfer, Nexus) — Schaden auf Entfernung
+gegen Bauten gibt es nicht. Ein Werfer, der bei sechs Zellen stehen bleibt und den äußersten
+Bau beschießt, greift genau die Stelle an, die heute immer sicher ist: den Rand des Netzes.
+Er verlangt Reichweite statt Feuerkraft, macht die Werkdrohne wichtig und gibt dem
+Verschieben (`V`) endlich einen Grund mitten im Gefecht. *Mittel: eigene Zielsuche plus
+Halten auf Distanz.* Beim Messen ist Vorsicht geboten: Der Bot verschiebt nichts und
+repariert stumpf, er wird den Gegner also härter aussehen lassen, als er ist.
+
+**Auflagen auf dem Tagesfeld.** Das Tagesfeld setzt schon gleiche Bedingungen voraus. Eine
+zusätzliche Auflage — „heute ohne Kanonen", „höchstens fünf Pylone", „der Kern bleibt im
+Schildmodus" — erzeugt genau das, wofür sonst dauerhafte Freischaltungen herhalten müssten:
+einen Grund, es morgen noch einmal zu spielen. Anders als jene kollidiert sie mit nichts:
+Alle spielen dieselbe Auflage, die Bestenliste bleibt vergleichbar, und der Bot kann sie als
+Schalter messen. *Klein, solange die Auflagen als Flags formuliert sind, die es intern
+ohnehin gibt.*
+
+**Der Verlauf nach der Partie.** Die Bilanz nach jeder Welle ist da; was fehlt, ist der Blick
+über die ganze Partie: wann der Puffer leer war, ab welcher Welle die Leitung drosselte,
+welcher Turm wirklich getragen hat. Das ist keine Mechanik, sondern Lehrmaterial — es macht
+die Frage „warum bin ich bei 22 gestorben" beantwortbar. *Klein: Die Zahlen werden je Welle
+schon erhoben, sie werden nur nicht aufgehoben.*
+
+Wenn nur eines davon gebaut wird, dann das erste. Die anderen drei sind gute Ergänzungen;
+die Maschen sind der einzige Punkt, der auf das einzahlt, was dieses Spiel von anderen
+Tower-Defense-Spielen trennt.
+
+---
+
 ## Gefunden und behandelt: der Kern kann sich nicht wehren
 
 Beim Balance-Testen aufgetaucht und wert, entschieden zu werden: Erreicht ein Gegner
@@ -344,6 +395,10 @@ Freischaltungen zwischen den Partien, ist nicht umgesetzt, sondern **verworfen**
 Begründung steht bei ihm in Abschnitt 3. Kurz: Sie kollidieren mit dem Tagesfeld, mit der
 Bestenliste und mit der Messbarkeit, und der Inhalt, den sie verknappen würden, ist genau
 der, der das Spiel ausmacht.
+
+Offen ist seither nur noch **Abschnitt 6**, der nicht aus der Recherche stammt, sondern aus
+dem Stand des Codes — dazu die beiden Balance-Fäden, die weiter in der README stehen: der
+Moloch auf Welle 20 und der ungemessene Nutzen der Kernmodi.
 
 ## Wenn ich drei Dinge auswählen müsste (ursprüngliche Empfehlung)
 
