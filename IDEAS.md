@@ -112,7 +112,7 @@ Genau hier hört das Spiel gerade auf. Endlose Wellen ohne Fortschritt zwischen 
 Partien sind der Punkt, an dem die Recherche am deutlichsten war: Rogue Tower und
 Infinitode 2 leben von dem, was zwischen den Runden passiert.
 
-**Karten zwischen den Wellen.** ✅ *umgesetzt* (57 Karten, vier zur Wahl). Nach jeder abgewehrten Welle drei Optionen zur Auswahl:
+**Karten zwischen den Wellen.** ✅ *umgesetzt* (62 Karten, vier zur Wahl). Nach jeder abgewehrten Welle drei Optionen zur Auswahl:
 +15 % Reichweite netzweit, Pylone kosten die Hälfte, Reaktoren geben Schaden statt
 Energie. Das erzeugt bei jeder Partie einen anderen Aufbau — die günstigste Art,
 Wiederspielwert einzubauen. *Mittel, und mit Abstand der beste Aufwand-Nutzen-Schnitt.*
@@ -137,9 +137,44 @@ gespeichert wird nur der Seed. Gemessen kostet es fast nichts (halbe Welle im Sc
 je 300 Läufe) — es macht die Partie anders, nicht schwerer. Der Vorteilsteil fehlt in der
 Messung ohnehin: Der Bot weicht Trümmern aus, sucht aber keine Leiterbahn.
 
-**Dauerhafte Freischaltungen** (Türme, Startboni) über Partien hinweg. Ist der
-Standard-Weg des Genres, lohnt aber erst, wenn oben genug Inhalt zum Freischalten da
-ist. *Später.*
+**Dauerhafte Freischaltungen** (Türme, Startboni) über Partien hinweg. ❌ *verworfen*.
+
+Der Gedanke ist der Standard-Weg des Genres: Am Ende jedes Laufs fällt eine zweite Währung
+an, zwischen den Partien kauft man davon neue Turmtypen, Startboni oder zusätzliche
+Karten, und der nächste Lauf beginnt stärker. Der Vorbehalt von damals — „lohnt erst, wenn
+genug Inhalt zum Freischalten da ist" — ist inzwischen hinfällig: Es gibt elf Bauteile,
+62 Karten, elf Fähigkeiten der fünften Stufe, drei Kernmodi und drei Kernbefehle. Material
+wäre genug da. Die Antwort ist trotzdem nein, aus vier Gründen:
+
+- **Das Tagesfeld setzt gleiche Bedingungen voraus.** Sein ganzer Sinn ist „heute spielen
+  alle dasselbe Feld mit denselben Wellen und denselben Karten zur Wahl". Wer mit +30 %
+  Startmaterie anfängt, spielt eben nicht dasselbe. Der Satz auf der Startanzeige wäre
+  dann eine Unwahrheit, und die Ergebniszeile zum Weitergeben verlöre ihren Bezug.
+- **Die Bestenliste vergleicht Läufe, nicht Konten.** Welle 24 aus dem vierzigsten Lauf
+  wäre nicht mehr dieselbe Leistung wie Welle 24 aus dem dritten. Man kann das auflösen,
+  indem man den Freischaltstand mit einträgt — dann steht dort aber eine zweite Zahl, die
+  nur sagt, wer länger gespielt hat.
+- **Jede Messung bekäme eine zweite, unsichtbare Achse.** Der Bot spielt heute gegen einen
+  festen Stand; Mediane aus 200 Läufen sind nur deshalb vergleichbar. Mit permanentem
+  Fortschritt müsste jede Messung einen Freischaltstand mit angeben, und die Zahlen im
+  README-Abschnitt „Balance messen" wären ohne diese Angabe wertlos.
+- **Der Inhalt spricht dagegen, nicht dafür.** Die elf Bauteile greifen ineinander:
+  Reaktor und Akku sind erst mit der Leitungslast eine Entscheidung, Werkdrohne und
+  Schildfeld erst, wenn der Puffer knapp ist. Wer die ersten Partien mit vier Bauteilen
+  spielt, sieht nicht das Spiel, sondern eine ärmere Vorstufe davon. Die erste Stunde
+  künstlich zu verknappen, um eine zweite zu verkaufen, wäre hier ein schlechter Tausch.
+
+Der Zweck des Abschnitts — Gründe, es ein zweites Mal zu starten — ist ohnehin bedient,
+nur anders: Der Wiederspielwert kommt aus der Varianz *innerhalb* einer Partie (62 Karten,
+vier zur Wahl, erzeugtes Gelände, Druckgedächtnis) statt aus einem Konto *zwischen* den
+Partien. Das ist die seltenere Bauweise, und sie passt zu einem Spiel, das seine
+Schwierigkeit aus einer Handvoll ineinandergreifender Regeln zieht statt aus Zahlen.
+
+Wieder aufzumachen wäre der Punkt unter einer Bedingung: wenn der Inhalt so weit wächst,
+dass er in einer einzelnen Partie gar nicht mehr vorkommen kann — dann wäre eine Auswahl
+*vor* dem Start (Ausrüstung wählen, nicht Kraft kaufen) die Form, die zu diesem Spiel
+passt, und sie ließe Tagesfeld und Bestenliste unangetastet, solange das Tagesfeld immer
+mit vollem Inventar läuft.
 
 ---
 
@@ -251,7 +286,7 @@ zurückgenommen.
 
 ## Erledigt
 
-Karten zwischen den Wellen (48 Stück, vier zur Wahl, mit turmspezifischen Karten,
+Karten zwischen den Wellen (damals 48 Stück, heute 62, vier zur Wahl, mit turmspezifischen Karten,
 Zielkonflikten und Regeländerungen), Überladung mit Lastpriorität und die
 Konter-Eigenschaften sind gebaut (Stand September 2026), zusammen mit der
 Wellenvorschau, ohne die das Kontersystem nicht lesbar gewesen wäre. Dazu kamen vier Gegnertypen (Saboteur, Splitter, Zapfer, Wächter) und das
@@ -304,8 +339,11 @@ Zuletzt kamen die **vier späten Bauteile** dazu — Lichtbogen, Minenleger, Wer
 Schildfeld. Damit stehen elf Bauteile in der Taskleiste, die dafür in zwei Reihen
 umbrechen musste; die Leiste kostet jetzt rund eine Zellenreihe Spielfeld mehr.
 
-Aus den Abschnitten 1 bis 4 offen geblieben: nur noch die dauerhaften Freischaltungen
-zwischen den Partien.
+Aus den Abschnitten 1 bis 4 ist damit nichts mehr offen. Der letzte Punkt, die dauerhaften
+Freischaltungen zwischen den Partien, ist nicht umgesetzt, sondern **verworfen** — die
+Begründung steht bei ihm in Abschnitt 3. Kurz: Sie kollidieren mit dem Tagesfeld, mit der
+Bestenliste und mit der Messbarkeit, und der Inhalt, den sie verknappen würden, ist genau
+der, der das Spiel ausmacht.
 
 ## Wenn ich drei Dinge auswählen müsste (ursprüngliche Empfehlung)
 
