@@ -74,9 +74,10 @@ function licht(x, y, r, hex, alpha) {
    bei manchen file://-Einstellungen wirft schon der Zugriff, deshalb
    geht jeder Zugriff durch diese drei Funktionen.
 ---------------------------------------------------------------- */
-const SAVE_KEY = 'cd_save', BEST_KEY = 'cd_best';
+const SAVE_KEY = 'cd_save', BEST_KEY = 'cd_best', NAME_KEY = 'cd_name';
 const SAVE_VERSION = 1;          // ändert sich das Format, wird Altes verworfen
 const BEST_MAX = 8;              // so viele Einträge hält die Bestenliste
+const NAME_MAX = 14;             // so lang darf ein Name werden, sonst sprengt er die Zeile
 
 function lese(key) {
   try {
@@ -90,6 +91,23 @@ function schreibe(key, wert) {
 }
 function loesche(key) {
   try { localStorage.removeItem(key); } catch (e) { /* egal */ }
+}
+
+/* Der Name in der Bestenliste. Er wird einmal getippt und bleibt dann
+   liegen, damit der nächste Lauf ihn schon mitbringt. Kurz gehalten
+   wird er hier, nicht erst in der Anzeige: Was gespeichert ist, passt
+   auch in die Zeile. */
+function nameSauber(roh) {
+  return String(roh == null ? '' : roh).replace(/\s+/g, ' ').trim().slice(0, NAME_MAX);
+}
+function spielerName() { return nameSauber(lese(NAME_KEY)); }
+function nameMerken(n) { schreibe(NAME_KEY, nameSauber(n)); }
+
+/* Der Name ist das einzige, was ein Mensch in dieses Spiel hineinschreibt.
+   Er geht durch keinen Server, aber er geht in HTML — also hier entschärfen. */
+function escHtml(t) {
+  return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 /* Was eine Welle gekostet und gebracht hat. Wird beim Wellenstart auf
@@ -1001,6 +1019,7 @@ const game = {
         (this.tagesfeld() ? ' Tagesfeld vom ' + datumKurz(this.tagesTag) +
                             ' — heute spielen alle dieses Feld.' : ''),
         bestenlisteHtml(erg.liste, erg.eintrag));
+      nameFeldVerdrahten(erg);
       const zweit = el('ovBtn2');
       zweit.hidden = false;
       zweit.textContent = 'Ergebnis kopieren';
@@ -1941,6 +1960,7 @@ const game = {
       wave: Math.max(this.wave, this.bestWave),
       datum: Date.now(),
       tag: this.tagesTag,
+      name: spielerName(),
       teile,
       karten: [...this.takenCards.values()].reduce((a, b) => a + b, 0)
     };
@@ -3469,7 +3489,7 @@ function ergebnisText(e) {
   const teile = e.teile || {};
   const top = Object.keys(teile).sort((a, b) => teile[b] - teile[a]).slice(0, 3)
     .map(t => teile[t] + ' ' + teilName(t, teile[t])).join(', ');
-  return 'CORE DEFENSE · ' +
+  return 'CORE DEFENSE · ' + (e.name ? e.name + ' · ' : '') +
          (e.tag ? 'Tagesfeld ' + datumKurz(e.tag) : 'freies Feld') +
          ' · Welle ' + e.wave + (top ? ' · ' + top : '');
 }
@@ -3500,6 +3520,10 @@ function teilName(typ, n) {
 }
 function bestenlisteHtml(liste, markiert) {
   if (!liste || !liste.length) return '';
+  // Die Namensspalte erscheint erst, wenn etwas darin steht — oder wenn
+  // gerade der eigene Lauf dazugekommen ist und benannt werden will. Ein
+  // Lauf, der es nicht in die Liste geschafft hat, hat nichts zu benennen.
+  const mitNamen = liste.indexOf(markiert) >= 0 || liste.some(e => e.name);
   const zeilen = liste.map((e, i) => {
     const teile = e.teile || {};
     const top = Object.keys(teile).sort((a, b) => teile[b] - teile[a]).slice(0, 3)
@@ -3507,12 +3531,33 @@ function bestenlisteHtml(liste, markiert) {
     const d = new Date(e.datum || 0);
     const datum = String(d.getDate()).padStart(2, '0') + '.' +
                   String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear();
+    const wer = e === markiert
+      ? '<input id="ovName" maxlength="' + NAME_MAX + '" placeholder="dein Name"' +
+        ' aria-label="Name für die Bestenliste" value="' + escHtml(e.name || '') + '">'
+      : escHtml(e.name || '');
     return '<tr' + (e === markiert ? ' class="neu"' : '') + '>' +
-           '<td>' + (i + 1) + '</td><td>Welle ' + e.wave + '</td>' +
-           '<td>' + (e.tag ? 'Tagesfeld ' + datumKurz(e.tag) : datum) + '</td>' +
-           '<td>' + top + '</td></tr>';
+           '<td class="platz">' + (i + 1) + '</td>' +
+           (mitNamen ? '<td class="wer">' + wer + '</td>' : '') +
+           '<td class="welle">Welle ' + e.wave + '</td>' +
+           '<td class="wann">' + (e.tag ? 'Tagesfeld ' + datumKurz(e.tag) : datum) + '</td>' +
+           '<td class="teile">' + top + '</td></tr>';
   }).join('');
   return '<table><tbody>' + zeilen + '</tbody></table>';
+}
+
+/* Das Feld in der eigenen Zeile. Jeder Tastendruck geht sofort in die
+   Liste und in den gemerkten Namen — es gibt kein „Speichern", das man
+   vergessen könnte, und keinen Knopf, der die Anzeige länger macht. */
+function nameFeldVerdrahten(erg) {
+  const feld = el('ovName');
+  if (!feld) return;
+  feld.oninput = () => {
+    erg.eintrag.name = nameSauber(feld.value);
+    nameMerken(erg.eintrag.name);
+    schreibe(BEST_KEY, erg.liste);
+  };
+  feld.onkeydown = ev => { if (ev.key === 'Enter') feld.blur(); };
+  if (!feld.value) feld.focus();
 }
 
 function updateHud() {
@@ -3663,6 +3708,7 @@ canvas.addEventListener('contextmenu', ev => {
 
 addEventListener('keydown', ev => {
   if (!game.inView) return;              // Seite wird gerade gelesen, nicht gespielt
+  if (ev.target && ev.target.tagName === 'INPUT') return;   // im Namensfeld wird getippt
   const k = ev.key.toLowerCase();
   if (game.draft) {                      // während der Kartenwahl zählt nur die Wahl
     const n = parseInt(ev.key, 10);

@@ -50,6 +50,8 @@ function mkEl(id) {
     classList: { add: () => {}, remove: () => {}, toggle: () => {} },
     appendChild(c) { kinder.push(c); },
     querySelector: () => mkEl('q'),
+    // Eingabefelder: Das Namensfeld der Bestenliste holt sich den Fokus
+    value: '', focus: () => {}, blur: () => {},
     addEventListener: () => {},
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 1312, height: 800 }),
     getContext: () => mkCtx(), width: 1312, height: 800,
@@ -99,7 +101,8 @@ module.exports = (0, eval)(quelle + `
   sektorVon, sektorMitte, compass, pickGewichtet, heute, seedVon, datumKurz, ergebnisText,
   REPAIR_SHARE, MOD_FROM_WAVE, MOD_BONUS, SELL_REFUND, MOVE_SHARE,
   flowCap, akkuFlow, upgradeSteps, waveHpScale, waveBudget, bossFor,
-  SAVE_KEY, BEST_KEY, SAVE_VERSION, BEST_MAX, bestenlisteHtml,
+  SAVE_KEY, BEST_KEY, NAME_KEY, SAVE_VERSION, BEST_MAX, NAME_MAX,
+  bestenlisteHtml, nameSauber, spielerName, nameMerken,
   speicher: localStorage,
   // Sturmwellen für Vergleichsmessungen abschaltbar machen
   setModChance: w => { MOD_CHANCE = w; }

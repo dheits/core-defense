@@ -172,7 +172,7 @@ button.danger:hover{background:rgba(190,50,70,.5);border-color:var(--red)}
   background:rgba(3,6,12,.82);backdrop-filter:blur(3px);z-index:30;
 }
 #overlay .panel{text-align:center;padding:34px 46px;border:1px solid var(--line);
-  border-radius:10px;background:var(--panel);max-width:520px}
+  border-radius:10px;background:var(--panel);max-width:600px}
 #overlay h1{margin:0 0 10px;font-size:30px;letter-spacing:.16em;color:#fff}
 #overlay p{margin:0 auto 20px;color:var(--dim);max-width:400px;line-height:1.6}
 #overlay button{padding:10px 22px;font-size:14px}
@@ -186,11 +186,22 @@ button.danger:hover{background:rgba(190,50,70,.5);border-color:var(--red)}
 }
 #ovList table{width:100%;border-collapse:collapse;font-size:11.5px}
 #ovList td{padding:3px 8px 3px 0;border-bottom:1px solid rgba(120,170,220,.12);color:var(--dim)}
-#ovList td:first-child{width:18px;text-align:right;color:rgba(160,200,240,.45)}
-#ovList td:nth-child(2){color:var(--text);white-space:nowrap}
-#ovList td:nth-child(3){white-space:nowrap;font-size:10.5px}
+#ovList td.platz{width:18px;text-align:right;color:rgba(160,200,240,.45)}
+#ovList td.wer{color:var(--text);max-width:120px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ovList td.welle{color:var(--text);white-space:nowrap}
+#ovList td.wann{white-space:nowrap;font-size:10.5px}
 #ovList tr.neu td{color:var(--gold)}
-#ovList tr.neu td:nth-child(2){color:var(--gold)}
+#ovList tr.neu td.welle,#ovList tr.neu td.wer{color:var(--gold)}
+/* Der eigene Lauf trägt sein Namensfeld gleich in der Zeile — kein
+   eigener Kasten, keine zweite Schaltfläche. */
+#ovList input{
+  width:104px;padding:1px 5px;font:inherit;color:var(--gold);
+  background:rgba(120,170,220,.08);
+  border:1px solid rgba(255,199,91,.4);border-radius:3px;
+}
+#ovList input::placeholder{color:rgba(160,200,240,.45)}
+#ovList input:focus{outline:none;border-color:var(--gold)}
 
 /* ---- Tagesfeld ---- */
 #tagBadge{

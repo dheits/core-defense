@@ -767,6 +767,14 @@ Tagesfeld) und den drei häufigsten Bauteilen am Ende. Sie steht auf der Startan
 Lauf hervorgehoben. Ein Lauf wird eingetragen, wenn der Kern fällt — und derselbe Moment
 löscht den Spielstand, weil die Partie zu Ende ist und nicht unterbrochen.
 
+**Der eigene Name.** Nach dem Kernverlust trägt die eigene Zeile ein Feld — dort steht der
+Name, höchstens 14 Zeichen lang. Es hat den Fokus, sobald es leer ist, und braucht kein
+Speichern: Jeder Tastendruck geht sofort in die Liste. Der Name bleibt liegen und ist beim
+nächsten Lauf schon eingetragen, die Zeile zum Weitergeben nennt ihn mit. Solange niemand
+einen eingetragen hat, hat die Tabelle die Spalte gar nicht. Auch der Name bleibt auf
+diesem Rechner — es gibt keinen Server, an den er ginge, und keine Liste außerhalb dieses
+Browsers, in die er käme.
+
 ## Balance messen
 
 Im Ordner `tools/` liegt ein Prüfstand, der das ganze Spiel ohne Browser in node lädt,

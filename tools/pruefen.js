@@ -1693,6 +1693,66 @@ beschreibe('Gewertet wird die höchste begonnene Welle', () => {
   gleich('gewertet wird trotzdem die höhere', g.eintragen().eintrag.wave, 1);
 });
 
+beschreibe('Der Name bleibt liegen und kommt beim nächsten Lauf mit', () => {
+  const h = neu(), g = h.game;
+  gleich('Leerraum an den Rändern fällt weg', h.nameSauber('  Detlef  '), 'Detlef');
+  gleich('mehrere Leerzeichen werden eins', h.nameSauber('Der  lange  Lauf'), 'Der lange Lauf');
+  gleich('zu lang wird gekürzt', h.nameSauber('x'.repeat(40)).length, h.NAME_MAX);
+  gleich('ohne Eingabe bleibt er leer', h.spielerName(), '');
+
+  h.nameMerken('  Detlef ');
+  gleich('gemerkt wird die saubere Fassung', h.spielerName(), 'Detlef');
+  g.wave = 5; g.bestWave = 5;
+  gleich('und der nächste Lauf bringt ihn mit', g.eintragen().eintrag.name, 'Detlef');
+});
+
+beschreibe('Die Bestenliste zeigt den Namen und nimmt ihn entgegen', () => {
+  const h = neu(), g = h.game;
+  g.wave = 9; g.bestWave = 9;
+  const erg = g.eintragen();
+
+  stimmt('ohne Namen bleibt die Spalte weg',
+         h.bestenlisteHtml(erg.liste).indexOf('class="wer"') < 0);
+  const mit = h.bestenlisteHtml(erg.liste, erg.eintrag);
+  stimmt('der eigene Lauf bekommt ein Feld', mit.indexOf('id="ovName"') >= 0);
+  stimmt('und es nimmt nicht mehr an, als die Zeile trägt',
+         mit.indexOf('maxlength="' + h.NAME_MAX + '"') >= 0);
+
+  erg.eintrag.name = 'Detlef';
+  const fertig = h.bestenlisteHtml(erg.liste);
+  stimmt('ein eingetragener Name steht in seiner Zeile', fertig.indexOf('>Detlef<') >= 0);
+  erg.eintrag.name = '<b>x</b>';
+  const spitz = h.bestenlisteHtml(erg.liste);
+  stimmt('spitze Klammern werden entschärft', spitz.indexOf('&lt;b&gt;') >= 0);
+  stimmt('und werden nicht zur Auszeichnung', spitz.indexOf('<b>') < 0);
+
+  // Ein Lauf, der es nicht in die Liste geschafft hat, hat nichts zu benennen
+  for (let i = 0; i < h.BEST_MAX; i++) { g.wave = 50 + i; g.bestWave = g.wave; g.eintragen(); }
+  g.wave = 1; g.bestWave = 1;
+  const knapp = g.eintragen();
+  gleich('der schwache Lauf steht nicht in der Liste', knapp.platz, -1);
+  const knappHtml = h.bestenlisteHtml(knapp.liste, knapp.eintrag);
+  stimmt('und bekommt darum kein Feld', knappHtml.indexOf('id="ovName"') < 0);
+  stimmt('die Spalte bleibt dann ganz weg', knappHtml.indexOf('class="wer"') < 0);
+
+  erg.eintrag.name = 'Der "Lange"';
+  const feld = h.bestenlisteHtml(erg.liste, erg.eintrag);
+  stimmt('auch im Feld selbst bleibt kein Anführungszeichen roh stehen',
+         feld.indexOf('&quot;') >= 0 && feld.indexOf('value="Der "') < 0);
+});
+
+beschreibe('Was ins Namensfeld getippt wird, steht sofort in der Liste', () => {
+  const h = neu(), g = h.game;
+  h.bau('blaster', 18, 12);
+  g.wave = 4; g.bestWave = 4;
+  g.damageCore(1e9, null);                   // Kernverlust: die Anzeige steht samt Feld
+  const feld = document.getElementById('ovName');
+  feld.value = '  Detlef  ';
+  feld.oninput();
+  gleich('der Eintrag trägt den Namen', g.bestenliste()[0].name, 'Detlef');
+  gleich('und er ist für den nächsten Lauf gemerkt', h.spielerName(), 'Detlef');
+});
+
 beschreibe('Am Ende ist der Stand weg und der Lauf in der Liste', () => {
   const h = neu(), g = h.game;
   h.bau('blaster', 18, 12);
@@ -1813,6 +1873,11 @@ beschreibe('Das Ergebnis lässt sich weitergeben', () => {
   const frei = h.ergebnisText(g.eintragen().eintrag);
   stimmt('freies Feld wird als solches benannt', frei.indexOf('freies Feld') >= 0);
   stimmt('und nennt kein Datum als Feld', frei.indexOf('Tagesfeld') < 0);
+
+  // Wer sich eingetragen hat, steht auch in der Zeile, die weitergegeben wird
+  h.nameMerken('Detlef');
+  stimmt('die Zeile nennt den Namen zuerst',
+         h.ergebnisText(g.eintragen().eintrag).indexOf('CORE DEFENSE · Detlef · ') === 0);
 });
 
 beschreibe('Der Tag kommt aus dem Kalender des Spielers', () => {
@@ -2343,6 +2408,7 @@ beschreibe('Die README nennt die Werte aus config.js', () => {
   eines('Druck: Deckel unten', ['**' + komma(h.DRUCK.min) + '**',
                                 '**' + komma(h.DRUCK.min.toFixed(1)) + '**']);
   steht('Bestenliste: Länge', 'acht besten Läufe');
+  steht('Bestenliste: Namenslänge', 'höchstens ' + h.NAME_MAX + ' Zeichen');
 });
 
 /* ------------------------ Ausgabe ------------------------ */
