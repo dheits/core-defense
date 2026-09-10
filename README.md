@@ -4,6 +4,12 @@ Ein Tower-Defense-Spiel mit umgedrehter Geometrie: **die Angriffe kommen von au�
 du baust vom Zentrum nach außen. In der Mitte steht der Kern — gleichzeitig Schutzobjekt
 und Energiequelle deiner Türme.
 
+**Repo:** [github.com/dheits/core-defense](https://github.com/dheits/core-defense) (öffentlich).
+**Live:** [dheits.de/core-defense](https://dheits.de/core-defense/) — eingebunden als
+Unterordner der Hauptseite, eigener nginx-Block dort wegen der Google-Fonts-CSP.
+`git push origin main` liefert nur den Code aus, nicht die Live-Seite automatisch —
+Deploy dorthin bisher manuell über SSH.
+
 ## Starten
 
 `index.html` im Browser öffnen (Doppelklick reicht, es gibt keinen Build-Schritt).
