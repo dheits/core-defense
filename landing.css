@@ -189,11 +189,15 @@ section:first-child{border-bottom:none}
   letter-spacing:.04em;color:var(--bp-ink-dim);max-width:70ch;
 }
 
-/* ---------------- Details A/B/C ---------------- */
-.l-detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1px;
+/* ---------------- Details A bis E ---------------- */
+/* Fünf Karten gehen in keinem gleichmäßigen Raster auf. Deshalb liegen
+   sechs Spalten zugrunde: oben drei Karten zu zwei Spalten, unten zwei
+   zu drei. So bleibt keine leere Zelle stehen. */
+.l-detail-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;
   background:var(--bp-rule-soft);border:1px solid var(--bp-rule-soft)}
-.l-detail{padding:clamp(18px,2.4vw,28px);background:var(--bp-panel)}
-.l-detail svg{display:block;width:100%;height:auto;margin:6px 0 18px;
+.l-detail{grid-column:span 2;padding:clamp(18px,2.4vw,28px);background:var(--bp-panel)}
+.l-detail:nth-child(4),.l-detail:nth-child(5){grid-column:span 3}
+.l-detail svg{display:block;width:100%;max-width:300px;height:auto;margin:6px 0 18px;
   border:1px solid var(--bp-rule-soft)}
 .l-mark{
   font-family:var(--f-mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;
@@ -311,6 +315,9 @@ kbd{
 .l-reveal.l-shown{opacity:1;transform:none}
 
 @media (max-width:900px){
+  /* Zwei nebeneinander, die fünfte über die volle Breite. */
+  .l-detail,.l-detail:nth-child(4){grid-column:span 3}
+  .l-detail:nth-child(5){grid-column:span 6}
   .l-hero{grid-template-columns:1fr}
   .l-hero::before{inset:0}
   .l-titleblock{grid-template-columns:repeat(2,1fr)}
@@ -327,6 +334,7 @@ kbd{
   .l-btn{text-align:center}
 }
 @media (max-width:560px){
+  .l-detail,.l-detail:nth-child(4),.l-detail:nth-child(5){grid-column:span 6}
   .l-head-nav a:nth-child(n+3){display:none}
   .l-titleblock{grid-template-columns:1fr}
   .l-titleblock div{border-right:none;border-bottom:1px solid var(--bp-rule)}
