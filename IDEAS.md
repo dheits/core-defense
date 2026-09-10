@@ -278,6 +278,36 @@ Wenn nur eines davon gebaut wird, dann das erste. Die anderen drei sind gute Erg
 die Maschen sind der einzige Punkt, der auf das einzahlt, was dieses Spiel von anderen
 Tower-Defense-Spielen trennt.
 
+### Und eine offene Frage: ein Gipfel bei Welle 50
+
+Das Spiel hört nicht auf. „Wellen: endlos" steht im Titelblock der Landingpage, „Wellen
+sind endlos" im README-Abschnitt zu den Wellen, und Budget wie Trefferpunkte wachsen
+quadratisch weiter, bis der Kern fällt. Jede Partie endet also mit einer Niederlage —
+die Frage ist nur, wie spät.
+
+Die Gegenidee: Welle 50 als **Ausbruch** — ein letzter Boss, eine Sieganzeige, und danach
+läuft weiter, wer weiterlaufen will. Das gäbe einer Partie eine Form statt einer Steigung,
+und der Bestenliste eine zweite Achse: nicht mehr nur *wie weit*, sondern *ob geschafft* —
+und wie sauber, mit Kernstruktur, verlorenen Bauten und gebrauchter Zeit als Feinsortierung.
+
+Drei Dinge sprechen dagegen, und sie sind keine Kleinigkeiten:
+
+- **Alles Bestehende misst „wie weit".** Bestenliste, Ergebniszeile, Tagesfeld-Vergleich und
+  jede Zahl im Abschnitt „Balance messen" sind Wellenzahlen. Ein Deckel bei 50 staucht die
+  Verteilung an ihrem oberen Ende, und „Median 12" hieße dann etwas anderes als heute.
+- **Der interessante Teil wandert nach hinten.** Wer weiß, dass bei 50 Schluss ist, spielt
+  die ersten dreißig Wellen als Vorbereitung. Heute ist jede Welle die, an der es scheitern
+  kann.
+- **Es ist eine Änderung der Identität, keine Ergänzung.** Anders als die vier Punkte oben
+  ließe sich das nicht dazubauen, ohne zwei Sätze zurückzunehmen, die auf der Seite und im
+  README stehen.
+
+Dafür spricht das, was die Bestenliste heute nicht kann: einen Lauf als *gelungen* zeigen.
+Ein Kompromiss wäre, den Gipfel als eigene Betriebsart neben das endlose Feld zu stellen —
+dann bliebe „endlos" wahr, und die beiden Listen stünden nebeneinander statt gegeneinander.
+Auch das ist eine Entscheidung, keine Selbstverständlichkeit: Zwei Betriebsarten heißt zwei
+Balancekurven, und gemessen wird bislang eine.
+
 ---
 
 ## Gefunden und behandelt: der Kern kann sich nicht wehren
@@ -397,8 +427,9 @@ Bestenliste und mit der Messbarkeit, und der Inhalt, den sie verknappen würden,
 der, der das Spiel ausmacht.
 
 Offen ist seither nur noch **Abschnitt 6**, der nicht aus der Recherche stammt, sondern aus
-dem Stand des Codes — dazu die beiden Balance-Fäden, die weiter in der README stehen: der
-Moloch auf Welle 20 und der ungemessene Nutzen der Kernmodi.
+dem Stand des Codes, samt der Frage nach einem Gipfel bei Welle 50 — dazu die beiden
+Balance-Fäden, die weiter in der README stehen: der Moloch auf Welle 20 und der ungemessene
+Nutzen der Kernmodi.
 
 ## Wenn ich drei Dinge auswählen müsste (ursprüngliche Empfehlung)
 
