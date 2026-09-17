@@ -1065,6 +1065,8 @@ console.log(h.game.sources[1].ratio);      // Auslastung dieser Leitung
 - `tools/pruefen.js` — Selbsttest der Mechaniken (`node tools/pruefen.js`)
 - `tools/stuetzen.js` — gepaarte Messung für Werkdrohne und Schildfeld
 - `tools/schaden.js` — Schaden je Turmtyp bei gleichem Platz und freier Energie
+- `tools/crazygames/` — Quelle für den Portal-Export (siehe unten)
+- `tools/build-crazygames.sh` — baut daraus `dist-crazygames/` und das Upload-Zip
 
 Balance-Änderungen brauchen fast immer nur `js/config.js`.
 
@@ -1077,3 +1079,21 @@ Verhältnis. Mausklicks rechnet `getBoundingClientRect()` automatisch richtig um
 
 Tastatur und Spieltakt laufen nur, solange das Spielfeld zu mindestens 30 %
 im Bild ist. Sonst würde die Leertaste beim Lesen eine Welle starten.
+
+### Export für CrazyGames
+
+`./tools/build-crazygames.sh` erzeugt `dist-crazygames/` (lokal testbar) und
+`dist-crazygames.zip` (Upload) — ein eigenständiges HTML5-Paket ohne die
+Landingpage drumherum, das Spielfeld füllt dort das ganze Fenster
+(`tools/crazygames/crazygames.css` ersetzt `landing.css`s Fullscreen-Regel als
+Normalzustand statt als Sonderfall). `tools/crazygames/sdk.js` bindet das
+CrazyGames-SDK v3 ein: `loadingStart/Stop` beim Start, `gameplayStart/Stop`
+über dieselbe Bedingung wie der eigene Render-Loop (`!paused && !over &&
+Overlay verborgen`), ein Midgame-Ad-Aufruf einmal je Game-Over. Beide
+Export-Dateien (`js/config.js` … `js/game.js`, `style.css`) werden beim Bauen
+aus den echten Quelldateien kopiert, nicht dupliziert gepflegt — Balance- oder
+Spiellogik-Änderungen landen dort automatisch beim nächsten Lauf des Skripts.
+
+Lokal testen: `python3 -m http.server 8123 --directory dist-crazygames`.
+Fehlende `dist-crazygames/` bzw. `dist-crazygames.zip` sind Build-Output und
+absichtlich in `.gitignore`.

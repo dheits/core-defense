@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CORE DEFENSE</title>
+<meta name="description" content="Tower Defense von innen nach außen: Die Wellen kommen von außen, der Strom aus der Mitte.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Saira:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="crazygames.css">
+<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+</head>
+<body>
+
+<div id="viewport">
+  <div id="fit">
+  <div id="stage">
+    <canvas id="game" width="1312" height="800"></canvas>
+
+    <div id="topbar">
+      <div class="stat">
+        <span class="label">Materie</span>
+        <span class="value" id="matter">0</span>
+      </div>
+      <div class="stat wide">
+        <span class="label">Energie <b id="energyTxt">0/0</b> <i id="regenTxt">+0/s</i></span>
+        <div class="bar"><div class="fill energy" id="energyBar"></div></div>
+      </div>
+      <div class="stat wide">
+        <span class="label">Kern <b id="coreTxt">0/0</b></span>
+        <div class="bar"><div class="fill core" id="coreBar"></div></div>
+      </div>
+      <div class="stat">
+        <span class="label">Welle</span>
+        <span class="value" id="wave">0</span>
+      </div>
+      <div class="stat" id="phaseBox">
+        <span class="label" id="phaseLabel">Bauphase</span>
+        <span class="value" id="phaseValue">--</span>
+      </div>
+      <button id="nextWave" class="ghost">Welle starten <small>(Leertaste)</small></button>
+      <button id="speedBtn" class="ghost">1&times;</button>
+      <button id="muteBtn" class="ghost" title="Ton (M)">&#128266;</button>
+      <button id="pauseBtn" class="ghost">Pause</button>
+    </div>
+
+    <div id="tagBadge" hidden></div>
+    <div id="preview" hidden></div>
+    <div id="alarm" hidden></div>
+    <div id="bossWarn" hidden></div>
+    <div id="modBadge" hidden></div>
+    <div id="netWarn" hidden></div>
+
+
+    <div id="bossbar" hidden>
+      <div class="bb-head"><b id="bossName">-</b><span id="bossHint"></span></div>
+      <div class="bb-bar"><div class="bb-fill" id="bossFill"></div></div>
+      <div class="bb-state" id="bossState"></div>
+    </div>
+
+    <div id="taskbar">
+      <div id="shop" class="tb-group"></div>
+      <div class="tb-group">
+        <button id="planBtn" class="plan"
+                title="Eine Hälfte des Feldes auf die andere spiegeln — Grundriss auf Stufe 1, zum normalen Preis  (Taste B)">
+          <span class="pk">B</span><span class="pn">Bauplan</span><span class="pc" id="planCost"></span>
+        </button>
+      </div>
+      <span class="tb-sep"></span>
+      <div id="powers" class="tb-group"></div>
+      <span class="tb-sep"></span>
+      <div id="modes" class="tb-group"></div>
+    </div>
+
+    <div id="draft" hidden>
+      <div class="draft-box">
+        <p class="draft-eyebrow">Welle <b id="draftWave">0</b> gehalten</p>
+        <div id="draftStats"></div>
+        <h2>Eine Verbesserung für den Rest der Partie</h2>
+        <div id="draftCards"></div>
+      </div>
+    </div>
+
+    <div id="inspector" hidden>
+      <div class="ins-head"><b id="insName">-</b><span id="insLevel"></span></div>
+      <div id="insStats"></div>
+      <div id="insSpecial" hidden></div>
+      <div class="ins-actions">
+        <button id="upgradeBtn"></button>
+        <button id="repairBtn"></button>
+      </div>
+      <div class="ins-actions" id="insTurret" hidden>
+        <button id="zielBtn"></button>
+        <button id="prioBtn"></button>
+        <button id="overloadBtn"></button>
+      </div>
+      <div class="ins-actions">
+        <button id="moveBtn" title="Bau auf ein freies Feld umsetzen — Stufe und Einstellungen bleiben  (Taste V)"></button>
+      </div>
+      <div class="ins-actions">
+        <button id="sellBtn" class="danger"></button>
+      </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <div id="overlay" hidden>
+      <div class="panel">
+        <h1 id="ovTitle">CORE DEFENSE</h1>
+        <p id="ovText"></p>
+        <div id="ovList" hidden></div>
+        <div class="ov-btns">
+          <button id="ovBtn">Neu starten</button>
+          <button id="ovBtn2" class="ghost" hidden>Neu anfangen</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/entities.js"></script>
+<script src="js/game.js"></script>
+<script src="js/sdk.js"></script>
+</body>
+</html>
