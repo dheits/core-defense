@@ -70,6 +70,11 @@ friendly".
 1. `./tools/build-crazygames.sh` laufen lassen
 2. `dist-crazygames.zip` bei developer.crazygames.com als neues Spiel hochladen
 3. Thumbnail (min. 512×512, quadratisch) und 3–5 Screenshots (16:9, z. B.
-   1280×720) selbst aus einer laufenden Partie ziehen — eine Bauphase mit
-   sichtbarem Netz und eine Welle mitten im Gefecht wirken am besten
+   1280×720) hochladen. Zwei Rohfassungen liegen schon unter
+   `tools/crazygames/screenshots/` (Titelbildschirm, Kartenwahl zwischen
+   Wellen) — klein und mit Kompressionsartefakten, nur als Platzhalter/Beleg
+   gedacht. Für den echten Eintrag lohnt sich ein sauberer Screenshot direkt
+   aus `dist-crazygames/index.html` im Browser (Vollbild, ohne DevTools-
+   Ränder), plus unbedingt einen mit laufendem Gefecht (Gegner + Türme +
+   Energienetz sichtbar) — das fehlt hier noch.
 4. Freigabe durch CrazyGames abwarten (Review-Team, kein Autopublish)
