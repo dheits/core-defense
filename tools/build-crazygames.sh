@@ -19,10 +19,9 @@ open('dist-crazygames/index.html', 'w').write(src.replace(tag, '<style>\n' + fon
 PY
 cp tools/crazygames/crazygames.css dist-crazygames/crazygames.css
 cp tools/crazygames/sdk.js dist-crazygames/js/sdk.js
-cp tools/crazygames/einfuehrung.js dist-crazygames/js/einfuehrung.js
 
 cp style.css dist-crazygames/style.css
-cp js/config.js js/audio.js js/entities.js js/game.js dist-crazygames/js/
+cp js/config.js js/audio.js js/entities.js js/game.js js/einfuehrung.js dist-crazygames/js/
 
 # Englisch für das internationale Publikum. Die Quellen bleiben deutsch,
 # übersetzt wird nur die Kopie; das Skript bricht bei jedem fehlenden Text ab.

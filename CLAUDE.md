@@ -3,7 +3,7 @@
 Ein umgekehrtes Tower-Defense im Browser: Wellen kommen aus allen Richtungen, der Kern
 in der Mitte ist zugleich das zu schützende Objekt und die Energiequelle der Türme.
 
-Vanilla HTML/Canvas 2D, kein Build, keine Abhängigkeiten. Vier klassische
+Vanilla HTML/Canvas 2D, kein Build, keine Abhängigkeiten. Die klassischen
 `<script>`-Dateien teilen sich einen globalen Scope — das ist Absicht, damit `file://`
 läuft. Nicht zu Modulen umbauen.
 
@@ -12,6 +12,7 @@ läuft. Nicht zu Modulen umbauen.
 - `js/config.js` — alle Zahlen, 62 Karten
 - `js/entities.js`, `js/audio.js`
 - `js/game.js` — das meiste
+- `js/einfuehrung.js` — geführte erste Welle für neue Spieler, liest `game` nur von außen
 - `js/landing.js` — nur die Landingpage
 - `index.html` — Landingpage und Spiel in einem
 - `style.css` (HUD), `landing.css` (Seite)
@@ -91,12 +92,9 @@ Einbuchstabige Texte (etwa `' Z'`) erkennt die Prüfung nicht und stehen von Han
 Wörterbuch. Den übersetzten Stand spielt der Bot mit
 `CD_QUELLE=dist-crazygames node tools/bot.js 20 40`.
 
-`einfuehrung.js` führt neue Spieler in sechs Schritten durch die erste Welle (Blaster,
-Pylon, Welle starten, Puffer, Kartenwahl, Inspektor). Sie liest den Spielzustand nur von
-außen und rückt weiter, wenn der Schritt getan ist. Bis die Welle läuft, hält sie den
-Bau-Countdown an. Sie erscheint nur ohne gespeicherten Lauf und ohne Bestenliste und
-merkt sich in `cd_einfuehrung`, dass sie gesehen wurde. Ihre Texte stehen in `en.js`
-unter `einfuehrung`.
+Die Einführung (`js/einfuehrung.js`, README-Abschnitt „Einführung“) gehört zum
+Hauptspiel und wird mitkopiert; ihre englischen Texte stehen in `en.js` unter
+`einfuehrung`.
 
 Lesbarkeit: CrazyGames testet in 16:9-Fenstern ab 821×462 bei devicePixelRatio 1, dort
 würde das auf 1312×800 gebaute Spiel auf 58 % schrumpfen. `sdk.js` berechnet daher einen

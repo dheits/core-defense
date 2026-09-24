@@ -21,6 +21,18 @@ Oder mit lokalem Server:
 python3 -m http.server 8123 --directory ~/Developer/core-defense
 ```
 
+## Einführung
+
+Wer das Spiel zum ersten Mal öffnet, wird durch die erste Welle geführt: Blaster neben den
+Kern, Pylon an den Rand des Leuchtens, Welle starten, dann Puffer, Kartenwahl und
+Inspektor. Jeder Schritt hebt das passende Bedienelement hervor und rückt erst weiter,
+wenn er getan ist. Bis die Welle läuft, steht der Bau-Countdown — wer liest, soll die
+erste Welle nicht verpassen. *Einführung überspringen* beendet sie jederzeit.
+
+Als neu gilt, wer weder einen gespeicherten Lauf noch einen Eintrag in der Bestenliste hat.
+Gesehen oder übersprungen merkt sie sich in `cd_einfuehrung` und kommt nicht wieder.
+`js/einfuehrung.js` liest den Spielzustand nur von außen; `game.js` weiß nichts von ihr.
+
 ## Die zwei Kernmechaniken
 
 **1. Energienetz statt Laufwege.** Türme arbeiten nur im Versorgungsradius des Kerns oder
@@ -1059,6 +1071,7 @@ console.log(h.game.sources[1].ratio);      // Auslastung dieser Leitung
 - `js/entities.js` — Gegner, Projektile, Partikel
 - `js/game.js` — Spielzustand, Energienetz, Wellen, Rendering, Eingabe
 - `js/audio.js` — Klangerzeugung
+- `js/einfuehrung.js` — geführte erste Welle für neue Spieler
 - `js/landing.js` — Einblendungen, Vollbild, Skalierung des Spielblocks
 - `tools/harness.js` — lädt das Spiel ohne Browser in node
 - `tools/bot.js` — simulierter Spieler für Balance-Messungen
@@ -1090,7 +1103,7 @@ Normalzustand statt als Sonderfall). `tools/crazygames/sdk.js` bindet das
 CrazyGames-SDK v3 ein: `loadingStart/Stop` beim Start, `gameplayStart/Stop`
 über dieselbe Bedingung wie der eigene Render-Loop (`!paused && !over &&
 Overlay verborgen`), ein Midgame-Ad-Aufruf einmal je Game-Over. Beide
-Export-Dateien (`js/config.js` … `js/game.js`, `style.css`) werden beim Bauen
+Export-Dateien (`js/config.js` … `js/game.js`, `js/einfuehrung.js`, `style.css`) werden beim Bauen
 aus den echten Quelldateien kopiert, nicht dupliziert gepflegt — Balance- oder
 Spiellogik-Änderungen landen dort automatisch beim nächsten Lauf des Skripts.
 

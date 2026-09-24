@@ -1,6 +1,6 @@
 'use strict';
 
-/* Einführung für neue Spieler im CrazyGames-Export.
+/* Einführung für neue Spieler.
 
    Das Spiel selbst weiß nichts von ihr: Sie schaut von außen auf den
    Zustand (game.buildings, game.phase, game.draft …) und rückt einen
@@ -9,8 +9,9 @@
 
    Gezeigt wird sie nur, wer das Spiel zum ersten Mal öffnet: kein
    gespeicherter Lauf, keine Bestenliste, die Einführung nicht schon
-   gesehen. Auf CrazyGames ist das fast jeder Besucher — und genau der
-   scheitert heute am Energienetz, bevor er es verstanden hat. */
+   gesehen. Wer schon eine Partie beendet hat, kennt das Energienetz;
+   wer neu ist, scheitert sonst genau daran, bevor er es verstanden hat.
+   Auf CrazyGames ist das fast jeder Besucher. */
 
 (function einfuehrung() {
   if (typeof game === 'undefined') return;
