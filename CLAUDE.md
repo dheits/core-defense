@@ -91,6 +91,13 @@ Einbuchstabige Texte (etwa `' Z'`) erkennt die Prüfung nicht und stehen von Han
 Wörterbuch. Den übersetzten Stand spielt der Bot mit
 `CD_QUELLE=dist-crazygames node tools/bot.js 20 40`.
 
+`einfuehrung.js` führt neue Spieler in sechs Schritten durch die erste Welle (Blaster,
+Pylon, Welle starten, Puffer, Kartenwahl, Inspektor). Sie liest den Spielzustand nur von
+außen und rückt weiter, wenn der Schritt getan ist. Bis die Welle läuft, hält sie den
+Bau-Countdown an. Sie erscheint nur ohne gespeicherten Lauf und ohne Bestenliste und
+merkt sich in `cd_einfuehrung`, dass sie gesehen wurde. Ihre Texte stehen in `en.js`
+unter `einfuehrung`.
+
 Stand: CrazyGames hat die Einreichung am 23.09.2026 mit der Begründung „overall quality
 does not yet meet the expectations" abgelehnt, ohne Details. Vermutete Gründe (nicht
 bestätigt): durchgehend deutsche Oberfläche, kein Tutorial, steiler Einstieg über Energienetz

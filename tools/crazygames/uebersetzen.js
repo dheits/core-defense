@@ -14,6 +14,7 @@
 const fs = require('fs');
 const path = require('path');
 const EN = require('./en.js');
+const TEXTE = Object.assign({}, EN.texte, EN.einfuehrung);
 
 const ziel = process.argv[2];
 if (!ziel) { console.error('Aufruf: node uebersetzen.js <zielordner>'); process.exit(2); }
@@ -30,7 +31,7 @@ function istText(s) {
   if (/^[a-z][A-Za-z0-9]*$/.test(s)) return false;                   // Bezeichner, auch camelCase
   s = s.replace(/\$\{[^}]*\}/g, ' ').replace(/<[^>]*>/g, ' ');       // Markup und Platzhalter zählen nicht
   if (!/[A-Za-zÄÖÜäöüß]{2,}/.test(s)) return false;
-  if (/^#[0-9a-f]+$/i.test(s)) return false;
+  if (/^[#.][\w-]+$/.test(s)) return false;                         // Farbe oder Selektor
   if (/^\d+ ?\d*px [\w-]+$|^\d+px [\w-]+$/.test(s)) return false;   // Schriftangaben
   if (/^[\d ]*\d+px sans-serif$/.test(s)) return false;
   return /[A-ZÄÖÜäöüß]/.test(s) || /[A-Za-z] +[A-Za-z]/.test(s);
@@ -97,15 +98,15 @@ function stellen(datei, src) {
   return src;
 }
 
-for (const datei of ['js/config.js', 'js/entities.js', 'js/audio.js', 'js/game.js']) {
+for (const datei of ['js/config.js', 'js/entities.js', 'js/audio.js', 'js/game.js', 'js/einfuehrung.js']) {
   const pfad = path.join(ziel, datei);
   let src = stellen(datei, fs.readFileSync(pfad, 'utf8'));
   let neu = '', pos = 0;
   for (const z of zeichenketten(src)) {
     let ersatz = null;
-    if (Object.prototype.hasOwnProperty.call(EN.texte, z.wert)) {
+    if (Object.prototype.hasOwnProperty.call(TEXTE, z.wert)) {
       benutzt.add(z.wert);
-      ersatz = alsLiteral(EN.texte[z.wert], z.quote);
+      ersatz = alsLiteral(TEXTE[z.wert], z.quote);
     } else if (istText(z.wert) && !code.has(z.wert)) {
       const zeile = src.slice(0, z.von).split('\n').length;
       fehler.push(`${datei}:${zeile}: keine Übersetzung für ${JSON.stringify(z.wert)}`);
@@ -130,7 +131,7 @@ const ohneStil = seite.replace(/<style>[\s\S]*?<\/style>/g, '');
 if (/[ÄÖÜäöüß]/.test(ohneStil)) fehler.push('index.html: Umlaut übrig');
 fs.writeFileSync(html, seite);
 
-const unbenutzt = Object.keys(EN.texte).filter(k => !benutzt.has(k));
+const unbenutzt = Object.keys(TEXTE).filter(k => !benutzt.has(k));
 for (const k of unbenutzt) fehler.push(`en.js: Übersetzung ohne Verwendung: ${JSON.stringify(k)}`);
 
 if (fehler.length) {

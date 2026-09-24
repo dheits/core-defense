@@ -468,6 +468,38 @@ module.exports = {
       'card choices. The free map is rolled anew every time.'
   },
 
+  /* ---- Einführung (einfuehrung.js) ----
+     Die Texte sind im Quelltext über mehrere Zeichenketten verteilt;
+     jede wird für sich übersetzt, zusammen ergeben sie den Satz. */
+  einfuehrung: {
+    'Das ist dein Kern. Alles in seinem Leuchten bekommt Strom. ':
+      'This is your core. Everything inside its glow gets power. ',
+    'Wähle unten den Blaster (Taste 4) und setze ihn neben den Kern.':
+      'Pick the Blaster below (key 4) and place it next to the core.',
+    'Das Leuchten reicht nicht weit. Ein Pylon (Taste 1) am Rand trägt das Netz ':
+      'The glow doesn\'t reach far. A Pylon (key 1) at its edge carries the grid ',
+    'weiter nach außen — Türme dahinter bekommen dann auch Strom.':
+      'further out — towers beyond it get power too.',
+    'Die Pfeile am Spielfeldrand zeigen, woher die Welle kommt. ':
+      'The arrows at the edge show where the wave comes from. ',
+    'Stell dort noch einen Turm hin und starte sie, wenn du bereit bist.':
+      'Put another tower on that side and start it when you are ready.',
+    'Jeder Schuss kostet Energie aus dem Puffer, dem blauen Balken oben. ':
+      'Every shot costs energy from the buffer, the blue bar at the top. ',
+    'Ist er leer, schweigen die Türme — Reaktoren (Taste 2) liefern Nachschub.':
+      'When it runs dry, your towers stop firing — Reactors (key 2) refill it faster.',
+    'Welle gehalten. Nach jeder Welle wählst du eine Karte, ':
+      'Wave held. After every wave you pick a card; ',
+    'sie gilt bis zum Ende der Partie.':
+      'it lasts until the end of the run.',
+    'Ein Klick auf einen Bau zeigt seine Werte. Dort baust du ihn aus, ':
+      'Click a building to see its stats. From there you can upgrade, ',
+    'reparierst ihn oder baust ihn ab. Viel Erfolg!':
+      'repair or sell it. Good luck!',
+    '<button type="button" class="ghost">Einführung überspringen</button></div>':
+      '<button type="button" class="ghost">Skip tutorial</button></div>'
+  },
+
   /* Stellen, die keine eigene Zeichenkette sind oder deren Zeichenkette
      zu kurz ist, um sie überall zu ersetzen. Jede muss genau einmal
      vorkommen, sonst bricht der Build ab. */
