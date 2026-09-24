@@ -92,6 +92,11 @@ Einbuchstabige Texte (etwa `' Z'`) erkennt die Prüfung nicht und stehen von Han
 Wörterbuch. Den übersetzten Stand spielt der Bot mit
 `CD_QUELLE=dist-crazygames node tools/bot.js 20 40`.
 
+`tools/build-crazygames.sh web` baut dieselbe englische Fassung als `dist-web-en/` für
+dheits.de: ohne CrazyGames-SDK, ohne eingebettete Schriften (das Spiel nutzt die
+Systemschrift, und die CSP dort erlaubt Skripte und Schriften nur von `'self'`) und mit dem
+Titel CORE DEFENSE statt CORE DEFENSE TD. Getestet hinter genau dieser CSP.
+
 Die Einführung (`js/einfuehrung.js`, README-Abschnitt „Einführung“) gehört zum
 Hauptspiel und wird mitkopiert; ihre englischen Texte stehen in `en.js` unter
 `einfuehrung`.

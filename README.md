@@ -1107,6 +1107,11 @@ Export-Dateien (`js/config.js` … `js/game.js`, `js/einfuehrung.js`, `style.css
 aus den echten Quelldateien kopiert, nicht dupliziert gepflegt — Balance- oder
 Spiellogik-Änderungen landen dort automatisch beim nächsten Lauf des Skripts.
 
+`./tools/build-crazygames.sh web` baut aus denselben Schritten `dist-web-en/`, die
+englische Fassung zum Selbsthosten: ohne CrazyGames-SDK und ohne eingebettete Schriften,
+weil die Content-Security-Policy auf dheits.de Skripte und Schriften nur von der eigenen
+Adresse zulässt. Alle Pfade sind relativ.
+
 Lokal testen: `python3 -m http.server 8123 --directory dist-crazygames`.
 Fehlende `dist-crazygames/` bzw. `dist-crazygames.zip` sind Build-Output und
 absichtlich in `.gitignore`.
