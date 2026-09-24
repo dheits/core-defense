@@ -4,7 +4,8 @@ Text für das Einreichungsformular unter developer.crazygames.com. Englisch ist
 Pflicht, Deutsch optional zusätzlich einstellbar.
 
 ## Titel
-CORE DEFENSE
+Core Defense TD (der Name CORE DEFENSE ist auf CrazyGames durch die abgelehnte
+erste Einreichung belegt)
 
 ## Kurzbeschreibung (EN, ~140 Zeichen)
 A tower defense turned inside out: enemies attack from every direction, you
@@ -68,13 +69,9 @@ friendly".
 
 ## Vor dem Hochladen
 1. `./tools/build-crazygames.sh` laufen lassen
-2. `dist-crazygames.zip` bei developer.crazygames.com als neues Spiel hochladen
-3. Thumbnail (min. 512×512, quadratisch) und 3–5 Screenshots (16:9, z. B.
-   1280×720) hochladen. Zwei Rohfassungen liegen schon unter
-   `tools/crazygames/screenshots/` (Titelbildschirm, Kartenwahl zwischen
-   Wellen) — klein und mit Kompressionsartefakten, nur als Platzhalter/Beleg
-   gedacht. Für den echten Eintrag lohnt sich ein sauberer Screenshot direkt
-   aus `dist-crazygames/index.html` im Browser (Vollbild, ohne DevTools-
-   Ränder), plus unbedingt einen mit laufendem Gefecht (Gegner + Türme +
-   Energienetz sichtbar) — das fehlt hier noch.
+2. `dist-crazygames/` bei developer.crazygames.com hochladen (Ordner, nicht das Zip)
+3. Cover (1920×1080, 800×1200, 800×800) und Vorschauvideos (1920×1080 und
+   1080×1620, je 20 s, ohne Ton) aus `tools/crazygames/medien/` hochladen.
+   Bei „Upload files“ den Ordner `dist-crazygames/` wählen, nicht die Zip-Datei
+   (siehe CLAUDE.md).
 4. Freigabe durch CrazyGames abwarten (Review-Team, kein Autopublish)

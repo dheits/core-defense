@@ -456,7 +456,10 @@ module.exports = {
     'Fortsetzen': 'Continue',
     'Neu anfangen': 'Start over',
     'Freies Feld': 'Free map',
-    'CORE DEFENSE': 'CORE DEFENSE',
+    // Auf CrazyGames heißt das Spiel „Core Defense TD“ — der Name CORE DEFENSE war
+    // dort durch die abgelehnte erste Einreichung belegt.
+    'CORE DEFENSE': 'CORE DEFENSE TD',
+    'CORE DEFENSE · ': 'CORE DEFENSE TD · ',
     'Der Kern in der Mitte versorgt deine Türme mit Energie. Angriffe kommen aus allen Richtungen. ':
       'The core in the center powers your towers. Attacks come from every direction. ',
     'Baue Pylone, um das Netz nach außen zu tragen, und Reaktoren, damit dir mitten in der Welle nicht ':
@@ -524,12 +527,14 @@ module.exports = {
     '<span class="num">${i + 1}</span><h3>${c.name}</h3><p>${c.desc}</p>',
     ' class="', '</b><span>', '</span></div>', ' class="neu"',
     '<td class="platz">', '<td class="wer">', '<td class="wann">', '<td class="teile">',
-    '<input id="ovName" maxlength="', 'CORE DEFENSE · '
+    '<input id="ovName" maxlength="'
   ],
 
   /* Die Spielseite. Jedes Paar muss genau einmal vorkommen. */
   html: [
     ['<html lang="de">', '<html lang="en">'],
+    ['<title>CORE DEFENSE</title>', '<title>Core Defense TD</title>'],
+    ['<h1 id="ovTitle">CORE DEFENSE</h1>', '<h1 id="ovTitle">CORE DEFENSE TD</h1>'],
     ['Tower Defense von innen nach außen: Die Wellen kommen von außen, der Strom aus der Mitte.',
      'Tower defense turned inside out: the waves come from outside, the power from the center.'],
     ['<span class="label">Materie</span>', '<span class="label">Matter</span>'],

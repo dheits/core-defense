@@ -107,11 +107,23 @@ Design-Pixeln Breite schaltet `.kompakt` auf die schmale Taskleiste (Bauteile oh
 Namen). Nach Änderungen an HUD oder Taskleiste in 821×462, 907×510 und 1920×1080
 nachsehen.
 
-Stand: CrazyGames hat die Einreichung am 23.09.2026 mit der Begründung „overall quality
-does not yet meet the expectations" abgelehnt, ohne Details. Vermutete Gründe (nicht
-bestätigt): durchgehend deutsche Oberfläche, kein Tutorial, steiler Einstieg über Energienetz
-und Versorgungsradius. Ob das Spiel international werden soll, ist eine offene
-Entscheidung des Nutzers.
+Stand: Die erste Einreichung als CORE DEFENSE wurde am 23.09.2026 abgelehnt („overall
+quality does not yet meet the expectations", ohne Details). Danach kamen die englische
+Fassung, die Einführung und die Lesbarkeit dazu. Am 24.09.2026 wurde das Spiel neu
+eingereicht, als **Core Defense TD**, weil der alte Eintrag den Namen belegt. Es steht auf
+„Awaiting Review“. Im Export heißt das Spiel deshalb CORE DEFENSE TD (`en.js`), das
+Hauptspiel bleibt CORE DEFENSE.
+
+Upload im Portal: Das Feld „Upload files“ ist eine **Ordnerauswahl** (`webkitdirectory`).
+Eine einzelne Zip-Datei hat darin keinen relativen Pfad, der Server antwortet dann mit
+HTTP 400 „Missing required fields“ und der Upload hängt. Den Ordner `dist-crazygames/`
+wählen, nicht die Zip-Datei.
+
+Medien in `tools/crazygames/medien/`: drei Cover und zwei Vorschauvideos (je 20 s, ohne
+Ton, erstes Bild ist das Cover). Die Cover entstehen aus `cover.html` plus dem Standbild
+`voll.png` mit Chrome headless (`--screenshot`, Fenstergröße des Formats). Oben links legt
+CrazyGames Labels über die Cover, beim Quadrat etwa ein Drittel der Höhe, deshalb steht
+der Titel dort unten.
 
 ## Offen (alles dokumentiert)
 

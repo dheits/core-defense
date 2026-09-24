@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Core Defense TD cover</title>
+<link rel="stylesheet" href="../fonts.css">
+<style>
+  /* Quelle der CrazyGames-Cover. Rendern mit Chrome headless, siehe CLAUDE.md. */
+  /* Ausschnitt aus voll.png (4096×2304), Kern bei x 2353 / y 1212 */
+  html,body{margin:0;background:#05070d;overflow:hidden}
+  .cover{position:relative;overflow:hidden;background:#05070d url(voll.png) no-repeat}
+  .cover::after{content:'';position:absolute;inset:0;pointer-events:none}
+  h1{
+    position:absolute;margin:0;z-index:2;
+    font-family:'Saira Condensed',sans-serif;font-weight:700;text-transform:uppercase;
+    line-height:.9;letter-spacing:.01em;color:#fff;
+    text-shadow:0 4px 30px rgba(0,0,0,.9);
+  }
+  h1 span{display:block}
+  h1 b{font-weight:inherit;color:#fff;text-shadow:0 4px 30px rgba(0,0,0,.9)}
+  h1 .a{color:#5fe0ff;text-shadow:0 0 40px rgba(95,224,255,.55),0 4px 30px rgba(0,0,0,.9)}
+
+  /* Querformat 1920×1080: Ausschnitt 2311×1300 ab (828, 557), Kern rechts */
+  .land{width:1920px;height:1080px;
+    background-size:calc(4096px * 1920 / 2311) auto;
+    background-position:calc(-828px * 1920 / 2311) calc(-557px * 1920 / 2311)}
+  .land::after{background:linear-gradient(90deg,rgba(5,7,13,.92) 0%,rgba(5,7,13,.7) 30%,rgba(5,7,13,0) 55%)}
+  .land h1{left:110px;top:50%;transform:translateY(-50%);font-size:165px}
+
+  /* Hochformat 800×1200: Ausschnitt 933×1400 ab (1886, 370). Titel tiefer, weil
+     CrazyGames oben links Labels über das Cover legt. */
+  .hoch{width:800px;height:1200px;
+    background-size:calc(4096px * 800 / 933) auto;
+    background-position:calc(-1886px * 800 / 933) calc(-370px * 800 / 933)}
+  .hoch::after{background:linear-gradient(180deg,rgba(5,7,13,.92) 0%,rgba(5,7,13,.7) 26%,rgba(5,7,13,0) 40%)}
+  .hoch h1{left:0;right:0;top:140px;text-align:center;font-size:112px}
+
+  /* Quadrat 800×800: Ausschnitt 1200×1200 ab (1753, 732), Kern oben, Titel unten.
+     Beim Quadrat legt CrazyGames ein großes Label oben links über das Bild
+     (etwa ein Drittel der Höhe), deshalb steht der Titel hier am Fuß. Tiefer
+     als 1932 darf der Ausschnitt nicht reichen, dort beginnt die Taskleiste. */
+  .quad{width:800px;height:800px;
+    background-size:calc(4096px * 800 / 1200) auto;
+    background-position:calc(-1753px * 800 / 1200) calc(-732px * 800 / 1200)}
+  .quad::after{background:linear-gradient(0deg,rgba(5,7,13,.92) 0%,rgba(5,7,13,.65) 16%,rgba(5,7,13,0) 30%)}
+  .quad h1{left:0;right:0;bottom:44px;text-align:center;font-size:88px}
+.quad h1 span{display:inline}
+</style>
+</head>
+<body>
+<div class="cover" id="c"><h1><span>Core</span> <span class="a">Defense <b>TD</b></span></h1></div>
+<script>
+  document.getElementById('c').classList.add(location.hash.slice(1) || 'land');
+</script>
+</body>
+</html>
