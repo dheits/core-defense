@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Core Defense</title>
+<meta name="description" content="Tower defense turned inside out: the waves come from outside, the power from the center.">
+<link rel="stylesheet" href="style.css?v=2fdf7e6a99">
+<link rel="stylesheet" href="crazygames.css?v=b0da9631c0">
+</head>
+<body>
+
+<div id="viewport">
+  <div id="fit">
+  <div id="stage">
+    <canvas id="game" width="1312" height="800"></canvas>
+
+    <div id="topbar">
+      <div class="stat">
+        <span class="label">Matter</span>
+        <span class="value" id="matter">0</span>
+      </div>
+      <div class="stat wide">
+        <span class="label">Energy <b id="energyTxt">0/0</b> <i id="regenTxt">+0/s</i></span>
+        <div class="bar"><div class="fill energy" id="energyBar"></div></div>
+      </div>
+      <div class="stat wide">
+        <span class="label">Core <b id="coreTxt">0/0</b></span>
+        <div class="bar"><div class="fill core" id="coreBar"></div></div>
+      </div>
+      <div class="stat">
+        <span class="label">Wave</span>
+        <span class="value" id="wave">0</span>
+      </div>
+      <div class="stat" id="phaseBox">
+        <span class="label" id="phaseLabel">Build phase</span>
+        <span class="value" id="phaseValue">--</span>
+      </div>
+      <button id="nextWave" class="ghost">Start wave <small>(Space)</small></button>
+      <button id="speedBtn" class="ghost">1&times;</button>
+      <button id="muteBtn" class="ghost" title="Sound (M)">&#128266;</button>
+      <button id="pauseBtn" class="ghost">Pause</button>
+    </div>
+
+    <div id="tagBadge" hidden></div>
+    <div id="preview" hidden></div>
+    <div id="alarm" hidden></div>
+    <div id="bossWarn" hidden></div>
+    <div id="modBadge" hidden></div>
+    <div id="netWarn" hidden></div>
+
+
+    <div id="bossbar" hidden>
+      <div class="bb-head"><b id="bossName">-</b><span id="bossHint"></span></div>
+      <div class="bb-bar"><div class="bb-fill" id="bossFill"></div></div>
+      <div class="bb-state" id="bossState"></div>
+    </div>
+
+    <div id="taskbar">
+      <div id="shop" class="tb-group"></div>
+      <div class="tb-group">
+        <button id="planBtn" class="plan"
+                title="Mirror one half of the field onto the other — layout at level 1, at normal price  (key B)">
+          <span class="pk">B</span><span class="pn">Blueprint</span><span class="pc" id="planCost"></span>
+        </button>
+      </div>
+      <span class="tb-sep"></span>
+      <div id="powers" class="tb-group"></div>
+      <span class="tb-sep"></span>
+      <div id="modes" class="tb-group"></div>
+    </div>
+
+    <div id="draft" hidden>
+      <div class="draft-box">
+        <p class="draft-eyebrow">Wave <b id="draftWave">0</b> held</p>
+        <div id="draftStats"></div>
+        <h2>One upgrade for the rest of the run</h2>
+        <div id="draftCards"></div>
+      </div>
+    </div>
+
+    <div id="inspector" hidden>
+      <div class="ins-head"><b id="insName">-</b><span id="insLevel"></span></div>
+      <div id="insStats"></div>
+      <div id="insSpecial" hidden></div>
+      <div class="ins-actions">
+        <button id="upgradeBtn"></button>
+        <button id="repairBtn"></button>
+      </div>
+      <div class="ins-actions" id="insTurret" hidden>
+        <button id="zielBtn"></button>
+        <button id="prioBtn"></button>
+        <button id="overloadBtn"></button>
+      </div>
+      <div class="ins-actions">
+        <button id="moveBtn" title="Move the building to a free tile — level and settings are kept  (key V)"></button>
+      </div>
+      <div class="ins-actions">
+        <button id="sellBtn" class="danger"></button>
+      </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <div id="overlay" hidden>
+      <div class="panel">
+        <h1 id="ovTitle">CORE DEFENSE</h1>
+        <p id="ovText"></p>
+        <div id="ovList" hidden></div>
+        <div class="ov-btns">
+          <button id="ovBtn">Restart</button>
+          <button id="ovBtn2" class="ghost" hidden>Start over</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<script src="js/config.js?v=02d32c6c1a"></script>
+<script src="js/audio.js?v=be74ff9027"></script>
+<script src="js/entities.js?v=d3020f0e64"></script>
+<script src="js/game.js?v=4135aad60e"></script>
+<script src="js/einfuehrung.js?v=fb5bc3cfcf"></script>
+<script src="js/sdk.js?v=40da2d4de1"></script>
+</body>
+</html>

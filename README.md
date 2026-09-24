@@ -5,10 +5,12 @@ du baust vom Zentrum nach außen. In der Mitte steht der Kern — gleichzeitig S
 und Energiequelle deiner Türme.
 
 **Repo:** [github.com/dheits/core-defense](https://github.com/dheits/core-defense) (öffentlich).
-**Live:** [dheits.de/core-defense](https://dheits.de/core-defense/) — eingebunden als
-Unterordner der Hauptseite, eigener nginx-Block dort wegen der Google-Fonts-CSP.
-`git push origin main` liefert nur den Code aus, nicht die Live-Seite automatisch —
-Deploy dorthin bisher manuell über SSH.
+**Live:** [dheits.de/core-defense](https://dheits.de/core-defense/) — dort läuft die
+**englische Fassung** aus `dist-web-en/` (ohne Landingpage, Spiel im ganzen Fenster), als
+Unterordner der Hauptseite mit eigenem nginx-Block. `dist-web-en/` ist deshalb eingecheckt
+und wird auf dem Server aus dem Repo geholt; `git push origin main` allein ändert die
+Live-Seite nicht. Die Quellen hier bleiben deutsch, `index.html` mit Landingpage ist die
+deutsche Fassung zum lokalen Spielen.
 
 ## Starten
 
@@ -1108,9 +1110,11 @@ aus den echten Quelldateien kopiert, nicht dupliziert gepflegt — Balance- oder
 Spiellogik-Änderungen landen dort automatisch beim nächsten Lauf des Skripts.
 
 `./tools/build-crazygames.sh web` baut aus denselben Schritten `dist-web-en/`, die
-englische Fassung zum Selbsthosten: ohne CrazyGames-SDK und ohne eingebettete Schriften,
-weil die Content-Security-Policy auf dheits.de Skripte und Schriften nur von der eigenen
-Adresse zulässt. Alle Pfade sind relativ.
+englische Fassung für dheits.de. Sie ist eingecheckt, und `node tools/pruefen.js` baut sie
+zur Kontrolle frisch und schlägt an, wenn der eingecheckte Stand veraltet ist — nach jeder
+Änderung am Spiel also neu bauen und mitcommitten. Sie kommt ohne CrazyGames-SDK und ohne
+eingebettete Schriften aus, weil die Content-Security-Policy auf dheits.de Skripte und
+Schriften nur von der eigenen Adresse zulässt. Alle Pfade sind relativ.
 
 Lokal testen: `python3 -m http.server 8123 --directory dist-crazygames`.
 Fehlende `dist-crazygames/` bzw. `dist-crazygames.zip` sind Build-Output und

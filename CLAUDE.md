@@ -24,7 +24,15 @@ IDEAS.md Abschnitt 6 lesen, dann `node tools/pruefen.js`.
 ## Regeln, die nicht im Code stehen
 
 - **Alles auf Deutsch:** Oberfläche, Kommentare, Dokumentation und Commit-Nachrichten.
-  Kommentare erklären, warum, nicht was — dem Ton der bestehenden folgen.
+  Kommentare erklären, warum, nicht was — dem Ton der bestehenden folgen. Englisch ist
+  nur, was der Build aus den deutschen Quellen erzeugt (`dist-web-en/`, CrazyGames).
+- **Live auf dheits.de läuft die englische Fassung** aus `dist-web-en/`, nicht die
+  deutsche Landingpage. Der Ordner ist eingecheckt, weil der Nutzer ihn auf dem Server aus
+  dem Repo holt und die Hashes vergleicht. Nach jeder Änderung am Spiel
+  `tools/build-crazygames.sh web` laufen lassen und mitcommitten — `pruefen.js` schlägt
+  sonst an.
+  dheits.de cacht `js/` und CSS 30 Tage; der Build hängt deshalb in `dist-web-en/index.html`
+  an jeden Verweis `?v=` plus Datei-Hash an.
 - **`config.js` ist die Wahrheit.** Landingpage, README und Kartentexte werden gegen sie
   geprüft, nicht umgekehrt.
 - **Zahlen im HUD mit Komma** (`dez()` in `entities.js`), nicht mit Punkt.
@@ -93,7 +101,7 @@ Wörterbuch. Den übersetzten Stand spielt der Bot mit
 `CD_QUELLE=dist-crazygames node tools/bot.js 20 40`.
 
 `tools/build-crazygames.sh web` baut dieselbe englische Fassung als `dist-web-en/` für
-dheits.de: ohne CrazyGames-SDK, ohne eingebettete Schriften (das Spiel nutzt die
+dheits.de (eingecheckt, siehe Regeln oben): ohne CrazyGames-SDK, ohne eingebettete Schriften (das Spiel nutzt die
 Systemschrift, und die CSP dort erlaubt Skripte und Schriften nur von `'self'`) und mit dem
 Titel CORE DEFENSE statt CORE DEFENSE TD. Getestet hinter genau dieser CSP.
 

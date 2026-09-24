@@ -7,6 +7,9 @@
 #   tools/build-crazygames.sh web    → dist-web-en/
 #                                      (englische Fassung für dheits.de, ohne SDK)
 #
+# Ein zweites Argument setzt den Zielordner — pruefen.js baut so in einen
+# Temp-Ordner und vergleicht mit dem eingecheckten dist-web-en/.
+#
 # Die web-Variante unterscheidet sich in drei Punkten: kein CrazyGames-SDK
 # (die CSP auf dheits.de erlaubt Skripte nur von 'self'), keine eingebetteten
 # Schriften (das Spiel nutzt die Systemschrift, Saira und Plex braucht nur die
@@ -22,6 +25,7 @@ case "$VARIANTE" in
   web)        ZIEL=dist-web-en ;;
   *) echo "Unbekannte Variante: $VARIANTE (crazygames oder web)" >&2; exit 2 ;;
 esac
+ZIEL="${2:-$ZIEL}"
 
 rm -rf "$ZIEL" "$ZIEL.zip"
 mkdir -p "$ZIEL/js"
@@ -65,6 +69,23 @@ for datei, soll in [('index.html', 2), ('js/game.js', 2)]:
     open(p, 'w').write(s.replace('CORE DEFENSE TD', 'CORE DEFENSE').replace('Core Defense TD', 'Core Defense'))
 s = open(ziel + '/index.html').read()
 assert 'crazygames.com' not in s and 'fonts.css' not in s
+PY
+  # dheits.de liefert js/ und css mit 30 Tagen Cache aus. Ohne Versionszusatz
+  # bekäme, wer schon da war, die neue index.html mit altem game.js aus dem
+  # Browser-Cache. Der Zusatz ist der Anfang des Datei-Hashes: ändert sich die
+  # Datei, ändert sich die Adresse.
+  ZIEL="$ZIEL" python3 - <<'PY'
+import hashlib, os, re
+ziel = os.environ['ZIEL']
+p = ziel + '/index.html'
+s = open(p).read()
+def version(m):
+    datei = m.group(2)
+    h = hashlib.sha256(open(ziel + '/' + datei, 'rb').read()).hexdigest()[:10]
+    return m.group(1) + '="' + datei + '?v=' + h + '"'
+s, n = re.subn(r'(href|src)="((?:js/)?[\w-]+\.(?:js|css))"', version, s)
+assert n == 8, n
+open(p, 'w').write(s)
 PY
 fi
 

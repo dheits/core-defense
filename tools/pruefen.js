@@ -2411,6 +2411,39 @@ beschreibe('Die README nennt die Werte aus config.js', () => {
   steht('Bestenliste: Namenslänge', 'höchstens ' + h.NAME_MAX + ' Zeichen');
 });
 
+/* dist-web-en/ ist eingecheckt, weil dheits.de von dort aus dem Repo
+   geladen wird. Als Kopie veraltet der Ordner still, sobald sich das Spiel
+   ändert und niemand neu baut — deshalb hier frisch bauen und vergleichen. */
+beschreibe('dist-web-en/ entspricht dem aktuellen Stand', () => {
+  const fs = require('fs'), os = require('os');
+  const { execFileSync } = require('child_process');
+  const ROOT = path.resolve(__dirname, '..');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-web-en-'));
+  try {
+    execFileSync('bash', [path.join(ROOT, 'tools/build-crazygames.sh'), 'web', tmp], { stdio: 'pipe' });
+    const liste = dir => {
+      const out = [];
+      (function geh(d, rel) {
+        for (const e of fs.readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name < b.name ? -1 : 1)) {
+          if (e.name === '.DS_Store') continue;
+          const r = rel ? rel + '/' + e.name : e.name;
+          if (e.isDirectory()) geh(path.join(d, e.name), r); else out.push(r);
+        }
+      })(dir, '');
+      return out;
+    };
+    const drin = path.join(ROOT, 'dist-web-en');
+    const soll = liste(tmp), ist = fs.existsSync(drin) ? liste(drin) : [];
+    gleich('Dateiliste', ist.join(', '), soll.join(', '));
+    for (const f of soll)
+      stimmt(f + ' ist veraltet — tools/build-crazygames.sh web laufen lassen und mitcommitten',
+             fs.existsSync(path.join(drin, f)) &&
+             fs.readFileSync(path.join(drin, f)).equals(fs.readFileSync(path.join(tmp, f))));
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
 /* ------------------------ Ausgabe ------------------------ */
 console.log('');
 if (fehler.length) {
