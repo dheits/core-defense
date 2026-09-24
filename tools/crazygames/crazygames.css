@@ -47,3 +47,64 @@ html,body{height:100%;margin:0;background:var(--bg,#05070d);overflow:hidden}
 }
 @keyframes ef-puls{50%{opacity:.35}}
 @media (prefers-reduced-motion:reduce){.ef-ziel,#einfuehrungKern{animation:none}}
+
+/* ---- Lesbarkeit im kleinen Fenster ----
+   Das Feld schrumpft mit dem Fenster, die Bedienung wächst per zoom um
+   --ui-k dagegen (sdk.js). Weil alle Bedienflächen denselben Faktor
+   tragen, wachsen auch ihre Abstände (top:64px des Inspektors, top:56px
+   der Vorschau) mit der Kopfleiste mit und passen weiter zueinander.
+   Die Vollbild-Ebenen (#draft, #overlay) selbst bleiben, gezoomt wird
+   ihr Inhalt. */
+#topbar,#taskbar,#inspector,#preview,#tagBadge,#toast,#alarm,#bossWarn,#bossbar,
+#modBadge,#netWarn,#draft .draft-box,#overlay .panel,#einfuehrung{zoom:var(--ui-k,1)}
+
+/* Nichts unter 10 Design-Pixeln: Beschriftungen, Tastenkästchen, Kürzel */
+.label{font-size:10.5px}
+.card .k,.power .pk,.mode .mk,.plan .pk{font-size:10px;min-width:17px;height:17px;line-height:15px}
+.mode .mk{font-size:10px}
+#draftStats span,.bb-state{font-size:10.5px}
+#ovList::before{font-size:10px}
+
+/* Schmale Form, wenn die volle Taskleiste nicht in die Breite passt:
+   Bauteile ohne Namen — Farbe, Taste und Preis reichen zum Bauen, der
+   Name steht im Tooltip und im Inspektor. Kernbefehle oben, Bauplan und
+   Kernmodi darunter, beides rechts neben den Bauteilen. */
+.kompakt #topbar{gap:8px}
+.kompakt .stat{min-width:60px}
+.kompakt .stat.wide{min-width:104px}
+.kompakt .label{letter-spacing:.08em}
+.kompakt #topbar button{padding:6px 9px;white-space:nowrap}
+/* Vier Karten nebeneinander auch bei 821×462 (758 Design-Pixel Breite) */
+.kompakt .draft-card{width:170px}
+.kompakt #draftCards{gap:10px}
+.kompakt .draft-box{padding:18px 12px}
+.kompakt #nextWave small{display:none}
+.kompakt #taskbar{
+  display:grid;grid-template-columns:auto auto auto;grid-template-rows:auto auto;
+  justify-content:center;gap:3px 7px;
+}
+.kompakt .tb-sep{display:none}
+.kompakt #shop{grid-row:1 / span 2;grid-column:1}
+.kompakt #powers{grid-row:1;grid-column:2 / span 2}
+.kompakt .tb-group:has(#planBtn){grid-row:2;grid-column:2}
+.kompakt #modes{grid-row:2;grid-column:3}
+.kompakt .card .n{display:none}
+.kompakt .card{gap:4px;padding-right:6px}
+/* Der Inspektor muss bei 821×462 zwischen Kopf- und Taskleiste passen,
+   auch mit dem Kasten der Stufe-5-Fähigkeit: engere Zeilen und Knöpfe. */
+.kompakt #inspector{padding:8px 9px;width:190px}
+.kompakt .ins-head{margin-bottom:4px}
+.kompakt #insStats{gap:0 8px;line-height:1.25}
+.kompakt .ins-actions{margin-top:4px;gap:4px}
+.kompakt .ins-actions button{padding:4px}
+.kompakt #insSpecial{margin-top:6px;padding:5px 7px;line-height:1.35}
+/* Verschieben und Abbauen teilen sich eine Zeile: zwei eigene Blöcke im
+   Markup, deshalb nebeneinander gefloatet statt umgebaut. */
+.kompakt #inspector > .ins-actions:nth-last-child(2){float:left;width:calc(50% - 2px)}
+.kompakt #inspector > .ins-actions:last-child{float:right;width:calc(50% - 2px)}
+.kompakt #inspector::after{content:'';display:block;clear:both}
+/* Sicherheitsnetz für den längsten Fall (Lichtbogen auf Stufe 5 im
+   kleinsten Fenster): Der Inspektor endet über der Taskleiste und rollt
+   den Rest. 138 = Abstand oben (64) plus Taskleiste, in
+   Design-Pixeln; die Höhe des Felds schrumpft mit --ui-k. */
+.kompakt #inspector{max-height:calc(800px / var(--ui-k) - 138px);overflow-y:auto;scrollbar-width:thin}

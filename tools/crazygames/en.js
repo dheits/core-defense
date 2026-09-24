@@ -314,6 +314,7 @@ module.exports = {
     'Energie je Punkt': 'Energy per point',
     'Lädt ab': 'Draws',
     ' % Puffer': '% of buffer',
+    ' %': '%',                     // englisch ohne Leerzeichen vor dem Prozentzeichen
     'Feld': 'Field',
     'ohne Strom': 'unpowered',
     'geladen': 'charged',

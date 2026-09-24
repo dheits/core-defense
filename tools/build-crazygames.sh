@@ -27,6 +27,7 @@ cp js/config.js js/audio.js js/entities.js js/game.js dist-crazygames/js/
 # Englisch für das internationale Publikum. Die Quellen bleiben deutsch,
 # übersetzt wird nur die Kopie; das Skript bricht bei jedem fehlenden Text ab.
 node tools/crazygames/uebersetzen.js dist-crazygames
+node tools/crazygames/lesbarkeit.js dist-crazygames
 for f in dist-crazygames/js/*.js; do node --check "$f"; done
 
 cd dist-crazygames

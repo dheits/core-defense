@@ -6,9 +6,25 @@
 
 const stageEl = document.getElementById('stage');
 const fitEl = document.getElementById('fit');
+/* Das Spielfeld schrumpft mit dem Fenster, die Bedienung nicht unter ihre
+   Designgröße: --ui-k gleicht die Verkleinerung aus (CSS-zoom in
+   crazygames.css, Canvas-Schrift über UIK). Bei 907×510 ist das Feld auf
+   64 % verkleinert, die Bedienung wächst um den Kehrwert — so bleibt
+   11,5-px-Schrift auch 11,5 px groß. Nach oben gedeckelt, sonst
+   verdecken Kopf- und Taskleiste zu viel vom Feld.
+
+   Ab einer bestimmten Enge reicht die Breite nicht mehr für die volle
+   Taskleiste; dann schaltet .kompakt auf die schmale Form um. */
+const UI_MAX = 1.8;
+const KOMPAKT_AB = 1180;   // so viele Design-Pixel braucht die volle Taskleiste
 function fitStage() {
   if (!fitEl || !stageEl) return;
-  stageEl.style.setProperty('--ui-scale', fitEl.clientWidth / 1312);
+  const s = fitEl.clientWidth / 1312;
+  const k = Math.min(UI_MAX, Math.max(1, 1 / s));
+  stageEl.style.setProperty('--ui-scale', s);
+  stageEl.style.setProperty('--ui-k', k);
+  stageEl.classList.toggle('kompakt', 1312 / k < KOMPAKT_AB);
+  if (typeof UIK !== 'undefined') UIK = k;
 }
 fitStage();
 addEventListener('resize', fitStage, { passive: true });

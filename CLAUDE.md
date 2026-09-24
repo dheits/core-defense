@@ -98,6 +98,15 @@ Bau-Countdown an. Sie erscheint nur ohne gespeicherten Lauf und ohne Bestenliste
 merkt sich in `cd_einfuehrung`, dass sie gesehen wurde. Ihre Texte stehen in `en.js`
 unter `einfuehrung`.
 
+Lesbarkeit: CrazyGames testet in 16:9-Fenstern ab 821×462 bei devicePixelRatio 1, dort
+würde das auf 1312×800 gebaute Spiel auf 58 % schrumpfen. `sdk.js` berechnet daher einen
+Ausgleich `--ui-k` / `UIK` (Kehrwert der Verkleinerung, höchstens 1,8). Die
+Bedienflächen wachsen per CSS-`zoom` darum (`crazygames.css`), `lesbarkeit.js` stellt
+Canvas-Schriften und die Maße der Hover-Karte beim Build darauf um. Unter 1180
+Design-Pixeln Breite schaltet `.kompakt` auf die schmale Taskleiste (Bauteile ohne
+Namen). Nach Änderungen an HUD oder Taskleiste in 821×462, 907×510 und 1920×1080
+nachsehen.
+
 Stand: CrazyGames hat die Einreichung am 23.09.2026 mit der Begründung „overall quality
 does not yet meet the expectations" abgelehnt, ohne Details. Vermutete Gründe (nicht
 bestätigt): durchgehend deutsche Oberfläche, kein Tutorial, steiler Einstieg über Energienetz
