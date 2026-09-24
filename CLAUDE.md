@@ -83,6 +83,14 @@ gameplayStart/Stop), `crazygames.css`, `fonts.css` (Schriften als Base64 eingebe
 SIL OFL 1.1, damit keine Anfrage an Google geht) und `listing.md` (Text fürs Formular).
 Das Spiel selbst bleibt unverändert.
 
+Der Export ist **englisch**, die Quellen bleiben deutsch. `uebersetzen.js` ersetzt beim
+Build jede Zeichenkette, die in `en.js` steht, und bricht ab, wenn ein Text ohne
+Übersetzung auftaucht, ein Eintrag verwaist oder ein Umlaut übrig bleibt. Wer im Spiel
+einen Text ändert, muss deshalb auch `en.js` anpassen, sonst baut der Export nicht.
+Einbuchstabige Texte (etwa `' Z'`) erkennt die Prüfung nicht und stehen von Hand im
+Wörterbuch. Den übersetzten Stand spielt der Bot mit
+`CD_QUELLE=dist-crazygames node tools/bot.js 20 40`.
+
 Stand: CrazyGames hat die Einreichung am 23.09.2026 mit der Begründung „overall quality
 does not yet meet the expectations" abgelehnt, ohne Details. Vermutete Gründe (nicht
 bestätigt): durchgehend deutsche Oberfläche, kein Tutorial, steiler Einstieg über Energienetz

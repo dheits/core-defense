@@ -16,3 +16,6 @@ html,body{height:100%;margin:0;background:var(--bg,#05070d);overflow:hidden}
   width:1312px;height:800px;aspect-ratio:auto;
   transform-origin:top left;transform:scale(var(--ui-scale,1));
 }
+
+/* Die Überschrift der Bestenliste steht in style.css als CSS-Text. */
+#ovList::before{content:'Leaderboard'}

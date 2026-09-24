@@ -22,7 +22,10 @@
 ---------------------------------------------------------------- */
 const fs = require('fs');
 const path = require('path');
-const ROOT = path.resolve(__dirname, '..');
+/* CD_QUELLE lädt einen anderen Stand, etwa den übersetzten
+   CrazyGames-Export: CD_QUELLE=dist-crazygames node tools/bot.js 20 30 */
+const ROOT = process.env.CD_QUELLE ? path.resolve(process.env.CD_QUELLE)
+                                   : path.resolve(__dirname, '..');
 
 // Ein Zeichenkontext, der jeden Aufruf annimmt und nichts tut
 function mkCtx() {
