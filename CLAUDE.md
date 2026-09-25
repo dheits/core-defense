@@ -25,7 +25,7 @@ IDEAS.md Abschnitt 6 lesen, dann `node tools/pruefen.js`.
 
 - **Alles auf Deutsch:** Oberfläche, Kommentare, Dokumentation und Commit-Nachrichten.
   Kommentare erklären, warum, nicht was — dem Ton der bestehenden folgen. Englisch ist
-  nur, was der Build aus den deutschen Quellen erzeugt (`dist-web-en/`, CrazyGames).
+  nur, was der Build aus den deutschen Quellen erzeugt (`dist-web-en/`).
 - **Live auf dheits.de läuft die englische Fassung** aus `dist-web-en/`, nicht die
   deutsche Landingpage. Der Ordner ist eingecheckt, weil der Nutzer ihn auf dem Server aus
   dem Repo holt und die Hashes vergleicht. Nach jeder Änderung am Spiel
@@ -83,14 +83,19 @@ Drei Messfallen:
 liefert `style.css` und `game.js` gern alt aus. Ein `?v=…` an der HTML hilft nicht — die
 Stylesheet-`href` neu setzen oder headless Chrome mit frischem Profil nehmen.
 
-## CrazyGames-Export
+## Englischer Export
 
-`tools/build-crazygames.sh` baut `dist-crazygames/` und `dist-crazygames.zip` (beide
-gitignored) aus den echten Quelldateien, ohne sie zu duplizieren. Was dazukommt, liegt in
-`tools/crazygames/`: `index.html` (Spielseite ohne Landingpage), `sdk.js` (SDK v3,
-gameplayStart/Stop), `crazygames.css`, `fonts.css` (Schriften als Base64 eingebettet,
-SIL OFL 1.1, damit keine Anfrage an Google geht) und `listing.md` (Text fürs Formular).
-Das Spiel selbst bleibt unverändert.
+Live auf dheits.de läuft die englische Fassung. Gebaut wird sie aus den echten
+Quelldateien, statt sie doppelt im Repo zu pflegen:
+
+```
+tools/build-crazygames.sh web
+```
+
+Heraus kommt `dist-web-en/` (eingecheckt, siehe Regeln oben). Was dazukommt, liegt in
+`tools/crazygames/`: `index.html` (Spielseite ohne Landingpage), `crazygames.css`
+(das Spielfeld füllt das Fenster) und `sdk.js` — ohne CrazyGames-SDK bleibt davon die
+Skalierung. Das Spiel selbst bleibt unverändert.
 
 Der Export ist **englisch**, die Quellen bleiben deutsch. `uebersetzen.js` ersetzt beim
 Build jede Zeichenkette, die in `en.js` steht, und bricht ab, wenn ein Text ohne
@@ -98,43 +103,38 @@ Build jede Zeichenkette, die in `en.js` steht, und bricht ab, wenn ein Text ohne
 einen Text ändert, muss deshalb auch `en.js` anpassen, sonst baut der Export nicht.
 Einbuchstabige Texte (etwa `' Z'`) erkennt die Prüfung nicht und stehen von Hand im
 Wörterbuch. Den übersetzten Stand spielt der Bot mit
-`CD_QUELLE=dist-crazygames node tools/bot.js 20 40`.
-
-`tools/build-crazygames.sh web` baut dieselbe englische Fassung als `dist-web-en/` für
-dheits.de (eingecheckt, siehe Regeln oben): ohne CrazyGames-SDK, ohne eingebettete Schriften (das Spiel nutzt die
-Systemschrift, und die CSP dort erlaubt Skripte und Schriften nur von `'self'`) und mit dem
-Titel CORE DEFENSE statt CORE DEFENSE TD. Getestet hinter genau dieser CSP.
+`CD_QUELLE=dist-web-en node tools/bot.js 20 40`.
 
 Die Einführung (`js/einfuehrung.js`, README-Abschnitt „Einführung“) gehört zum
 Hauptspiel und wird mitkopiert; ihre englischen Texte stehen in `en.js` unter
 `einfuehrung`.
 
-Lesbarkeit: CrazyGames testet in 16:9-Fenstern ab 821×462 bei devicePixelRatio 1, dort
-würde das auf 1312×800 gebaute Spiel auf 58 % schrumpfen. `sdk.js` berechnet daher einen
-Ausgleich `--ui-k` / `UIK` (Kehrwert der Verkleinerung, höchstens 1,8). Die
-Bedienflächen wachsen per CSS-`zoom` darum (`crazygames.css`), `lesbarkeit.js` stellt
-Canvas-Schriften und die Maße der Hover-Karte beim Build darauf um. Unter 1180
-Design-Pixeln Breite schaltet `.kompakt` auf die schmale Taskleiste (Bauteile ohne
-Namen). Nach Änderungen an HUD oder Taskleiste in 821×462, 907×510 und 1920×1080
+Lesbarkeit: Das Spiel ist auf 1312×800 gebaut und schrumpft in kleinen Fenstern mit.
+`sdk.js` berechnet dagegen einen Ausgleich `--ui-k` / `UIK` (Kehrwert der Verkleinerung,
+höchstens 1,8), die Bedienflächen wachsen per CSS-`zoom` darum (`crazygames.css`), und
+`lesbarkeit.js` stellt Canvas-Schriften und die Maße der Hover-Karte beim Build darauf
+um. Unter 1180 Design-Pixeln Breite schaltet `.kompakt` auf die schmale Taskleiste
+(Bauteile ohne Namen). Der Maßstab stammt aus dem CrazyGames-Test (16:9 ab 821×462 bei
+devicePixelRatio 1) und gilt unverändert weiter, weil auch dheits.de in kleinen Fenstern
+gelesen wird. Nach Änderungen an HUD oder Taskleiste in 821×462, 907×510 und 1920×1080
 nachsehen.
 
-Stand: Die erste Einreichung als CORE DEFENSE wurde am 23.09.2026 abgelehnt („overall
-quality does not yet meet the expectations", ohne Details). Danach kamen die englische
-Fassung, die Einführung und die Lesbarkeit dazu. Am 24.09.2026 wurde das Spiel neu
-eingereicht, als **Core Defense TD**, weil der alte Eintrag den Namen belegt. Es steht auf
-„Awaiting Review“. Im Export heißt das Spiel deshalb CORE DEFENSE TD (`en.js`), das
-Hauptspiel bleibt CORE DEFENSE.
+### CrazyGames ist erledigt
 
-Upload im Portal: Das Feld „Upload files“ ist eine **Ordnerauswahl** (`webkitdirectory`).
-Eine einzelne Zip-Datei hat darin keinen relativen Pfad, der Server antwortet dann mit
-HTTP 400 „Missing required fields“ und der Upload hängt. Den Ordner `dist-crazygames/`
-wählen, nicht die Zip-Datei.
+Das Portal ist kein Ziel mehr. Zweimal eingereicht, zweimal abgelehnt: am 23.09.2026 als
+CORE DEFENSE, am 25.09.2026 als Core Defense TD, beide Male mit derselben Begründung ohne
+Einzelheiten („The overall quality of the game does not yet meet the expectations of our
+platform“). Am 25.09.2026 wurde die Löschung des Entwicklerkontos beantragt (DSGVO
+Art. 17, an submissions@crazygames.com). Damit sind auch die Punkte erledigt, die daran
+hingen: die ungenutzten eingebetteten Schriften im Export, die Medien in
+`tools/crazygames/medien/` und `listing.md`.
 
-Medien in `tools/crazygames/medien/`: drei Cover und zwei Vorschauvideos (je 20 s, ohne
-Ton, erstes Bild ist das Cover). Die Cover entstehen aus `cover.html` plus dem Standbild
-`voll.png` mit Chrome headless (`--screenshot`, Fenstergröße des Formats). Oben links legt
-CrazyGames Labels über die Cover, beim Quadrat etwa ein Drittel der Höhe, deshalb steht
-der Titel dort unten.
+`tools/build-crazygames.sh` ohne Argument baut weiterhin `dist-crazygames/` samt Zip, mit
+SDK und eingebetteten Schriften. Gebraucht wird das nicht mehr; die Namen bleiben, weil
+die web-Variante auf denselben Dateien sitzt. Ein Rest steckt noch im Wörterbuch: In
+`en.js` heißt das Spiel CORE DEFENSE TD, weil der Name auf CrazyGames durch die erste
+Einreichung belegt war — die web-Variante ersetzt das beim Bauen wieder durch
+CORE DEFENSE.
 
 ## Offen (alles dokumentiert)
 
