@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Core Defense cover</title>
+<link rel="stylesheet" href="../crazygames/fonts.css">
+<style>
+  /* Quelle der Vorschaubilder für GameDistribution, gerendert von cover.sh.
+     Ausschnitte aus voll.png (4096×2304), Kern bei x 2353 / y 1212. Der
+     Maßstab ist immer Zielbreite / Ausschnittbreite. Ecken bleiben eckig,
+     Titel nur in den größeren Formaten. */
+  html,body{margin:0;background:#05070d;overflow:hidden}
+  .cover{position:relative;overflow:hidden;background:#05070d url(../crazygames/medien/voll.png) no-repeat}
+  .cover::after{content:'';position:absolute;inset:0;pointer-events:none}
+  h1{
+    position:absolute;margin:0;z-index:2;
+    font-family:'Saira Condensed',sans-serif;font-weight:700;text-transform:uppercase;
+    line-height:.9;letter-spacing:.01em;color:#fff;
+    text-shadow:0 4px 30px rgba(0,0,0,.9);
+  }
+  h1 span{display:block}
+  h1 .a{color:#5fe0ff;text-shadow:0 0 40px rgba(95,224,255,.55),0 4px 30px rgba(0,0,0,.9)}
+
+  /* 1280×720: Ausschnitt 2311×1300 ab (828, 557), Titel links */
+  .g1280x720{width:1280px;height:720px;
+    background-size:calc(4096px * 1280 / 2311) auto;
+    background-position:calc(-828px * 1280 / 2311) calc(-557px * 1280 / 2311)}
+  .g1280x720::after{background:linear-gradient(90deg,rgba(5,7,13,.92) 0%,rgba(5,7,13,.7) 30%,rgba(5,7,13,0) 55%)}
+  .g1280x720 h1{left:74px;top:50%;transform:translateY(-50%);font-size:110px}
+
+  /* 1280×550: Ausschnitt 2500×1074 ab (703, 675) */
+  .g1280x550{width:1280px;height:550px;
+    background-size:calc(4096px * 1280 / 2500) auto;
+    background-position:calc(-703px * 1280 / 2500) calc(-675px * 1280 / 2500)}
+  .g1280x550::after{background:linear-gradient(90deg,rgba(5,7,13,.92) 0%,rgba(5,7,13,.7) 30%,rgba(5,7,13,0) 55%)}
+  .g1280x550 h1{left:74px;top:50%;transform:translateY(-50%);font-size:100px}
+
+  /* 512×512: Ausschnitt 1200×1200 ab (1753, 732), Titel unten */
+  .g512x512{width:512px;height:512px;
+    background-size:calc(4096px * 512 / 1200) auto;
+    background-position:calc(-1753px * 512 / 1200) calc(-732px * 512 / 1200)}
+  .g512x512::after{background:linear-gradient(0deg,rgba(5,7,13,.92) 0%,rgba(5,7,13,.65) 16%,rgba(5,7,13,0) 30%)}
+  .g512x512 h1{left:0;right:0;bottom:28px;text-align:center;font-size:56px}
+  .g512x512 h1 span,.g512x384 h1 span{display:inline}
+
+  /* 512×384: Ausschnitt 1500×1125 ab (1603, 732), Titel unten */
+  .g512x384{width:512px;height:384px;
+    background-size:calc(4096px * 512 / 1500) auto;
+    background-position:calc(-1603px * 512 / 1500) calc(-732px * 512 / 1500)}
+  .g512x384::after{background:linear-gradient(0deg,rgba(5,7,13,.92) 0%,rgba(5,7,13,.65) 16%,rgba(5,7,13,0) 30%)}
+  .g512x384 h1{left:0;right:0;bottom:20px;text-align:center;font-size:48px}
+
+  /* 200×120: Ausschnitt 1700×1020 ab (1503, 702), ohne Titel — zu klein zum Lesen */
+  .g200x120{width:200px;height:120px;
+    background-size:calc(4096px * 200 / 1700) auto;
+    background-position:calc(-1503px * 200 / 1700) calc(-702px * 200 / 1700)}
+  .g200x120 h1{display:none}
+</style>
+</head>
+<body>
+<div class="cover" id="c"><h1><span>Core</span> <span class="a">Defense</span></h1></div>
+<script>
+  document.getElementById('c').classList.add(location.hash.slice(1));
+</script>
+</body>
+</html>

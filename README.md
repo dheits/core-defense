@@ -1138,6 +1138,11 @@ Game ID gibt das Portal beim Anlegen des Spiels vor; ohne sie steht ein Platzhal
   Spiel und Ton an, `SDK_GAME_START` stellt den vorherigen Zustand wieder her — eine eigene
   Pause oder ausgeschalteter Ton des Spielers bleiben also erhalten.
 
+Die Vorschaubilder verlangt das Portal als JPG in 512×384, 512×512 und 200×120 (empfohlen
+zusätzlich 1280×720 und 1280×550). `tools/gamedistribution/cover.sh` rendert sie aus
+`cover.html` mit Chrome headless in `tools/gamedistribution/medien/`; der Titel heißt dort
+CORE DEFENSE ohne „TD“ und steht nur in den größeren Formaten.
+
 `node tools/pruefen.js` baut den Export in einen Temp-Ordner und prüft Kopf, Game ID, fehlende
 CrazyGames-Reste und das Verhalten von `gd.js` in einer Attrappe. Fehlt das SDK
 (Werbeblocker) oder scheitert die Anzeige, geht der Klick trotzdem durch.
