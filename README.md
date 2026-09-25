@@ -1117,5 +1117,27 @@ eingebettete Schriften aus, weil die Content-Security-Policy auf dheits.de Skrip
 Schriften nur von der eigenen Adresse zulässt. Alle Pfade sind relativ.
 
 Lokal testen: `python3 -m http.server 8123 --directory dist-crazygames`.
-Fehlende `dist-crazygames/` bzw. `dist-crazygames.zip` sind Build-Output und
+`dist-crazygames/`, `dist-gamedistribution/` und die beiden Zips sind Build-Output und
 absichtlich in `.gitignore`.
+
+### Export für GameDistribution
+
+`GD_GAME_ID=<Game ID> ./tools/build-crazygames.sh gamedistribution` baut
+`dist-gamedistribution/` und `dist-gamedistribution.zip` (Upload im Entwicklerportal). Die
+Game ID gibt das Portal beim Anlegen des Spiels vor; ohne sie steht ein Platzhalter in
+`index.html`, und das Skript weist darauf hin. Englisch, ohne Landingpage, mit
+`tools/gamedistribution/`:
+
+- `sdk-snippet.html` steht im Kopf von `index.html` und lädt das GameDistribution-SDK vor
+  dem Spiel — das Portal verlangt es so.
+- `gd.js` ersetzt hinter dem Fenster-Teil von `sdk.js` den CrazyGames-Teil. Werbung läuft nur
+  als Antwort auf einen Klick an den Knöpfen der Anzeige (Start, „Neu starten" nach dem
+  Kernverlust); der Klick wird bis zum Ende der Anzeige gehalten und dann ausgelöst. Der
+  zweite Knopf am Spielende kopiert nur das Ergebnis und bekommt keine. Zwischen zwei Anzeigen
+  liegen mindestens 60 Sekunden, auch über ein Neuladen hinweg. `SDK_GAME_PAUSE` hält
+  Spiel und Ton an, `SDK_GAME_START` stellt den vorherigen Zustand wieder her — eine eigene
+  Pause oder ausgeschalteter Ton des Spielers bleiben also erhalten.
+
+`node tools/pruefen.js` baut den Export in einen Temp-Ordner und prüft Kopf, Game ID, fehlende
+CrazyGames-Reste und das Verhalten von `gd.js` in einer Attrappe. Fehlt das SDK
+(Werbeblocker) oder scheitert die Anzeige, geht der Klick trotzdem durch.

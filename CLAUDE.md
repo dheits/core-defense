@@ -136,6 +136,15 @@ die web-Variante auf denselben Dateien sitzt. Ein Rest steckt noch im Wörterbuc
 Einreichung belegt war — die web-Variante ersetzt das beim Bauen wieder durch
 CORE DEFENSE.
 
+### GameDistribution
+
+Nächstes Portal nach CrazyGames: `GD_GAME_ID=<Game ID> tools/build-crazygames.sh gamedistribution`
+(Wirkung und Dateien in `tools/gamedistribution/`: README-Abschnitt „Export für GameDistribution").
+Die Game ID vergibt das Portal beim Anlegen des Spiels. Konto, Vertrag und „Request Activation"
+macht der Nutzer selbst. Bedingungen laut Portal: 33 % vom Net Revenue, ab 100 € binnen 60 Tagen,
+nicht exklusiv, SDK Pflicht, Werbung nur auf Klick, Prüfung etwa 1 bis 3 Wochen. Ob das Spiel
+auf Touchgeräten taugt, ist ungeprüft (es gibt Pointer-Events, aber keine Touch-Gestaltung).
+
 ## Offen (alles dokumentiert)
 
 - `IDEAS.md` Abschnitt 6: Maschen im Netz statt eines Baums (`recomputeSupply()` wählt

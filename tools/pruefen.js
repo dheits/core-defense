@@ -2444,6 +2444,132 @@ beschreibe('dist-web-en/ entspricht dem aktuellen Stand', () => {
   }
 });
 
+/* Der GameDistribution-Export: gebaut wird er wie die anderen aus den echten
+   Quellen. Geprüft wird, was das Portal verlangt (SDK vor dem Spiel, Game ID,
+   Werbung nur auf Klick, Pause und Ton bei den Pflichtereignissen) und dass
+   kein CrazyGames-Rest mitfährt. */
+beschreibe('GameDistribution-Export', () => {
+  const fs = require('fs'), os = require('os'), vm = require('vm');
+  const { execFileSync } = require('child_process');
+  const ROOT = path.resolve(__dirname, '..');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-gd-'));
+  try {
+    execFileSync('bash', [path.join(ROOT, 'tools/build-crazygames.sh'), 'gamedistribution', tmp],
+                 { stdio: 'pipe', env: Object.assign({}, process.env, { GD_GAME_ID: 'abc123testid' }) });
+    const html = fs.readFileSync(path.join(tmp, 'index.html'), 'utf8');
+    const sdk = fs.readFileSync(path.join(tmp, 'js/sdk.js'), 'utf8');
+    const kopf = html.slice(0, html.indexOf('</head>'));
+
+    stimmt('Game ID steht in GD_OPTIONS', /"gameId": "abc123testid"/.test(kopf));
+    stimmt('SDK lädt vom GameDistribution-Server', kopf.includes('https://html5.api.gamedistribution.com/main.js'));
+    stimmt('SDK steht im Kopf, vor dem Spiel',
+           kopf.includes('gamedistribution-jssdk') && html.indexOf('main.js') < html.indexOf('js/config.js'));
+    stimmt('kein CrazyGames-SDK im Export', !/crazygames\.com|CrazyGames\.SDK/.test(html + sdk));
+    stimmt('Titel ohne „TD“', html.includes('<title>Core Defense</title>'));
+    stimmt('Fenster-Teil von sdk.js bleibt', sdk.includes('function fitStage()') && sdk.includes('game.inView = true'));
+    stimmt('die ZIP-Datei liegt neben dem Ordner', fs.existsSync(tmp + '.zip'));
+
+    /* Verhalten von gd.js in einer Attrappe: Knopf, Overlay, SDK, Spiel. */
+    const gd = fs.readFileSync(path.join(ROOT, 'tools/gamedistribution/gd.js'), 'utf8');
+    function stand(opt = {}) {
+      const griffe = [];
+      const overlay = { addEventListener(t, f, capture) { if (t === 'click' && capture) griffe.push(f); } };
+      const mute = { innerHTML: '' };
+      const speicher = {};
+      const sb = {
+        document: { getElementById: id => id === 'overlay' ? overlay : id === 'muteBtn' ? mute : null },
+        sessionStorage: { getItem: k => speicher[k] === undefined ? null : speicher[k],
+                          setItem: (k, v) => { speicher[k] = String(v); } },
+        game: { over: !!opt.over, paused: !!opt.pause },
+        SFX: { muted: !!opt.stumm, toggle() { this.muted = !this.muted; return this.muted; } },
+        togglePause() { sb.game.paused = !sb.game.paused; },
+        Date,
+      };
+      sb.window = sb;
+      const anzeigen = [];
+      if (!opt.ohneSdk) sb.gdsdk = { showAd() {
+        const a = { fertig: null, then(ok, nok) { this.ok = ok; this.nok = nok; } };
+        anzeigen.push(a);
+        return opt.sofort ? undefined : a;
+      } };
+      vm.runInNewContext(gd, sb);
+      const durch = [];
+      function klick(id) {
+        const knopf = { id, closest: () => knopf, click() { drueck(knopf); } };
+        const ev = { target: knopf, gestoppt: false,
+                     stopImmediatePropagation() { this.gestoppt = true; }, preventDefault() {} };
+        function drueck(k) {
+          const e = k === knopf && ev.gestoppt === false ? ev : { target: k, gestoppt: false,
+            stopImmediatePropagation() { this.gestoppt = true; }, preventDefault() {} };
+          for (const f of griffe) f(e);
+          if (!e.gestoppt) durch.push(id);
+        }
+        drueck(knopf);
+      }
+      return { sb, anzeigen, durch, klick, speicher };
+    }
+
+    let t = stand();
+    t.klick('ovBtn');
+    gleich('erster Klick: Anzeige läuft', t.anzeigen.length, 1);
+    gleich('erster Klick: Knopf wartet auf das Ende', t.durch.length, 0);
+    t.klick('ovBtn');
+    gleich('zweiter Klick währenddessen: keine zweite Anzeige', t.anzeigen.length, 1);
+    gleich('zweiter Klick währenddessen: bleibt gehalten', t.durch.length, 0);
+    t.anzeigen[0].ok();
+    gleich('nach der Anzeige geht der Klick durch', t.durch.join(','), 'ovBtn');
+    t.klick('ovBtn');
+    gleich('innerhalb des Abstands keine neue Anzeige', t.anzeigen.length, 1);
+    gleich('innerhalb des Abstands geht der Klick sofort durch', t.durch.join(','), 'ovBtn,ovBtn');
+
+    t = stand();
+    t.klick('ovBtn');
+    t.anzeigen[0].nok();
+    gleich('scheitert die Anzeige, geht der Klick trotzdem durch', t.durch.join(','), 'ovBtn');
+
+    t = stand({ sofort: true });
+    t.klick('ovBtn');
+    gleich('Anzeige ohne Versprechen: Klick geht durch', t.durch.join(','), 'ovBtn');
+
+    t = stand({ ohneSdk: true });
+    t.klick('ovBtn');
+    gleich('ohne SDK (Werbeblocker): Klick geht sofort durch', t.durch.join(','), 'ovBtn');
+    gleich('ohne SDK wird kein Anzeigenabstand vermerkt', Object.keys(t.speicher).length, 0);
+
+    t = stand({ over: true });
+    t.klick('ovBtn2');
+    gleich('Ergebnis kopieren: keine Anzeige', t.anzeigen.length, 0);
+    gleich('Ergebnis kopieren: Klick geht durch', t.durch.join(','), 'ovBtn2');
+    t.klick('ovBtn');
+    gleich('Neu starten nach Kernverlust: Anzeige', t.anzeigen.length, 1);
+
+    t = stand();
+    t.klick('ovBtn2');
+    gleich('zweiter Startknopf vor der Partie: Anzeige', t.anzeigen.length, 1);
+
+    t = stand();
+    t.sb.window.gdEvent({ name: 'SDK_GAME_PAUSE' });
+    stimmt('SDK_GAME_PAUSE hält das Spiel an', t.sb.game.paused === true);
+    stimmt('SDK_GAME_PAUSE schaltet den Ton aus', t.sb.SFX.muted === true);
+    t.sb.window.gdEvent({ name: 'SDK_GAME_START' });
+    stimmt('SDK_GAME_START setzt das Spiel fort', t.sb.game.paused === false);
+    stimmt('SDK_GAME_START schaltet den Ton wieder an', t.sb.SFX.muted === false);
+
+    t = stand({ pause: true, stumm: true });
+    t.sb.window.gdEvent({ name: 'SDK_GAME_PAUSE' });
+    t.sb.window.gdEvent({ name: 'SDK_GAME_START' });
+    stimmt('eigene Pause des Spielers bleibt danach bestehen', t.sb.game.paused === true);
+    stimmt('ausgeschalteter Ton bleibt danach aus', t.sb.SFX.muted === true);
+
+    t = stand();
+    t.sb.window.gdEvent({ name: 'SDK_GAME_START' });
+    stimmt('SDK_GAME_START ohne vorherige Pause ändert nichts', t.sb.game.paused === false && t.sb.SFX.muted === false);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+    fs.rmSync(tmp + '.zip', { force: true });
+  }
+});
+
 /* ------------------------ Ausgabe ------------------------ */
 console.log('');
 if (fehler.length) {
