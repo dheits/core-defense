@@ -3490,7 +3490,7 @@ function ergebnisText(e) {
   const teile = e.teile || {};
   const top = Object.keys(teile).sort((a, b) => teile[b] - teile[a]).slice(0, 3)
     .map(t => teile[t] + ' ' + teilName(t, teile[t])).join(', ');
-  return 'CORE DEFENSE · ' + (e.name ? e.name + ' · ' : '') +
+  return 'CORE DEFENSE TD · ' + (e.name ? e.name + ' · ' : '') +
          (e.tag ? 'Daily map ' + datumKurz(e.tag) : 'free map') +
          ' · Wave ' + e.wave + (top ? ' · ' + top : '');
 }
@@ -3840,7 +3840,7 @@ if (fortsetzen) {
     location.reload();
   };
 } else {
-  showOverlay('CORE DEFENSE',
+  showOverlay('CORE DEFENSE TD',
     'The core in the center powers your towers. Attacks come from every direction. ' +
     'Build pylons to carry the grid outward, and reactors so you don\'t run out of ' +
     'power mid-wave. After each wave you pick a card that lasts for the rest of the run. ' +

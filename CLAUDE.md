@@ -132,9 +132,9 @@ hingen: die ungenutzten eingebetteten Schriften im Export, die Medien in
 `tools/build-crazygames.sh` ohne Argument baut weiterhin `dist-crazygames/` samt Zip, mit
 SDK und eingebetteten Schriften. Gebraucht wird das nicht mehr; die Namen bleiben, weil
 die web-Variante auf denselben Dateien sitzt. Ein Rest steckt noch im Wörterbuch: In
-`en.js` heißt das Spiel CORE DEFENSE TD, weil der Name auf CrazyGames durch die erste
-Einreichung belegt war — die web-Variante ersetzt das beim Bauen wieder durch
-CORE DEFENSE.
+`en.js` heißt das Spiel CORE DEFENSE TD. Seit dem 30.09.2026 gilt das auch für die
+web-Variante auf dheits.de; nur die gamedistribution-Variante ersetzt es beim Bauen
+wieder durch CORE DEFENSE, weil ihre Vorschaubilder ohne „TD“ gerendert sind.
 
 ### GameDistribution
 
