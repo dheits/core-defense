@@ -456,10 +456,8 @@ module.exports = {
     'Fortsetzen': 'Continue',
     'Neu anfangen': 'Start over',
     'Freies Feld': 'Free map',
-    // Auf CrazyGames heißt das Spiel „Core Defense TD“ — der Name CORE DEFENSE war
-    // dort durch die abgelehnte erste Einreichung belegt.
-    'CORE DEFENSE': 'CORE DEFENSE TD',
-    'CORE DEFENSE · ': 'CORE DEFENSE TD · ',
+    'CORE DEFENSE TD': 'CORE DEFENSE TD',
+    'CORE DEFENSE TD · ': 'CORE DEFENSE TD · ',
     'Der Kern in der Mitte versorgt deine Türme mit Energie. Angriffe kommen aus allen Richtungen. ':
       'The core in the center powers your towers. Attacks come from every direction. ',
     'Baue Pylone, um das Netz nach außen zu tragen, und Reaktoren, damit dir mitten in der Welle nicht ':
@@ -533,8 +531,8 @@ module.exports = {
   /* Die Spielseite. Jedes Paar muss genau einmal vorkommen. */
   html: [
     ['<html lang="de">', '<html lang="en">'],
-    ['<title>CORE DEFENSE</title>', '<title>Core Defense TD</title>'],
-    ['<h1 id="ovTitle">CORE DEFENSE</h1>', '<h1 id="ovTitle">CORE DEFENSE TD</h1>'],
+    ['<title>CORE DEFENSE TD</title>', '<title>Core Defense TD</title>'],
+    ['<h1 id="ovTitle">CORE DEFENSE TD</h1>', '<h1 id="ovTitle">CORE DEFENSE TD</h1>'],
     ['Tower Defense von innen nach außen: Die Wellen kommen von außen, der Strom aus der Mitte.',
      'Tower defense turned inside out: the waves come from outside, the power from the center.'],
     ['<span class="label">Materie</span>', '<span class="label">Matter</span>'],

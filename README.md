@@ -1,4 +1,4 @@
-# CORE DEFENSE
+# CORE DEFENSE TD
 
 Ein Tower-Defense-Spiel mit umgedrehter Geometrie: **die Angriffe kommen von außen**,
 du baust vom Zentrum nach außen. In der Mitte steht der Kern — gleichzeitig Schutzobjekt
@@ -374,7 +374,7 @@ Nach dem Kernverlust steht neben „Neu starten" ein Knopf **Ergebnis kopieren**
 Zwischenablage landet eine Zeile zum Weitergeben:
 
 ```
-CORE DEFENSE · Tagesfeld 06.09.2026 · Welle 23 · 6 Pylone, 4 Blaster, 3 Reaktoren
+CORE DEFENSE TD · Tagesfeld 06.09.2026 · Welle 23 · 6 Pylone, 4 Blaster, 3 Reaktoren
 ```
 
 Im freien Feld steht dort ausdrücklich `freies Feld` statt eines Datums — ein Ergebnis
@@ -1141,7 +1141,7 @@ Game ID gibt das Portal beim Anlegen des Spiels vor; ohne sie steht ein Platzhal
 Die Vorschaubilder verlangt das Portal als JPG in 512×384, 512×512 und 200×120 (empfohlen
 zusätzlich 1280×720 und 1280×550). `tools/gamedistribution/cover.sh` rendert sie aus
 `cover.html` mit Chrome headless in `tools/gamedistribution/medien/`; der Titel heißt dort
-CORE DEFENSE ohne „TD“ und steht nur in den größeren Formaten.
+CORE DEFENSE TD und steht nur in den größeren Formaten.
 
 `node tools/pruefen.js` baut den Export in einen Temp-Ordner und prüft Kopf, Game ID, fehlende
 CrazyGames-Reste und das Verhalten von `gd.js` in einer Attrappe. Fehlt das SDK

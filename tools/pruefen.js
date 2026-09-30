@@ -1877,7 +1877,7 @@ beschreibe('Das Ergebnis lässt sich weitergeben', () => {
   // Wer sich eingetragen hat, steht auch in der Zeile, die weitergegeben wird
   h.nameMerken('Detlef');
   stimmt('die Zeile nennt den Namen zuerst',
-         h.ergebnisText(g.eintragen().eintrag).indexOf('CORE DEFENSE · Detlef · ') === 0);
+         h.ergebnisText(g.eintragen().eintrag).indexOf('CORE DEFENSE TD · Detlef · ') === 0);
 });
 
 beschreibe('Der Tag kommt aus dem Kalender des Spielers', () => {
@@ -2465,7 +2465,7 @@ beschreibe('GameDistribution-Export', () => {
     stimmt('SDK steht im Kopf, vor dem Spiel',
            kopf.includes('gamedistribution-jssdk') && html.indexOf('main.js') < html.indexOf('js/config.js'));
     stimmt('kein CrazyGames-SDK im Export', !/crazygames\.com|CrazyGames\.SDK/.test(html + sdk));
-    stimmt('Titel ohne „TD“', html.includes('<title>Core Defense</title>'));
+    stimmt('Titel mit „TD“', html.includes('<title>Core Defense TD</title>'));
     stimmt('Fenster-Teil von sdk.js bleibt', sdk.includes('function fitStage()') && sdk.includes('game.inView = true'));
     stimmt('die ZIP-Datei liegt neben dem Ordner', fs.existsSync(tmp + '.zip'));
 

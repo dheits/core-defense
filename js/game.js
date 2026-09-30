@@ -3489,7 +3489,7 @@ function ergebnisText(e) {
   const teile = e.teile || {};
   const top = Object.keys(teile).sort((a, b) => teile[b] - teile[a]).slice(0, 3)
     .map(t => teile[t] + ' ' + teilName(t, teile[t])).join(', ');
-  return 'CORE DEFENSE · ' + (e.name ? e.name + ' · ' : '') +
+  return 'CORE DEFENSE TD · ' + (e.name ? e.name + ' · ' : '') +
          (e.tag ? 'Tagesfeld ' + datumKurz(e.tag) : 'freies Feld') +
          ' · Welle ' + e.wave + (top ? ' · ' + top : '');
 }
@@ -3840,7 +3840,7 @@ if (fortsetzen) {
     location.reload();
   };
 } else {
-  showOverlay('CORE DEFENSE',
+  showOverlay('CORE DEFENSE TD',
     'Der Kern in der Mitte versorgt deine Türme mit Energie. Angriffe kommen aus allen Richtungen. ' +
     'Baue Pylone, um das Netz nach außen zu tragen, und Reaktoren, damit dir mitten in der Welle nicht ' +
     'der Strom ausgeht. Nach jeder Welle wählst du eine Karte, die für den Rest der Partie gilt. ' +

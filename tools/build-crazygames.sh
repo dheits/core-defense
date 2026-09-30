@@ -18,8 +18,7 @@
 # (die CSP auf dheits.de erlaubt Skripte nur von 'self'), keine eingebetteten
 # Schriften (das Spiel nutzt die Systemschrift, Saira und Plex braucht nur die
 # Landingpage — und data:-Schriften blockiert die CSP ohnehin). Der Titel
-# heißt in web und crazygames CORE DEFENSE TD, nur gamedistribution kehrt zu
-# CORE DEFENSE ohne „TD“ zurück.
+# heißt in allen Varianten CORE DEFENSE TD.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -78,16 +77,9 @@ node tools/crazygames/uebersetzen.js "$ZIEL"
 node tools/crazygames/lesbarkeit.js "$ZIEL"
 
 if [ "$VARIANTE" != crazygames ]; then
-  VARIANTE="$VARIANTE" ZIEL="$ZIEL" python3 - <<'PY'
+  ZIEL="$ZIEL" python3 - <<'PY'
 import os
 ziel = os.environ['ZIEL']
-for datei, soll in [('index.html', 2), ('js/game.js', 2)]:
-    p = ziel + '/' + datei
-    s = open(p).read()
-    n = s.count('CORE DEFENSE TD') + s.count('Core Defense TD')
-    assert n == soll, (datei, n)
-    if os.environ['VARIANTE'] == 'gamedistribution':
-        open(p, 'w').write(s.replace('CORE DEFENSE TD', 'CORE DEFENSE').replace('Core Defense TD', 'Core Defense'))
 s = open(ziel + '/index.html').read()
 assert 'crazygames.com' not in s and 'fonts.css' not in s
 PY
